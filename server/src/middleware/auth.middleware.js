@@ -2,35 +2,44 @@ import jwt from 'jsonwebtoken';
 import env from '../config/environment.js';
 
 // ====================================================================
-// LỚP 3 - AUTHENTICATION (JWT)
-// Xác thực user qua JWT token trong HttpOnly cookie
+// LỚP 3 - AUTHENTICATION (XÁC THỰC)
+// Lấy Token từ HttpOnly Cookie để chống tấn công XSS 
 // ====================================================================
+export const authenticateToken = (req, res, next) => {
+    // Lấy token từ Cookie
+    const token = req.cookies?.token || req.cookies?.accessToken;
 
-const authMiddleware = (req, res, next) => {
-    try {
-        // Lấy token từ HttpOnly cookie
-        const token = req.cookies?.token;
-
-        if (!token) {
-            return res.status(401).json({ message: 'Bạn chưa đăng nhập' });
-        }
-
-        // Verify token
-        const decoded = jwt.verify(token, env.JWT_SECRET);
-
-        // Gán thông tin user vào request để các middleware/controller sau dùng
-        req.user = {
-            id: decoded.id,
-            role: decoded.role,
-        };
-
-        next();
-    } catch (error) {
-        if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ message: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại' });
-        }
-        return res.status(401).json({ message: 'Token không hợp lệ' });
+    if (!token) {
+        return res.status(401).json({ message: 'Yêu cầu cần có access token' });
     }
+
+    // Sử dụng Secret Key từ file cấu hình environment
+    const secret = env.ACCESS_TOKEN_SECRET || env.JWT_SECRET;
+
+    jwt.verify(token, secret, (err, decoded) => {
+        if (err) {
+            return res.status(403).json({ message: 'Token không hợp lệ hoặc đã hết hạn' });
+        }
+
+        req.user = {
+            userId: decoded.id || decoded.userId,
+            email: decoded.email,
+            role: decoded.role
+        };
+        next();
+    });
 };
 
-export default authMiddleware;
+// ====================================================================
+// LỚP 4 - AUTHORIZATION (PHÂN QUYỀN)
+// Kiểm tra quyền hạn trước khi cho phép can thiệp dữ liệu
+// ====================================================================
+export const authorizeRole = (role) => {
+    return (req, res, next) => {
+        // Nguyên tắc phân quyền tối thiểu: Đúng role hoặc là Admin
+        if (req.user.role !== role && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Bạn không có quyền thực hiện hành động này' });
+        }
+        next();
+    };
+};

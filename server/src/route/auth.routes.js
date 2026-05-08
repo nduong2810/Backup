@@ -1,8 +1,8 @@
 import express from 'express';
 import authController from '../controller/auth.controller.js';
+import userController from '../controller/user.controller.js';
 import { authLimiter } from '../middleware/rateLimit.middleware.js';
-import authMiddleware from '../middleware/auth.middleware.js';
-import roleMiddleware from '../middleware/role.middleware.js';
+import { authenticateToken, authorizeRole } from '../middleware/auth.middleware.js';
 import { forgotPasswordValidation, loginValidation, resetPasswordValidation } from '../validation/auth.validation.js';
 
 const router = express.Router();
@@ -16,25 +16,33 @@ router.post('/login',
 );
 
 // ==================== USER PROFILE ====================
-// Pipeline: Auth (Lớp 3) → Authorization user (Lớp 4) → Controller
-router.get('/user/profile',
-    authMiddleware,                                 // Lớp 3: JWT Authentication
-    roleMiddleware('user', 'admin'),                // Lớp 4: Authorization (user + admin đều xem được)
-    (req, res) => {
-        res.status(200).json({
-            message: 'User Profile',
-            user: req.user,
-        });
-    }
+router.get('/user/profile', 
+    authenticateToken, 
+    authorizeRole('user'), 
+    userController.getMyProfile.bind(userController)
+);
+
+router.put('/user/profile', 
+    authenticateToken, 
+    authorizeRole('user'), 
+    authLimiter, 
+    userController.updateMyProfile.bind(userController)
+);
+
+router.put('/user/change-password',
+    authenticateToken,
+    authLimiter,
+    userController.changeMyPassword.bind(userController)
 );
 
 // ==================== ADMIN PROFILE ====================
 // Pipeline: Auth (Lớp 3) → Authorization admin only (Lớp 4) → Controller
 router.get('/admin/profile',
-    authMiddleware,                                 // Lớp 3: JWT Authentication
-    roleMiddleware('admin'),                        // Lớp 4: Authorization (chỉ admin)
+    authenticateToken,                             // Lớp 3: Authentication [cite: 428]
+    authorizeRole('admin'),                        // Lớp 4: Authorization [cite: 430]
     (req, res) => {
         res.status(200).json({
+            success: true,
             message: 'Admin Profile',
             user: req.user,
         });

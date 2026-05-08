@@ -78,6 +78,57 @@ class AuthController {
             res.status(400).json({ message: error.message });
         }
     }
+
+    async getProfile(req, res) {
+        try {
+            // Lấy dữ liệu từ Service dựa trên userId đã xác thực ở Lớp 3
+            const user = await authService.getUserProfile(req.user.userId);
+            
+            res.status(200).json({
+                success: true,
+                user: user
+            });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    async updateProfile(req, res) {
+        // Lớp 1: Kiểm tra Input Validation
+        const validationError = this.checkValidationErrors(req, res);
+        if (validationError) return validationError;
+
+        try {
+            // userId được lấy từ authenticateToken middleware
+            const userId = req.user.userId; 
+            const updateData = req.body;
+
+            // Gọi Business Logic xử lý cập nhật
+            const updatedUser = await authService.updateUserProfile(userId, updateData);
+
+            res.status(200).json({
+                success: true,
+                message: "Cập nhật thông tin thành công",
+                user: updatedUser
+            });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async getAdminProfile(req, res) {
+        try {
+            const admin = await authService.getUserProfile(req.user.userId);
+            res.status(200).json({
+                success: true,
+                message: "Admin Profile",
+                user: admin,
+                adminPanel: true
+            });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    }
 }
 
 export default new AuthController();
