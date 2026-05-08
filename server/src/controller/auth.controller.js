@@ -10,6 +10,36 @@ class AuthController {
         return null;
     }
 
+    async login(req, res) {
+        const validationError = this.checkValidationErrors(req, res);
+        if (validationError) return validationError;
+
+        try {
+            const { email, password } = req.body;
+            const { user, token } = await authService.login(email, password);
+
+            // Set JWT vào HttpOnly cookie (bảo mật chống XSS)
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
+            });
+
+            // Trả URL redirect theo role
+            const redirectUrl = user.role === 'admin' ? '/admin/profile' : '/user/profile';
+
+            res.status(200).json({
+                message: 'Đăng nhập thành công',
+                user,
+                redirectUrl,
+            });
+        } catch (error) {
+            const status = error.status || 400;
+            res.status(status).json({ message: error.message });
+        }
+    }
+
     async forgotPassword(req, res) {
         const validationError = this.checkValidationErrors(req, res);
         if (validationError) return validationError;

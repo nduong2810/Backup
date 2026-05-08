@@ -2,8 +2,42 @@ import userRepository from '../repository/user.repository.js';
 import sendEmail from '../util/email.util.js';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import env from '../config/environment.js';
 
 class AuthService {
+    async login(email, password) {
+        // Tìm user theo email
+        const user = await userRepository.findByEmail(email);
+        if (!user) {
+            throw { status: 401, message: 'Email hoặc mật khẩu không đúng' };
+        }
+
+        // So sánh password
+        const isPasswordMatch = await bcrypt.compare(password, user.password);
+        if (!isPasswordMatch) {
+            throw { status: 401, message: 'Email hoặc mật khẩu không đúng' };
+        }
+
+        // Kiểm tra tài khoản đã kích hoạt chưa
+        if (!user.isActive) {
+            throw { status: 403, message: 'Tài khoản chưa được kích hoạt' };
+        }
+
+        // Tạo JWT token (chứa id và role)
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            env.JWT_SECRET,
+            { expiresIn: env.JWT_EXPIRES_IN }
+        );
+
+        // Ẩn password trước khi trả về
+        const userObj = user.toObject();
+        delete userObj.password;
+
+        return { user: userObj, token };
+    }
+
     async requestPasswordReset(email) {
         const user = await userRepository.findByEmail(email);
         if (!user) throw new Error("Email chưa đăng ký");
