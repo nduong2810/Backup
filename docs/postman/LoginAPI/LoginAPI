@@ -1,0 +1,1587 @@
+{
+  "info": {
+    "_postman_id": "ebf0c174-2b24-48b1-8459-d499ea1c4a68",
+    "name": "My Collection",
+    "description": "### Welcome to Postman! This is your first collection. \n\nCollections are your starting point for building and testing APIs. You can use this one to:\n\n• Group related requests\n• Test your API in real-world scenarios\n• Document and share your requests\n\nUpdate the name and overview whenever you’re ready to make it yours.\n\n[Learn more about Postman Collections.](https://learning.postman.com/docs/collections/collections-overview/)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "54521625",
+    "_collection_link": "https://go.postman.co/collection/54521625-ebf0c174-2b24-48b1-8459-d499ea1c4a68?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "LoginAPI",
+      "item": [
+        {
+          "name": "INPUT_VALIDATION_EMAIL",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"email-khong-hop-le\",\r\n  \"password\": \"Test1234\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "INPUT_VALIDATION_EMAIL",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"email\": \"email-khong-hop-le\",\r\n  \"password\": \"Test1234\"\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:5000/api/auth/login",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "RateLimit-Policy",
+                  "value": "5;w=900"
+                },
+                {
+                  "key": "RateLimit-Limit",
+                  "value": "5"
+                },
+                {
+                  "key": "RateLimit-Remaining",
+                  "value": "4"
+                },
+                {
+                  "key": "RateLimit-Reset",
+                  "value": "900"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "123"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"7b-ie6qJAsXl2DCgXpGAkuca8zlXUQ\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:26:27 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"errors\": [\n        {\n            \"type\": \"field\",\n            \"value\": \"email-khong-hop-le\",\n            \"msg\": \"Email không hợp lệ\",\n            \"path\": \"email\",\n            \"location\": \"body\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "INPUT_VALIDATION_PASSWORD",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"testuser@gmail.com\",\r\n  \"password\": \"\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "INPUT_VALIDATION_PASSWORD",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"email\": \"testuser@gmail.com\",\r\n  \"password\": \"\"\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:5000/api/auth/login",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "RateLimit-Policy",
+                  "value": "5;w=900"
+                },
+                {
+                  "key": "RateLimit-Limit",
+                  "value": "5"
+                },
+                {
+                  "key": "RateLimit-Remaining",
+                  "value": "3"
+                },
+                {
+                  "key": "RateLimit-Reset",
+                  "value": "898"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "127"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"7f-jYpVCcJl+IZTNYRVsEoXfuVlzuw\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:26:30 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"errors\": [\n        {\n            \"type\": \"field\",\n            \"value\": \"\",\n            \"msg\": \"Mật khẩu không được để trống\",\n            \"path\": \"password\",\n            \"location\": \"body\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "INPUT_VALIDATION_NULL",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{}\r\n"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "INPUT_VALIDATION_NULL",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}\r\n"
+                },
+                "url": {
+                  "raw": "http://localhost:5000/api/auth/login",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "RateLimit-Policy",
+                  "value": "5;w=900"
+                },
+                {
+                  "key": "RateLimit-Limit",
+                  "value": "5"
+                },
+                {
+                  "key": "RateLimit-Remaining",
+                  "value": "2"
+                },
+                {
+                  "key": "RateLimit-Reset",
+                  "value": "889"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "198"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"c6-rDUdEVLN2pnlRmzsZdz7dT0xc/E\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:26:39 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"errors\": [\n        {\n            \"type\": \"field\",\n            \"msg\": \"Email không hợp lệ\",\n            \"path\": \"email\",\n            \"location\": \"body\"\n        },\n        {\n            \"type\": \"field\",\n            \"msg\": \"Mật khẩu không được để trống\",\n            \"path\": \"password\",\n            \"location\": \"body\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "WRONG_INFORMATION_ACCOUNT",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"khongtontai@gmail.com\",\r\n  \"password\": \"Test1234\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "WRONG_INFORMATION_ACCOUNT",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"email\": \"khongtontai@gmail.com\",\r\n  \"password\": \"Test1234\"\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:5000/api/auth/login",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "RateLimit-Policy",
+                  "value": "5;w=900"
+                },
+                {
+                  "key": "RateLimit-Limit",
+                  "value": "5"
+                },
+                {
+                  "key": "RateLimit-Remaining",
+                  "value": "1"
+                },
+                {
+                  "key": "RateLimit-Reset",
+                  "value": "817"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "53"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"35-25GBiir+P7FmAHJDcEt17Y3rlpc\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:27:51 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"Email hoặc mật khẩu không đúng\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "INACTIVE_ACCOUNT",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"inactive@gmail.com\",\r\n  \"password\": \"Test1234\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "INACTIVE_ACCOUNT",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"email\": \"inactive@gmail.com\",\r\n  \"password\": \"Test1234\"\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:5000/api/auth/login",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "RateLimit-Policy",
+                  "value": "5;w=900"
+                },
+                {
+                  "key": "RateLimit-Limit",
+                  "value": "5"
+                },
+                {
+                  "key": "RateLimit-Remaining",
+                  "value": "0"
+                },
+                {
+                  "key": "RateLimit-Reset",
+                  "value": "758"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "54"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"36-3W1WAZTPO+hBODI87ozWLxWcXtw\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:28:49 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"Tài khoản chưa được kích hoạt\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "USER_LOGIN_SUCCESS",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"testuser@gmail.com\",\r\n  \"password\": \"Test1234\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "USER_LOGIN_SUCCESS",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"email\": \"testuser@gmail.com\",\r\n  \"password\": \"Test1234\"\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:5000/api/auth/login",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "RateLimit-Policy",
+                  "value": "5;w=900"
+                },
+                {
+                  "key": "RateLimit-Limit",
+                  "value": "5"
+                },
+                {
+                  "key": "RateLimit-Remaining",
+                  "value": "4"
+                },
+                {
+                  "key": "RateLimit-Reset",
+                  "value": "900"
+                },
+                {
+                  "key": "Set-Cookie",
+                  "value": "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDA5MDM1ZGNlMzY3MjExZWIxYzM5OSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzc4NDIzNDI3LCJleHAiOjE3NzkwMjgyMjd9.DvybScCEzMuBxm8THRQyIioZ9FqgsQ4SVTjTlnKkl4E; Max-Age=604800; Path=/; Expires=Sun, 17 May 2026 14:30:27 GMT; HttpOnly; SameSite=Strict"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "431"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"1af-29mMzYNz/UMRWrWaJTeV50FFgFw\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:30:27 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"Đăng nhập thành công\",\n    \"user\": {\n        \"_id\": \"6a009035dce367211eb1c399\",\n        \"fullName\": \"Nguyen Van User\",\n        \"email\": \"testuser@gmail.com\",\n        \"role\": \"user\",\n        \"isActive\": true,\n        \"phone\": \"\",\n        \"bio\": \"\",\n        \"avatar\": \"default-avatar.png\",\n        \"major\": \"\",\n        \"otp\": null,\n        \"otpExpiry\": null,\n        \"resetOTP\": null,\n        \"resetOTPExpiry\": null,\n        \"resetToken\": null,\n        \"createdAt\": \"2026-05-10T14:03:33.978Z\",\n        \"updatedAt\": \"2026-05-10T14:03:33.978Z\",\n        \"__v\": 0\n    },\n    \"redirectUrl\": \"/user/profile\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "ADMIN_LOGIN_SUCCESS",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"admin@gmail.com\",\r\n  \"password\": \"Admin1234\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "ADMIN_LOGIN_SUCCESS",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"email\": \"admin@gmail.com\",\r\n  \"password\": \"Admin1234\"\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:5000/api/auth/login",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "RateLimit-Policy",
+                  "value": "5;w=900"
+                },
+                {
+                  "key": "RateLimit-Limit",
+                  "value": "5"
+                },
+                {
+                  "key": "RateLimit-Remaining",
+                  "value": "3"
+                },
+                {
+                  "key": "RateLimit-Reset",
+                  "value": "859"
+                },
+                {
+                  "key": "Set-Cookie",
+                  "value": "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDA5MDM2ZGNlMzY3MjExZWIxYzM5YSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc3ODQyMzQ2OCwiZXhwIjoxNzc5MDI4MjY4fQ.Xh_L19qArAbvh2xi8OppGHMVsiZXduKA_esPA-8zWpA; Max-Age=604800; Path=/; Expires=Sun, 17 May 2026 14:31:08 GMT; HttpOnly; SameSite=Strict"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "427"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"1ab-2Co+0C9EIkX0gv2k58aylTF0DRI\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:31:08 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"Đăng nhập thành công\",\n    \"user\": {\n        \"_id\": \"6a009036dce367211eb1c39a\",\n        \"fullName\": \"Admin System\",\n        \"email\": \"admin@gmail.com\",\n        \"role\": \"admin\",\n        \"isActive\": true,\n        \"phone\": \"\",\n        \"bio\": \"\",\n        \"avatar\": \"default-avatar.png\",\n        \"major\": \"\",\n        \"otp\": null,\n        \"otpExpiry\": null,\n        \"resetOTP\": null,\n        \"resetOTPExpiry\": null,\n        \"resetToken\": null,\n        \"createdAt\": \"2026-05-10T14:03:34.070Z\",\n        \"updatedAt\": \"2026-05-10T14:03:34.070Z\",\n        \"__v\": 0\n    },\n    \"redirectUrl\": \"/admin/profile\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET_PROFILE_NO_TOKEN",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/user/profile",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "user",
+                "profile"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "GET_PROFILE_NO_TOKEN",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:5000/api/user/profile",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "user",
+                    "profile"
+                  ]
+                }
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "47"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"2f-I/h0HRDYdxtGX8pjCOePcvr05fA\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:36:03 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"Yêu cầu cần có access token\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "LOGIN_SUCCESS_CREATE_TOKEN",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"admin@gmail.com\",\r\n  \"password\": \"Admin1234\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "LOGIN_SUCCESS_CREATE_TOKEN",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"email\": \"admin@gmail.com\",\r\n  \"password\": \"Admin1234\"\r\n}\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:5000/api/auth/login",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "RateLimit-Policy",
+                  "value": "5;w=900"
+                },
+                {
+                  "key": "RateLimit-Limit",
+                  "value": "5"
+                },
+                {
+                  "key": "RateLimit-Remaining",
+                  "value": "1"
+                },
+                {
+                  "key": "RateLimit-Reset",
+                  "value": "490"
+                },
+                {
+                  "key": "Set-Cookie",
+                  "value": "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDA5MDM2ZGNlMzY3MjExZWIxYzM5YSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc3ODQyMzgzNywiZXhwIjoxNzc5MDI4NjM3fQ.5aaNox4NR16uv3U_Gzv3fxjX144tT2gTAUZQxl-bCcc; Max-Age=604800; Path=/; Expires=Sun, 17 May 2026 14:37:17 GMT; HttpOnly; SameSite=Strict"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "427"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"1ab-2Co+0C9EIkX0gv2k58aylTF0DRI\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:37:17 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"Đăng nhập thành công\",\n    \"user\": {\n        \"_id\": \"6a009036dce367211eb1c39a\",\n        \"fullName\": \"Admin System\",\n        \"email\": \"admin@gmail.com\",\n        \"role\": \"admin\",\n        \"isActive\": true,\n        \"phone\": \"\",\n        \"bio\": \"\",\n        \"avatar\": \"default-avatar.png\",\n        \"major\": \"\",\n        \"otp\": null,\n        \"otpExpiry\": null,\n        \"resetOTP\": null,\n        \"resetOTPExpiry\": null,\n        \"resetToken\": null,\n        \"createdAt\": \"2026-05-10T14:03:34.070Z\",\n        \"updatedAt\": \"2026-05-10T14:03:34.070Z\",\n        \"__v\": 0\n    },\n    \"redirectUrl\": \"/admin/profile\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET_PROFILE_HAVE_TOKEN",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/user/profile",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "user",
+                "profile"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "GET_PROFILE_HAVE_TOKEN",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:5000/api/user/profile",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "user",
+                    "profile"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "348"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"15c-Suda8ne/7fBrXySJEjds0fM6kdY\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:38:43 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"_id\": \"6a009036dce367211eb1c39a\",\n    \"fullName\": \"Admin System\",\n    \"email\": \"admin@gmail.com\",\n    \"role\": \"admin\",\n    \"isActive\": true,\n    \"phone\": \"\",\n    \"bio\": \"\",\n    \"avatar\": \"default-avatar.png\",\n    \"major\": \"\",\n    \"otp\": null,\n    \"otpExpiry\": null,\n    \"resetOTP\": null,\n    \"resetOTPExpiry\": null,\n    \"resetToken\": null,\n    \"createdAt\": \"2026-05-10T14:03:34.070Z\",\n    \"updatedAt\": \"2026-05-10T14:03:34.070Z\",\n    \"__v\": 0\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET_PROFILE_WITH_FAKE_TOKEN",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token=eyJhbGciOiJIUzI1NiJ9.fake.invalid_signature",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/user/profile",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "user",
+                "profile"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "GET_PROFILE_WITH_FAKE_TOKEN",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Cookie",
+                    "value": "token=eyJhbGciOiJIUzI1NiJ9.fake.invalid_signature",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "http://localhost:5000/api/user/profile",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "user",
+                    "profile"
+                  ]
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "61"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"3d-XWtAE8CK1fb6+Ki0cSfclMEEoCI\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:40:29 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"Token không hợp lệ hoặc đã hết hạn\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "LOGIN_RATE_LIMITING",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"testuser@gmail.com\",\r\n  \"password\": \"Test1234\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "LOGIN_RATE_LIMITING",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"email\": \"testuser@gmail.com\",\r\n  \"password\": \"Test1234\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "http://localhost:5000/api/auth/login",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                }
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "RateLimit-Policy",
+                  "value": "5;w=900"
+                },
+                {
+                  "key": "RateLimit-Limit",
+                  "value": "5"
+                },
+                {
+                  "key": "RateLimit-Remaining",
+                  "value": "0"
+                },
+                {
+                  "key": "RateLimit-Reset",
+                  "value": "895"
+                },
+                {
+                  "key": "Retry-After",
+                  "value": "895"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "74"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"4a-bhcFWr6H5TC33Mf9XnXQhxFRmng\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:46:37 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"Quá nhiều yêu cầu, vui lòng thử lại sau 15 phút.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "AUTHORIZATION_USER",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/profile",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "admin",
+                "profile"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "AUTHORIZATION_USER",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:5000/api/admin/profile",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "admin",
+                    "profile"
+                  ]
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "71"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"47-kTfHXVozmqyanhqwuvNqTxrJ4Mw\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:49:23 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"Bạn không có quyền thực hiện hành động này\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "AUTHORIZATION_ADMIN",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/profile",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "admin",
+                "profile"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "AUTHORIZATION_ADMIN",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "http://localhost:5000/api/admin/profile",
+                  "protocol": "http",
+                  "host": [
+                    "localhost"
+                  ],
+                  "port": "5000",
+                  "path": [
+                    "api",
+                    "admin",
+                    "profile"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": null,
+              "header": [
+                {
+                  "key": "X-Powered-By",
+                  "value": "Express"
+                },
+                {
+                  "key": "Access-Control-Allow-Origin",
+                  "value": "http://localhost:5173"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Origin"
+                },
+                {
+                  "key": "Access-Control-Allow-Credentials",
+                  "value": "true"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "416"
+                },
+                {
+                  "key": "ETag",
+                  "value": "W/\"1a0-33cydRPHpxTpRA+hR7Fy4ZG0J4o\""
+                },
+                {
+                  "key": "Date",
+                  "value": "Sun, 10 May 2026 14:55:21 GMT"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Keep-Alive",
+                  "value": "timeout=5"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"success\": true,\n    \"message\": \"Admin Profile\",\n    \"user\": {\n        \"_id\": \"6a009036dce367211eb1c39a\",\n        \"fullName\": \"Admin System\",\n        \"email\": \"admin@gmail.com\",\n        \"role\": \"admin\",\n        \"isActive\": true,\n        \"phone\": \"\",\n        \"bio\": \"\",\n        \"avatar\": \"default-avatar.png\",\n        \"major\": \"\",\n        \"otp\": null,\n        \"otpExpiry\": null,\n        \"resetOTP\": null,\n        \"resetOTPExpiry\": null,\n        \"resetToken\": null,\n        \"createdAt\": \"2026-05-10T14:03:34.070Z\",\n        \"updatedAt\": \"2026-05-10T14:03:34.070Z\",\n        \"__v\": 0\n    },\n    \"adminPanel\": true\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

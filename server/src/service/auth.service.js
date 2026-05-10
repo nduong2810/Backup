@@ -134,6 +134,10 @@ class AuthService {
 
         return resetToken;
     }
+    async getUserProfile(userId) {
+        return await userRepository.findById(userId);
+    }
+
     async resetUserPassword(email, resetToken, newPassword) {
         const user = await userRepository.findByEmail(email);
         if (!user || user.resetToken !== resetToken) {
