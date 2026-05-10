@@ -8,6 +8,12 @@ class UserRepository {
     async updateUserByEmail(email, updateData) {
         return await User.findOneAndUpdate({ email }, updateData, { new: true });
     }
+
+    // Khởi tạo user mới vào Database
+    async createUser(userData) {
+        const user = new User(userData);
+        return await user.save();
+    }
 }
 
 export default new UserRepository();

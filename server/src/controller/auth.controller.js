@@ -9,6 +9,41 @@ class AuthController {
         }
         return null;
     }
+    // API Đăng ký
+    async register(req, res) {
+        const validationError = this.checkValidationErrors(req, res);
+        if (validationError) return validationError;
+
+        try {
+            const { fullName, email, password } = req.body;
+            await authService.registerUser(fullName, email, password);
+
+            res.status(201).json({
+                message: "Đăng ký thành công!\nVui lòng kiểm tra email để kích hoạt tài khoản"
+            });
+        } catch (error) {
+            const status = error.message === "Email đã được sử dụng" ? 409 : 400;
+            res.status(status).json({ message: error.message });
+        }
+    }
+
+    //  API Xác thực OTP
+    async verifyOTP(req, res) {
+        const validationError = this.checkValidationErrors(req, res);
+        if (validationError) return validationError;
+
+        try {
+            const { email, otp } = req.body;
+            await authService.verifyActivationOTP(email, otp);
+
+            res.status(200).json({
+                message: "Tài khoản đã được kích hoạt!\nBạn có thể đăng nhập"
+            });
+        } catch (error) {
+            const status = error.message === "Email không tồn tại" ? 404 : 400;
+            res.status(status).json({ message: error.message });
+        }
+    }
 
     async login(req, res) {
         const validationError = this.checkValidationErrors(req, res);

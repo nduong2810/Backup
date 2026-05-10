@@ -6,6 +6,53 @@ import jwt from 'jsonwebtoken';
 import env from '../config/environment.js';
 
 class AuthService {
+
+    // Logic Đăng ký tài khoản
+    async registerUser(fullName, email, password) {
+        const existingUser = await userRepository.findByEmail(email);
+        if (existingUser) throw new Error("Email đã được sử dụng");
+
+        // Hash mật khẩu
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Tạo OTP 6 số và Hạn 5 phút
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiry = Date.now() + 5 * 60 * 1000;
+
+        // Lưu thông tin người dùng (isActive: false)
+        await userRepository.createUser({
+            fullName,
+            email,
+            password: hashedPassword,
+            otp,
+            otpExpiry,
+            role: "user",
+            isActive: false
+        });
+
+        // Gửi email chứa OTP
+        const message = `Mã OTP kích hoạt tài khoản của bạn là: ${otp}\nMã có hiệu lực trong 5 phút.`;
+        await sendEmail(email, "Kích hoạt tài khoản Forum", message);
+    }
+
+    //  Logic Xác thực OTP kích hoạt
+    async verifyActivationOTP(email, otp) {
+        const user = await userRepository.findByEmail(email);
+
+        if (!user) throw new Error("Email không tồn tại");
+        if (user.isActive) throw new Error("Tài khoản đã được kích hoạt");
+        if (!user.otp || user.otp !== otp) throw new Error("OTP không chính xác");
+        if (Date.now() > user.otpExpiry) throw new Error("OTP đã hết hạn");
+
+        // Cập nhật trạng thái và xóa OTP
+        await userRepository.updateUserByEmail(email, {
+            isActive: true,
+            otp: null,
+            otpExpiry: null
+        });
+    }
+
     async login(email, password) {
         // Tìm user theo email
         const user = await userRepository.findByEmail(email);
