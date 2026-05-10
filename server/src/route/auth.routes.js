@@ -15,40 +15,6 @@ router.post('/login',
     authController.login.bind(authController)       // Controller
 );
 
-// ==================== USER PROFILE ====================
-router.get('/user/profile', 
-    authenticateToken, 
-    authorizeRole('user'), 
-    userController.getMyProfile.bind(userController)
-);
-
-router.put('/user/profile', 
-    authenticateToken, 
-    authorizeRole('user'), 
-    authLimiter, 
-    userController.updateMyProfile.bind(userController)
-);
-
-router.put('/user/change-password',
-    authenticateToken,
-    authLimiter,
-    userController.changeMyPassword.bind(userController)
-);
-
-// ==================== ADMIN PROFILE ====================
-// Pipeline: Auth (Lớp 3) → Authorization admin only (Lớp 4) → Controller
-router.get('/admin/profile',
-    authenticateToken,                             // Lớp 3: Authentication [cite: 428]
-    authorizeRole('admin'),                        // Lớp 4: Authorization [cite: 430]
-    (req, res) => {
-        res.status(200).json({
-            success: true,
-            message: 'Admin Profile',
-            user: req.user,
-        });
-    }
-);
-
 // ==================== FORGOT PASSWORD ====================
 router.post('/forgot-password', 
     authLimiter, 

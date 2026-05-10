@@ -48,7 +48,8 @@ class AuthService {
 
         await userRepository.updateUserByEmail(email, {
             resetOTP: otp,
-            resetOTPExpiry: otpExpiry
+            resetOTPExpiry: otpExpiry,
+            resetToken: null
         });
 
         const message = `Mã OTP đặt lại mật khẩu của bạn là: ${otp}. Mã có hiệu lực trong 5 phút.`;
@@ -59,16 +60,33 @@ class AuthService {
         const user = await userRepository.findByEmail(email);
         if (!user) throw new Error("Email không tồn tại");
 
-        if (!user.resetOTP || user.resetOTP !== otp) throw new Error("OTP không chính xác");
-        if (Date.now() > user.resetOTPExpiry) throw new Error("OTP đã hết hạn");
+        // TRƯỜNG HỢP 1: OTP đã bị xóa (null) nhưng vẫn còn resetToken 
+        if (!user.resetOTP && user.resetToken) {
+            throw new Error("Mã OTP này đã được sử dụng");
+        }
 
-        // Tạo resetToken ngẫu nhiên
+        // TRƯỜNG HỢP 2: OTP không khớp hoặc không tồn tại
+        if (!user.resetOTP || user.resetOTP !== otp) {
+            throw new Error("OTP không chính xác");
+        }
+
+        // TRƯỜNG HỢP 3: OTP khớp nhưng đã quá thời gian hiệu lực
+        if (Date.now() > user.resetOTPExpiry) {
+            throw new Error("OTP đã hết hạn");
+        }
+
+        // Nếu vượt qua các lớp check trên thì tạo resetToken mới
         const resetToken = crypto.randomBytes(32).toString('hex');
-        await userRepository.updateUserByEmail(email, { resetToken });
+
+        // Vô hiệu hóa OTP
+        await userRepository.updateUserByEmail(email, { 
+            resetToken,
+            resetOTP: null,         
+            resetOTPExpiry: null    
+        });
 
         return resetToken;
     }
-
     async resetUserPassword(email, resetToken, newPassword) {
         const user = await userRepository.findByEmail(email);
         if (!user || user.resetToken !== resetToken) {

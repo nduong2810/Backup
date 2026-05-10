@@ -1,5 +1,6 @@
 import express from 'express'
 import authRoutes from './auth.routes.js'
+import userRoutes from './user.routes.js'
 // ====================================================================
 // ROUTE AGGREGATOR
 // Gom tất cả routes — thêm route modules ở đây
@@ -12,7 +13,7 @@ const router = express.Router()
 // Ví dụ: router.use('/forum', forumRoute)
 
 router.use('/auth', authRoutes)
-
+router.use('/user', userRoutes)
 // Health check
 router.get('/health', (req, res) => {
   res.status(200).json({
