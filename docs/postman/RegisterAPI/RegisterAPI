@@ -1,0 +1,1194 @@
+{
+  "info": {
+    "_postman_id": "e808375d-66da-4c4f-8bc6-f415229a759c",
+    "name": "My Collection",
+    "description": "### Welcome to Postman! This is your first collection. \n\nCollections are your starting point for building and testing APIs. You can use this one to:\n\n• Group related requests\n• Test your API in real-world scenarios\n• Document and share your requests\n\nUpdate the name and overview whenever you’re ready to make it yours.\n\n[Learn more about Postman Collections.](https://learning.postman.com/docs/collections/collections-overview/)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "48984020",
+    "_collection_link": "https://go.postman.co/collection/48984020-e808375d-66da-4c4f-8bc6-f415229a759c?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Register",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Successful POST request\", function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"fullName\": \"Sinh Vien IT\",\n    \"email\": \"test05@gmail.com\",\n    \"password\": \"Password123@\",\n    \"confirmPassword\": \"Password123@\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/auth/register",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "auth",
+            "register"
+          ]
+        },
+        "description": "This is a POST request, submitting data to an API via the request body. This request submits JSON data, and the data is reflected in the response.\n\nA successful POST request typically returns a `200 OK` or `201 Created` response code."
+      },
+      "response": [
+        {
+          "name": "Register",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fullName\": \"Sinh Vien IT\",\n    \"email\": \"test06@gmail.com\",\n    \"password\": \"Password123@\",\n    \"confirmPassword\": \"Password123@\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/register",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "status": "Created",
+          "code": 201,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "2"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "91"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "98"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"62-a4aNTVodwMa8dYkUEbGXhNjfxhg\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:38:11 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"Đăng ký thành công!\\nVui lòng kiểm tra email để kích hoạt tài khoản\"\n}"
+        },
+        {
+          "name": "Trùng Email",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fullName\": \"Sinh Vien IT\",\n    \"email\": \"test06@gmail.com\",\n    \"password\": \"Password123@\",\n    \"confirmPassword\": \"Password123@\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/register",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "status": "Conflict",
+          "code": 409,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "1"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "72"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "45"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"2d-i7WUL0kzCZ3b2HAZ0wYI4MYrkc4\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:38:25 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"Email đã được sử dụng\"\n}"
+        },
+        {
+          "name": "Email sai định dạng",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fullName\": \"Sinh Vien IT\",\n    \"email\": \"test01-khong-phai-mail\",\n    \"password\": \"Password123@\",\n    \"confirmPassword\": \"Password123@\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/register",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "0"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "52"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "127"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"7f-BqlBj//rryWPPCcLV70J6OdUyN8\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:38:46 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"errors\": [\n        {\n            \"type\": \"field\",\n            \"value\": \"test01-khong-phai-mail\",\n            \"msg\": \"Email không hợp lệ\",\n            \"path\": \"email\",\n            \"location\": \"body\"\n        }\n    ]\n}"
+        },
+        {
+          "name": "Rate Limiting",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fullName\": \"Sinh Vien IT\",\n    \"email\": \"test08@gmail.com\",\n    \"password\": \"123\",\n    \"confirmPassword\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/register",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "status": "Too Many Requests",
+          "code": 429,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "0"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "29"
+            },
+            {
+              "key": "Retry-After",
+              "value": "29"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "74"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"4a-bhcFWr6H5TC33Mf9XnXQhxFRmng\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:39:08 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"Quá nhiều yêu cầu, vui lòng thử lại sau 15 phút.\"\n}"
+        },
+        {
+          "name": "Bắt lỗi Mật khẩu yếu",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fullName\": \"Sinh Vien IT\",\n    \"email\": \"test08@gmail.com\",\n    \"password\": \"123\",\n    \"confirmPassword\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/register",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "4"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "900"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "355"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"163-tDo1tgklpfhaGbQ3tN5PDI5Mf14\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:39:42 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"errors\": [\n        {\n            \"type\": \"field\",\n            \"value\": \"123\",\n            \"msg\": \"Mật khẩu tối thiểu 6 ký tự\",\n            \"path\": \"password\",\n            \"location\": \"body\"\n        },\n        {\n            \"type\": \"field\",\n            \"value\": \"123\",\n            \"msg\": \"Phải chứa ít nhất 1 chữ hoa\",\n            \"path\": \"password\",\n            \"location\": \"body\"\n        },\n        {\n            \"type\": \"field\",\n            \"value\": \"123\",\n            \"msg\": \"Phải chứa ít nhất 1 chữ thường\",\n            \"path\": \"password\",\n            \"location\": \"body\"\n        }\n    ]\n}"
+        },
+        {
+          "name": "Xác nhận mật khẩu không khớp",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fullName\": \"Sinh Vien IT\",\n    \"email\": \"test09@gmail.com\",\n    \"password\": \"1234567@P\",\n    \"confirmPassword\": \"Password123@\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/register",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "3"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "775"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "266"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"10a-WBL9uPgHk/RszqnuZ0g4JP6XZk0\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:41:48 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"errors\": [\n        {\n            \"type\": \"field\",\n            \"value\": \"1234567@P\",\n            \"msg\": \"Phải chứa ít nhất 1 chữ thường\",\n            \"path\": \"password\",\n            \"location\": \"body\"\n        },\n        {\n            \"type\": \"field\",\n            \"value\": \"Password123@\",\n            \"msg\": \"Mật khẩu xác nhận không khớp\",\n            \"path\": \"confirmPassword\",\n            \"location\": \"body\"\n        }\n    ]\n}"
+        },
+        {
+          "name": "Xác thực đúng OTP",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"test10@gmail.com\",\n    \"otp\": \"272809\" \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/register",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "1"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "650"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "502"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"1f6-4Fr49k7j9re7lxY2p+SfphEvnoM\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:43:53 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"errors\": [\n        {\n            \"type\": \"field\",\n            \"msg\": \"Tên không được để trống\",\n            \"path\": \"fullName\",\n            \"location\": \"body\"\n        },\n        {\n            \"type\": \"field\",\n            \"msg\": \"Mật khẩu tối thiểu 6 ký tự\",\n            \"path\": \"password\",\n            \"location\": \"body\"\n        },\n        {\n            \"type\": \"field\",\n            \"msg\": \"Phải chứa ít nhất 1 chữ hoa\",\n            \"path\": \"password\",\n            \"location\": \"body\"\n        },\n        {\n            \"type\": \"field\",\n            \"msg\": \"Phải chứa ít nhất 1 chữ thường\",\n            \"path\": \"password\",\n            \"location\": \"body\"\n        },\n        {\n            \"type\": \"field\",\n            \"msg\": \"Phải chứa ít nhất 1 số\",\n            \"path\": \"password\",\n            \"location\": \"body\"\n        }\n    ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "Verify-otp",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"fullName\": \"Sinh Vien IT\",\n    \"email\": \"test05@gmail.com\",\n    \"password\": \"Password123@\",\n    \"confirmPassword\": \"Password123@\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/auth/verify-otp",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "auth",
+            "verify-otp"
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Verify-otp",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"test11@gmail.com\",\n    \"otp\": \"158526\" \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/verify-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "0"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "751"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "85"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"55-rlaomTMtYGfpzaBhXG42o0rBKWE\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:51:16 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"Tài khoản đã được kích hoạt!\\nBạn có thể đăng nhập\"\n}"
+        },
+        {
+          "name": "Sai OTP",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"test02@gmail.com\",\n    \"otp\": \"158536\" \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/verify-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "3"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "880"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "36"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"24-VDWNQQSKwPvptd4b+0y7rrAgbpo\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:52:29 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"OTP không chính xác\"\n}"
+        },
+        {
+          "name": "Email không tồn tại",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"duong@gmail.com\",\n    \"otp\": \"158526\" \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/verify-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            }
+          },
+          "status": "Not Found",
+          "code": 404,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "2"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "851"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "38"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"26-nTmsZ5JuITdKed1IFL0Y23IvuD0\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:52:59 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"Email không tồn tại\"\n}"
+        },
+        {
+          "name": "Chặn xác thực lại tài khoản đã kích hoạt",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"test11@gmail.com\",\n    \"otp\": \"158526\" \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/verify-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "1"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "771"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "53"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"35-8bP5r3aJ7w7QipiDbX+60i7IodA\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:54:18 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"Tài khoản đã được kích hoạt\"\n}"
+        },
+        {
+          "name": "OTP Hết hạn",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"test03@gmail.com\",\n    \"otp\": \"271441\" \n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/verify-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            }
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "_postman_previewlanguage": null,
+          "header": [
+            {
+              "key": "X-Powered-By",
+              "value": "Express"
+            },
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "http://localhost:5173"
+            },
+            {
+              "key": "Vary",
+              "value": "Origin"
+            },
+            {
+              "key": "Access-Control-Allow-Credentials",
+              "value": "true"
+            },
+            {
+              "key": "RateLimit-Policy",
+              "value": "5;w=900"
+            },
+            {
+              "key": "RateLimit-Limit",
+              "value": "5"
+            },
+            {
+              "key": "RateLimit-Remaining",
+              "value": "0"
+            },
+            {
+              "key": "RateLimit-Reset",
+              "value": "493"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "34"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"22-HJKhTuxF7CKNQPifWlDTNWJtQRw\""
+            },
+            {
+              "key": "Date",
+              "value": "Mon, 11 May 2026 01:58:57 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n    \"message\": \"OTP đã hết hạn\"\n}"
+        }
+      ]
+    }
+  ]
+}
