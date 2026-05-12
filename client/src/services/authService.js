@@ -14,3 +14,9 @@ export const resetPassword = (email, resetToken, newPassword, confirmPassword) =
     confirmPassword,
   });
 
+
+export const registerUser = (userData) =>
+    apiClient.post('/api/auth/register', userData);
+
+export const verifyRegisterOtp = (email, otp) =>
+    apiClient.post('/api/auth/verify-otp', { email, otp });

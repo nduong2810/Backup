@@ -3,6 +3,7 @@ import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import VerifyResetOTP from './components/auth/VerifyResetOTP';
 import ProfilePage from './pages/Profile/ProfilePage';
+import RegisterPage from './pages/auth/RegisterPage';
 import './App.css';
 
 function Shell({ children }) {
@@ -23,6 +24,10 @@ function App() {
   return (
     <Shell>
       <Routes>
+        <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/register" element={<Navigate to="/auth/register" replace />} />
+
+        <Route path="/auth/login" element={<div className="text-center p-8 bg-white rounded-xl shadow">Giao diện Đăng nhập (Sẽ làm sau)</div>} />
         <Route path="/auth/forgot-password" element={<ForgotPassword />} />
         <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
 
