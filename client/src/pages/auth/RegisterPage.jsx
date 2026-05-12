@@ -10,6 +10,7 @@ import {
 
 import RegisterFormUI from '../../components/auth/RegisterFormUI';
 import SharedVerifyOTP from '../../components/auth/SharedVerifyOTP';
+import AuthLayout from '../../components/auth/AuthLayout';
 
 export default function RegisterPage() {
     const dispatch = useDispatch();
@@ -48,7 +49,7 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="mx-auto w-full max-w-md mt-8">
+        <AuthLayout>
 
             {step === 1 && (
                 <RegisterFormUI
@@ -74,6 +75,6 @@ export default function RegisterPage() {
                 />
             )}
 
-        </div>
+        </AuthLayout>
     );
 }

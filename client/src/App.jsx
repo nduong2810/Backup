@@ -2,7 +2,9 @@
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import VerifyResetOTP from './components/auth/VerifyResetOTP';
-import ProfilePage from './pages/Profile/ProfilePage';
+import AdminProfilePage from './pages/admin/AdminProfilePage';
+import ProfilePage from './pages/profile/ProfilePage';
+import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import './App.css';
 
@@ -24,10 +26,13 @@ function App() {
   return (
     <Shell>
       <Routes>
+        <Route path="/" element={<Navigate to="/auth/login" replace />} />
+        <Route path="/auth" element={<Navigate to="/auth/login" replace />} />
+
+        <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
         <Route path="/register" element={<Navigate to="/auth/register" replace />} />
 
-        <Route path="/auth/login" element={<div className="text-center p-8 bg-white rounded-xl shadow">Giao diện Đăng nhập (Sẽ làm sau)</div>} />
         <Route path="/auth/forgot-password" element={<ForgotPassword />} />
         <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
 
@@ -38,6 +43,8 @@ function App() {
         <Route path="/reset-password" element={<Navigate to="/auth/reset-password" replace />} />
 
         <Route path="/user/profile" element={<ProfilePage />} />
+        <Route path="/admin/profile" element={<AdminProfilePage />} />
+        <Route path="*" element={<Navigate to="/auth/login" replace />} />
       </Routes>
     </Shell>
   );
