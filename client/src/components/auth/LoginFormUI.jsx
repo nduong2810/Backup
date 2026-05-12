@@ -36,6 +36,8 @@ export default function LoginFormUI({ form, loading, errorMessage, successMessag
           type="password"
           value={form.password}
           onChange={(event) => onFieldChange('password', event.target.value)}
+          placeholder="Nhập mật khẩu"
+          allowPasswordToggle
           required
           disabled={loading}
         />
