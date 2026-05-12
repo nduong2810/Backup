@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import AppCard from '../ui/AppCard';
 import AppButton from '../ui/AppButton';
 import InputField from '../ui/InputField';
@@ -12,13 +13,20 @@ import {
 
 export default function Profile() {
   const dispatch = useDispatch();
-  const { form, loading, saving, successMessage, errorMessage } = useSelector((state) => state.profile);
+  const navigate = useNavigate();
+  const { form, loading, saving, successMessage, errorMessage, errorStatus } = useSelector((state) => state.profile);
 
   const bioCount = useMemo(() => `${form.bio.length}/500`, [form.bio]);
 
   useEffect(() => {
     dispatch(fetchProfileThunk());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (errorStatus === 401) {
+      navigate('/auth/login', { replace: true });
+    }
+  }, [errorStatus, navigate]);
 
   const alertType = errorMessage ? 'error' : successMessage ? 'success' : 'info';
   const alertMessage = errorMessage || successMessage || '';

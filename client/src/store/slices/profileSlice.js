@@ -13,12 +13,21 @@ const initialState = {
   saving: false,
   successMessage: '',
   errorMessage: '',
+  errorStatus: null,
 };
 
 const extractError = (error) => {
   const errors = error?.response?.data?.errors;
-  if (Array.isArray(errors) && errors.length) return errors[0].msg;
-  return error?.response?.data?.message || 'Không thể xử lý yêu cầu lúc này.';
+  if (Array.isArray(errors) && errors.length) {
+    return {
+      message: errors[0].msg,
+      status: error?.response?.status ?? null,
+    };
+  }
+  return {
+    message: error?.response?.data?.message || 'Không thể xử lý yêu cầu lúc này.',
+    status: error?.response?.status ?? null,
+  };
 };
 
 export const fetchProfileThunk = createAsyncThunk(
@@ -70,6 +79,7 @@ const profileSlice = createSlice({
       .addCase(fetchProfileThunk.pending, (state) => {
         state.loading = true;
         state.errorMessage = '';
+        state.errorStatus = null;
       })
       .addCase(fetchProfileThunk.fulfilled, (state, action) => {
         state.loading = false;
@@ -81,12 +91,14 @@ const profileSlice = createSlice({
       })
       .addCase(fetchProfileThunk.rejected, (state, action) => {
         state.loading = false;
-        state.errorMessage = action.payload || 'Tải hồ sơ thất bại.';
+        state.errorMessage = action.payload?.message || action.payload || 'Tải hồ sơ thất bại.';
+        state.errorStatus = action.payload?.status ?? null;
       })
       .addCase(updateProfileThunk.pending, (state) => {
         state.saving = true;
         state.errorMessage = '';
         state.successMessage = '';
+        state.errorStatus = null;
       })
       .addCase(updateProfileThunk.fulfilled, (state, action) => {
         state.saving = false;
@@ -100,7 +112,8 @@ const profileSlice = createSlice({
       })
       .addCase(updateProfileThunk.rejected, (state, action) => {
         state.saving = false;
-        state.errorMessage = action.payload || 'Cập nhật thất bại.';
+        state.errorMessage = action.payload?.message || action.payload || 'Cập nhật thất bại.';
+        state.errorStatus = action.payload?.status ?? null;
       });
   },
 });
