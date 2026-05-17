@@ -43,3 +43,25 @@ export const authorizeRole = (role) => {
         next();
     };
 };
+
+// ====================================================================
+// OPTIONAL AUTHENTICATION
+// Decode token nếu có, bỏ qua nếu không có/không hợp lệ (cho public API)
+// ====================================================================
+export const optionalAuthenticateToken = (req, res, next) => {
+    const token = req.cookies?.token || req.cookies?.accessToken;
+    if (!token) return next();
+
+    const secret = env.ACCESS_TOKEN_SECRET || env.JWT_SECRET;
+
+    jwt.verify(token, secret, (err, decoded) => {
+        if (!err && decoded) {
+            req.user = {
+                userId: decoded.id || decoded.userId,
+                email: decoded.email,
+                role: decoded.role
+            };
+        }
+        next();
+    });
+};

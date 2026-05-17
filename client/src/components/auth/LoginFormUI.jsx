@@ -25,7 +25,7 @@ export default function LoginFormUI({ form, loading, errorMessage, successMessag
           type="email"
           value={form.email}
           onChange={(event) => onFieldChange('email', event.target.value)}
-          placeholder="youremail@example.com"
+          placeholder="Nhập email của bạn (example@gmail.com)"
           required
           disabled={loading}
         />

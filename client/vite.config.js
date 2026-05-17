@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    strictPort: true, // Không tự đổi port — phải luôn là 5173
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

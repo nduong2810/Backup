@@ -1,0 +1,23 @@
+import Comment from '../model/comment.model.js';
+
+// ====================================================================
+// COMMENT REPOSITORY - Tầng Data Access cho bình luận
+// ====================================================================
+
+class CommentRepository {
+
+    // Lấy tất cả comment của 1 bài viết (hỗ trợ nested reply)
+    // Populate author info + sắp xếp cũ nhất trước (dòng thời gian)
+    async findByPostId(postId) {
+        return await Comment.find({ post: postId })
+            .populate('author', 'fullName avatar')
+            .sort({ createdAt: 1 });  // Comment cũ nhất lên trước
+    }
+
+    // Đếm tổng số comment của 1 bài viết
+    async countByPostId(postId) {
+        return await Comment.countDocuments({ post: postId });
+    }
+}
+
+export default new CommentRepository();
