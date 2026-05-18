@@ -140,6 +140,24 @@ class PostController {
             });
         }
     }
+
+    async getPostDetailSidebar(req, res) {
+        try {
+            const data = await postService.getPostDetailSidebarData();
+
+            res.status(200).json({
+                success: true,
+                message: 'Lay du lieu sidebar cho trang chi tiet thanh cong',
+                data,
+            });
+        } catch (error) {
+            const status = error.status || 500;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Loi server khi lay du lieu sidebar',
+            });
+        }
+    }
 }
 
 export default new PostController();

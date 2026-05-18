@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 // ====================================================================
 // RelatedPosts — Danh sách bài viết liên quan cùng tag
 // Hiển thị ở cuối trang chi tiết bài viết
+// Đã tích hợp design tokens từ hệ thống thiết kế chính
 // ====================================================================
 
 export default function RelatedPosts({ posts }) {
@@ -12,8 +13,8 @@ export default function RelatedPosts({ posts }) {
 
   return (
     <section className="mt-8">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+      <h3 className="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-secondary" viewBox="0 0 20 20" fill="currentColor">
           <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
         </svg>
         Bài viết liên quan
@@ -24,28 +25,28 @@ export default function RelatedPosts({ posts }) {
           <button
             key={post._id}
             onClick={() => navigate(`/posts/${post._id}`)}
-            className="text-left bg-white/90 rounded-xl border border-slate-200 p-4 hover:border-sky-300 hover:shadow-md transition-all duration-200 group"
+            className="text-left bg-surface-container-lowest rounded-xl border border-outline-variant p-4 hover:border-primary hover:shadow-md transition-all duration-200 group"
           >
             {/* Thumbnail nhỏ nếu có ảnh */}
             {post.images && post.images.length > 0 && (
               <img
                 src={post.images[0]}
                 alt=""
-                className="w-full h-28 object-cover rounded-lg mb-3 bg-slate-100"
+                className="w-full h-28 object-cover rounded-lg mb-3 bg-surface-container-low"
                 loading="lazy"
               />
             )}
 
             {/* Title */}
-            <h4 className="font-semibold text-slate-800 text-sm leading-snug group-hover:text-sky-600 transition-colors line-clamp-2">
+            <h4 className="font-semibold text-on-surface font-body-md text-body-md leading-snug group-hover:text-primary transition-colors line-clamp-2">
               {post.title}
             </h4>
 
             {/* Tags + Stats */}
-            <div className="flex items-center justify-between mt-2 text-xs text-slate-400">
+            <div className="flex items-center justify-between mt-2 font-body-sm text-body-sm text-outline">
               <div className="flex gap-1.5 flex-wrap">
                 {post.tags?.slice(0, 3).map((tag) => (
-                  <span key={tag} className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
+                  <span key={tag} className="px-1.5 py-0.5 rounded bg-surface-container-low text-secondary font-label-mono text-label-mono">
                     #{tag}
                   </span>
                 ))}

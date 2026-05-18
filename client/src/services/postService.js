@@ -25,3 +25,7 @@ export const votePost = (postId, voteType) =>
 // API 4: Lấy bài viết liên quan cùng tag
 export const getRelatedPosts = (tag, excludePostId) =>
   apiClient.get(`/posts/related/${tag}`, { params: { excludePostId } });
+
+// API 5: Du lieu sidebar ben phai cho trang chi tiet
+export const getPostDetailSidebarData = () =>
+  apiClient.get('/posts/sidebar');

@@ -1,6 +1,7 @@
 // ====================================================================
 // PostContent — Hiển thị nội dung chính bài viết
 // Bao gồm: author info, meta stats, content, tags
+// Đã tích hợp design tokens từ hệ thống thiết kế chính
 // ====================================================================
 
 // Helper: Format thời gian tương đối
@@ -26,30 +27,30 @@ export default function PostContent({ post, commentCount }) {
   return (
     <article className="flex-1 min-w-0 flex flex-col gap-4">
       {/* Title */}
-      <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
+      <h1 className="-mt-1 font-headline-xl text-headline-xl text-on-surface leading-tight">
         {post.title}
       </h1>
 
       {/* Meta: Author + Stats */}
-      <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500 pb-3 border-b border-slate-100">
+      <div className="flex flex-wrap items-center gap-4 font-body-sm text-body-sm text-secondary pb-3 border-b border-outline-variant">
         {/* Author */}
         <div className="flex items-center gap-2">
           <img
             src={post.author?.avatar && post.author.avatar !== 'default-avatar.png'
               ? post.author.avatar
-              : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0ea5e9&color=fff&size=32`
+              : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`
             }
             alt={post.author?.fullName}
-            className="w-6 h-6 rounded-full border border-slate-200"
+            className="w-6 h-6 rounded-full border border-outline-variant"
           />
-          <span className="font-medium text-sky-600">{post.author?.fullName}</span>
+          <span className="font-medium text-primary-container">{post.author?.fullName}</span>
           {post.author?.major && (
-            <span className="text-xs text-slate-400">· {post.author.major}</span>
+            <span className="text-outline">· {post.author.major}</span>
           )}
         </div>
 
         {/* Thời gian */}
-        <span className="text-slate-400">· {timeAgo(post.createdAt)}</span>
+        <span className="text-outline">· {timeAgo(post.createdAt)}</span>
 
         {/* Lượt xem */}
         <div className="flex items-center gap-1">
@@ -74,7 +75,7 @@ export default function PostContent({ post, commentCount }) {
             {post.tags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-50 text-sky-700 border border-sky-100 hover:bg-sky-100 transition-colors cursor-default"
+                className="inline-flex items-center px-2.5 py-1 rounded-lg font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] border border-outline-variant hover:bg-secondary-fixed/80 transition-colors cursor-default"
               >
                 #{tag}
               </span>
@@ -84,7 +85,7 @@ export default function PostContent({ post, commentCount }) {
       </div>
 
       {/* Nội dung bài viết */}
-      <div className="text-slate-700 text-[15px] leading-relaxed whitespace-pre-wrap">
+      <div className="text-on-surface font-body-md text-body-md leading-relaxed whitespace-pre-wrap">
         {post.content}
       </div>
     </article>

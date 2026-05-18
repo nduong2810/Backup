@@ -1,0 +1,87 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { getPostDetailSidebarData } from '../../services/postService';
+
+const PostDetailRightSidebar = () => {
+  const [hotQuestions, setHotQuestions] = useState([]);
+  const [popularTags, setPopularTags] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadSidebarData = async () => {
+      try {
+        setLoading(true);
+        const response = await getPostDetailSidebarData();
+        const data = response?.data?.data || {};
+
+        if (!mounted) return;
+        setHotQuestions(Array.isArray(data.hotQuestions) ? data.hotQuestions : []);
+        setPopularTags(Array.isArray(data.popularTags) ? data.popularTags : []);
+      } catch (error) {
+        if (!mounted) return;
+        setHotQuestions([]);
+        setPopularTags([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    loadSidebarData();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return (
+    <aside className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-stack-lg pb-12">
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm overflow-hidden">
+        <div className="bg-surface-container-low border-b border-outline-variant px-4 py-3">
+          <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Hot Network Questions</h2>
+        </div>
+        <div className="p-4 flex flex-col gap-3">
+          {loading && <p className="text-secondary font-body-sm text-body-sm">Đang tải...</p>}
+          {!loading && hotQuestions.length === 0 && (
+            <p className="text-secondary font-body-sm text-body-sm">Chưa có dữ liệu.</p>
+          )}
+          {hotQuestions.map((item) => (
+            <Link
+              key={item.id}
+              to={`/posts/${item.id}`}
+              className="font-body-sm text-body-sm text-primary hover:underline leading-5"
+            >
+              {item.title}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm overflow-hidden">
+        <div className="bg-surface-container-low border-b border-outline-variant px-4 py-3">
+          <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Popular Tags</h2>
+        </div>
+        <div className="p-4 flex flex-col gap-3">
+          {loading && <p className="text-secondary font-body-sm text-body-sm">Đang tải...</p>}
+          {!loading && popularTags.length === 0 && (
+            <p className="text-secondary font-body-sm text-body-sm">Chưa có dữ liệu.</p>
+          )}
+          {popularTags.map((item) => (
+            <div key={item.tag} className="flex items-center justify-between">
+              <Link
+                to={`/home?tags=${encodeURIComponent(item.tag)}`}
+                className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80"
+                title={`Lọc bài viết theo tag: ${item.tag}`}
+              >
+                {item.tag}
+              </Link>
+              <span className="font-body-sm text-body-sm text-secondary">x {item.count}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+};
+
+export default PostDetailRightSidebar;

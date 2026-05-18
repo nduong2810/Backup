@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, Link } from 'react-router-dom';
 
 // ==========================================
 // COMPONENT CON: Đại diện cho 1 câu hỏi
@@ -26,9 +26,9 @@ const QuestionCard = ({ question }) => {
             {/* Cột Nội dung */}
             <div className="flex-1 min-w-0">
                 <h3 className="font-headline-md text-headline-md mb-1">
-                    <a className="text-primary-container hover:text-primary-container/80 transition-colors break-words" href="#">
+                    <Link className="text-primary-container hover:text-primary-container/80 transition-colors break-words" to={`/posts/${question._id}`}>
                         {question.title}
-                    </a>
+                    </Link>
                 </h3>
                 <p className="font-body-sm text-body-sm text-on-surface-variant mb-2 line-clamp-2">
                     {question.content}

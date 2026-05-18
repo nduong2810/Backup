@@ -154,6 +154,54 @@ class PostRepository {
 
             return await Post.aggregate(pipeline);
         }
+
+        async findHotNetworkQuestions(limit = 10) {
+            return await Post.aggregate([
+                { $match: { status: { $ne: 'deleted' } } },
+                {
+                    $addFields: {
+                        upvoteCount: {
+                            $cond: [
+                                { $isArray: '$upvotes' },
+                                { $size: { $ifNull: ['$upvotes', []] } },
+                                { $ifNull: ['$upvotes', 0] },
+                            ],
+                        },
+                    },
+                },
+                { $sort: { viewCount: -1, upvoteCount: -1, createdAt: -1 } },
+                { $limit: limit },
+                {
+                    $project: {
+                        _id: 1,
+                        title: 1,
+                    },
+                },
+            ]);
+        }
+
+        async findPopularTags(limit = 8) {
+            return await Post.aggregate([
+                { $match: { status: { $ne: 'deleted' }, tags: { $exists: true, $ne: [] } } },
+                { $unwind: '$tags' },
+                { $match: { tags: { $type: 'string', $ne: '' } } },
+                {
+                    $group: {
+                        _id: { $toLower: '$tags' },
+                        count: { $sum: 1 },
+                    },
+                },
+                { $sort: { count: -1, _id: 1 } },
+                { $limit: limit },
+                {
+                    $project: {
+                        _id: 0,
+                        tag: '$_id',
+                        count: 1,
+                    },
+                },
+            ]);
+        }
 }
 
 export default new PostRepository();

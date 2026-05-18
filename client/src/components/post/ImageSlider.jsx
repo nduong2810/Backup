@@ -9,6 +9,7 @@ import 'swiper/css/pagination';
 // ====================================================================
 // ImageSlider — Swiper slider cho hình ảnh đính kèm bài viết
 // BẮT BUỘC theo đề bài: tích hợp thư viện swiper
+// Đã tích hợp design tokens từ hệ thống thiết kế chính
 // ====================================================================
 
 export default function ImageSlider({ images }) {
@@ -16,7 +17,7 @@ export default function ImageSlider({ images }) {
   if (!images || images.length === 0) return null;
 
   return (
-    <div className="mb-6 rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+    <div className="mb-6 rounded-xl overflow-hidden border border-outline-variant bg-surface-container-lowest shadow-sm">
       <Swiper
         modules={[Navigation, Pagination]}
         navigation
@@ -28,7 +29,7 @@ export default function ImageSlider({ images }) {
       >
         {images.map((image, index) => (
           <SwiperSlide key={index}>
-            <div className="relative w-full h-64 sm:h-80 md:h-96 bg-slate-100">
+            <div className="relative w-full h-64 sm:h-80 md:h-96 bg-surface-container-low">
               <img
                 src={image}
                 alt={`Hình ảnh bài viết ${index + 1}`}
@@ -42,7 +43,7 @@ export default function ImageSlider({ images }) {
 
       {/* Chú thích số ảnh */}
       {images.length > 1 && (
-        <div className="px-4 py-2 text-xs text-slate-500 bg-slate-50 text-center border-t border-slate-100">
+        <div className="px-4 py-2 font-body-sm text-body-sm text-secondary bg-surface-container-low text-center border-t border-outline-variant">
           {images.length} hình ảnh đính kèm — vuốt hoặc bấm mũi tên để xem
         </div>
       )}

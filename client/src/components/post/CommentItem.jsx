@@ -1,5 +1,6 @@
 // ====================================================================
 // CommentItem — Hiển thị 1 comment + nested replies (recursive)
+// Đã tích hợp design tokens từ hệ thống thiết kế chính
 // ====================================================================
 
 // Helper: Format thời gian
@@ -23,33 +24,33 @@ export default function CommentItem({ comment, postAuthorId, depth = 0 }) {
 
   return (
     <div
-      className={`flex gap-3 pb-4 ${depth > 0 ? 'border-l-2 border-slate-100 pl-4' : 'border-b border-slate-100'}`}
+      className={`flex gap-3 pb-4 ${depth > 0 ? 'border-l-2 border-outline-variant pl-4' : 'border-b border-outline-variant'}`}
       style={{ marginLeft: depth > 0 && depth <= maxDepth ? '0' : '0' }}
     >
       {/* Avatar */}
       <img
         src={comment.author?.avatar && comment.author.avatar !== 'default-avatar.png'
           ? comment.author.avatar
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.author?.fullName || 'U')}&background=64748b&color=fff&size=32`
+          : `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.author?.fullName || 'U')}&background=556067&color=fff&size=32`
         }
         alt={comment.author?.fullName}
-        className="w-8 h-8 rounded-full border border-slate-200 shrink-0"
+        className="w-8 h-8 rounded-full border border-outline-variant shrink-0"
       />
 
       <div className="flex-1 min-w-0">
         {/* Header: Tên + Badge + Thời gian */}
-        <div className="flex items-center gap-2 mb-1 text-sm">
+        <div className="flex items-center gap-2 mb-1 font-body-sm text-body-sm">
           {isAuthor && (
-            <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border border-sky-400 text-sky-600 bg-sky-50">
+            <span className="font-label-mono text-label-mono font-semibold uppercase px-1.5 py-0.5 rounded border border-primary text-primary bg-primary-fixed">
               Tác giả
             </span>
           )}
-          <span className="font-semibold text-sky-600">{comment.author?.fullName}</span>
-          <span className="text-slate-400 text-xs">· {timeAgo(comment.createdAt)}</span>
+          <span className="font-semibold text-primary-container">{comment.author?.fullName}</span>
+          <span className="text-outline text-xs">· {timeAgo(comment.createdAt)}</span>
         </div>
 
         {/* Nội dung comment */}
-        <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">
+        <p className="text-on-surface font-body-sm text-body-sm leading-relaxed whitespace-pre-wrap">
           {comment.content}
         </p>
 

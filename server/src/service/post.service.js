@@ -214,6 +214,21 @@ class PostService {
         );
     }
 
+    async getPostDetailSidebarData() {
+        const [hotQuestions, popularTags] = await Promise.all([
+            postRepository.findHotNetworkQuestions(10),
+            postRepository.findPopularTags(8),
+        ]);
+
+        return {
+            hotQuestions: hotQuestions.map((item) => ({
+                id: item._id,
+                title: item.title,
+            })),
+            popularTags,
+        };
+    }
+
     // ==================== HELPER: Xây dựng cây comment ====================
     _buildCommentTree(comments) {
         const commentMap = {};

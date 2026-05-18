@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "npx babel-node server.js",
-    "dev": "npx nodemon --exec npx babel-node server.js"
+    "dev": "npx nodemon --exec npx babel-node server.js",
+    "seed:sidebar": "npx babel-node src/scripts/seedSidebarData.js"
   },
   "keywords": [],
   "author": "",

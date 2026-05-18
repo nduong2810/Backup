@@ -1,5 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ForumLayout from './components/layout/ForumLayout';
+import PostDetailLayout from './components/layout/PostDetailLayout';
+import AuthShellLayout from './components/layout/AuthShellLayout';
+import ProfileShellLayout from './components/layout/ProfileShellLayout';
 import MainContent from './components/layout/MainContent';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
@@ -35,72 +38,29 @@ function App() {
       </Route>
 
       {/* Auth */}
-      <Route
-        path="/auth/login"
-        element={
-          <Shell>
-            <LoginPage />
-          </Shell>
-        }
-      />
-      <Route
-        path="/auth/register"
-        element={
-          <Shell>
-            <RegisterPage />
-          </Shell>
-        }
-      />
+      <Route element={<AuthShellLayout />}>
+        <Route path="/auth/login" element={<LoginPage />} />
+        <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+        <Route path="/auth/verify-reset-otp" element={<VerifyResetOTP />} />
+        <Route path="/auth/reset-password" element={<ResetPassword />} />
+      </Route>
       <Route path="/auth" element={<Navigate to="/auth/login" replace />} />
       <Route path="/register" element={<Navigate to="/auth/register" replace />} />
-
-      <Route
-        path="/auth/forgot-password"
-        element={
-          <Shell>
-            <ForgotPassword />
-          </Shell>
-        }
-      />
       <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
-
-      <Route
-        path="/auth/verify-reset-otp"
-        element={
-          <Shell>
-            <VerifyResetOTP />
-          </Shell>
-        }
-      />
       <Route path="/verify-reset-otp" element={<Navigate to="/auth/verify-reset-otp" replace />} />
-
-      <Route
-        path="/auth/reset-password"
-        element={
-          <Shell>
-            <ResetPassword />
-          </Shell>
-        }
-      />
       <Route path="/reset-password" element={<Navigate to="/auth/reset-password" replace />} />
 
       {/* User / Admin */}
-      <Route
-        path="/user/profile"
-        element={
-          <Shell>
-            <ProfilePage />
-          </Shell>
-        }
-      />
-      <Route
-        path="/admin/profile"
-        element={
-          <Shell>
-            <AdminProfilePage />
-          </Shell>
-        }
-      />
+      <Route element={<ProfileShellLayout />}>
+        <Route path="/user/profile" element={<ProfilePage />} />
+        <Route path="/admin/profile" element={<AdminProfilePage />} />
+      </Route>
+
+      {/* Post Detail */}
+      <Route element={<PostDetailLayout />}>
+        <Route path="/posts/:id" element={<PostDetailPage />} />
+      </Route>
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/home" replace />} />

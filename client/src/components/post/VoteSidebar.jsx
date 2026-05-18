@@ -1,6 +1,7 @@
 // ====================================================================
 // VoteSidebar — Nút Upvote / Downvote (cập nhật qua Axios, không reload)
 // Layout dọc: ▲ [số] ▼ — theo style DevStack
+// Đã tích hợp design tokens từ hệ thống thiết kế chính
 // ====================================================================
 
 export default function VoteSidebar({
@@ -21,8 +22,8 @@ export default function VoteSidebar({
         title="Upvote"
         className={`p-2 rounded-full border transition-all duration-200 flex items-center justify-center
           ${userVote === 'upvote'
-            ? 'border-sky-500 bg-sky-50 text-sky-600 shadow-sm'
-            : 'border-slate-200 text-slate-400 hover:border-sky-400 hover:bg-sky-50 hover:text-sky-500'
+            ? 'border-primary bg-primary-fixed text-primary shadow-sm'
+            : 'border-outline-variant text-outline hover:border-primary hover:bg-primary-fixed/30 hover:text-primary'
           }
           ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-95'}
         `}
@@ -35,7 +36,7 @@ export default function VoteSidebar({
       {/* Tổng điểm */}
       <span
         className={`text-lg font-bold tabular-nums
-          ${totalScore > 0 ? 'text-sky-600' : totalScore < 0 ? 'text-red-500' : 'text-slate-700'}
+          ${totalScore > 0 ? 'text-primary' : totalScore < 0 ? 'text-error' : 'text-on-surface'}
         `}
         title={`${upvoteCount} upvote, ${downvoteCount} downvote`}
       >
@@ -49,8 +50,8 @@ export default function VoteSidebar({
         title="Downvote"
         className={`p-2 rounded-full border transition-all duration-200 flex items-center justify-center
           ${userVote === 'downvote'
-            ? 'border-red-500 bg-red-50 text-red-500 shadow-sm'
-            : 'border-slate-200 text-slate-400 hover:border-red-400 hover:bg-red-50 hover:text-red-500'
+            ? 'border-error bg-error-container text-error shadow-sm'
+            : 'border-outline-variant text-outline hover:border-error hover:bg-error-container/30 hover:text-error'
           }
           ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-95'}
         `}
