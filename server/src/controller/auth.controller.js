@@ -62,7 +62,7 @@ class AuthController {
             });
 
             // Trả URL redirect theo role
-            const redirectUrl = user.role === 'admin' ? '/admin/profile' : '/user/profile';
+            const redirectUrl = user.role === 'admin' ? '/admin/profile' : '/';
 
             res.status(200).json({
                 message: 'Đăng nhập thành công',
@@ -72,6 +72,27 @@ class AuthController {
         } catch (error) {
             const status = error.status || 400;
             res.status(status).json({ message: error.message });
+        }
+    }
+
+    async logout(req, res) {
+        try {
+            // Xóa cookie chứa token bảo mật
+            res.clearCookie('token', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+            });
+
+            res.status(200).json({
+                success: true,
+                message: "Đăng xuất thành công"
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: "Lỗi khi đăng xuất: " + error.message
+            });
         }
     }
 

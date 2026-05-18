@@ -3,6 +3,7 @@ import forgotPasswordReducer from './slices/forgotPasswordSlice';
 import profileReducer from './slices/profileSlice';
 import authReducer from './slices/authSlice';
 import loginReducer from './slices/loginSlice';
+import questionReducer from './slices/questionSlice';
 
 const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ const store = configureStore({
     profile: profileReducer,
     auth: authReducer,
     login: loginReducer,
+    questions: questionReducer,
   },
 });
 

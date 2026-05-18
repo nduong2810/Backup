@@ -2,7 +2,6 @@ import express from 'express'
 import authRoutes from './auth.routes.js'
 import userRoutes from './user.routes.js'
 import adminRoutes from './admin.routes.js'
-import postRoutes from './post.routes.js'
 // ====================================================================
 // ROUTE AGGREGATOR
 // Gom tất cả routes — thêm route modules ở đây
@@ -17,7 +16,6 @@ const router = express.Router()
 router.use('/auth', authRoutes)
 router.use('/user', userRoutes)
 router.use('/admin', adminRoutes)
-router.use('/posts', postRoutes)
 // Health check
 router.get('/health', (req, res) => {
   res.status(200).json({
