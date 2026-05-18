@@ -9,7 +9,7 @@ export default defineConfig({
     strictPort: true, // Không tự đổi port — phải luôn là 5173
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
     },

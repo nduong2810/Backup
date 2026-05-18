@@ -10,6 +10,9 @@ const router = express.Router();
 // POST ROUTES - Định tuyến cho bài viết
 // ====================================================================
 
+// GET /api/posts — Danh sách + filter (Public)
+router.get('/', postController.getPosts.bind(postController));
+
 // ==================== XEM CHI TIẾT BÀI VIẾT ====================
 // GET /api/posts/related/:tag — Bài viết liên quan (Public)
 // Pipeline: Validation (Lớp 1) → Controller

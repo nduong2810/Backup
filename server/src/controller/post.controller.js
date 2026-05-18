@@ -27,6 +27,26 @@ class PostController {
         return null;
     }
 
+    // ==================== API 0: GET /posts ====================
+    // Lấy danh sách bài viết + filter/sort
+    async getPosts(req, res) {
+        try {
+            const result = await postService.getPosts(req.query);
+
+            return res.status(200).json({
+                success: true,
+                data: result.data,
+                pagination: result.pagination,
+            });
+        } catch (error) {
+            console.error('[PostController] getPosts error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Lỗi server khi lấy danh sách bài đăng',
+            });
+        }
+    }
+
     // ==================== API 1: GET /posts/:id ====================
     // Lấy chi tiết bài viết kèm bình luận (nested replies)
     async getPostDetail(req, res) {

@@ -3,10 +3,107 @@ import commentRepository from '../repository/comment.repository.js';
 
 // ====================================================================
 // POST SERVICE - Tầng Business Logic cho bài viết
-// Xử lý nghiệp vụ: xem chi tiết, vote, bài viết liên quan
+// Xử lý nghiệp vụ: xem chi tiết, vote, bài viết liên quan, lọc danh sách
 // ====================================================================
 
+const mapStatusFilter = (status) => {
+    const normalized = status.toLowerCase();
+    if (normalized === 'resolved') return 'closed';
+    if (normalized === 'unresolved') return 'active';
+    return normalized;
+};
+
 class PostService {
+
+    // ==================== API 0: LẤY DANH SÁCH BÀI VIẾT ====================
+    async getPosts(query) {
+        const {
+            keyword = '',
+            tags = '',
+            status = 'All',
+            sortBy = 'Newest',
+            minViews = '',
+            minUpvotes = '',
+            page = 1,
+            limit = 15,
+        } = query;
+
+        const filter = {};
+
+        if (keyword.trim()) {
+            const regex = new RegExp(keyword.trim(), 'i');
+            filter.$or = [{ title: regex }, { content: regex }];
+        }
+
+        if (tags.trim()) {
+            const tagArray = tags
+                .split(',')
+                .map((t) => t.trim().toLowerCase())
+                .filter(Boolean);
+            if (tagArray.length > 0) {
+                filter.tags = { $in: tagArray };
+            }
+        }
+
+        if (status && status !== 'All') {
+            filter.status = mapStatusFilter(status);
+        }
+
+        if (minViews !== '' && !isNaN(Number(minViews))) {
+            filter.viewCount = { ...filter.viewCount, $gte: Number(minViews) };
+        }
+
+        if (minUpvotes !== '' && !isNaN(Number(minUpvotes))) {
+            filter.$expr = {
+                $gte: [
+                    {
+                        $cond: [
+                            { $isArray: '$upvotes' },
+                            { $size: { $ifNull: ['$upvotes', []] } },
+                            { $ifNull: ['$upvotes', 0] },
+                        ],
+                    },
+                    Number(minUpvotes),
+                ],
+            };
+        }
+
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 15));
+        const skip = (pageNum - 1) * limitNum;
+
+        const [posts, total] = await Promise.all([
+            postRepository.findPostsForList(filter, sortBy, skip, limitNum),
+            postRepository.countPosts(filter),
+        ]);
+
+        const normalizedPosts = posts.map((post) => {
+            const statusValue = post.status === 'closed'
+                ? 'resolved'
+                : post.status === 'active'
+                    ? 'unresolved'
+                    : post.status;
+
+            return {
+                ...post,
+                status: statusValue,
+                views: post.viewCount ?? 0,
+                upvotes: post.upvoteCount ?? 0,
+                downvotes: post.downvoteCount ?? 0,
+                answerCount: post.answerCount ?? 0,
+            };
+        });
+
+        return {
+            data: normalizedPosts,
+            pagination: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum),
+            },
+        };
+    }
 
     // ==================== API 1: LẤY CHI TIẾT BÀI VIẾT ====================
     async getPostDetail(postId, userId = null, incrementView = true) {
@@ -45,8 +142,8 @@ class PostService {
         return {
             post: {
                 ...post.toObject(),
-                viewCount: post.viewCount + (incrementView ? 1 : 0),  // Hiển thị viewCount đã cập nhật
-                userVote,                        // Trạng thái vote hiện tại của user (nếu đã đăng nhập)
+                viewCount: post.viewCount + (incrementView ? 1 : 0),
+                userVote,
             },
             comments: commentTree,
             commentCount,
@@ -69,45 +166,38 @@ class PostService {
         const hasUpvoted = post.upvotes.some(id => id.toString() === userId);
         const hasDownvoted = post.downvotes.some(id => id.toString() === userId);
 
-        let userVote = null;  // null = chưa vote, 'upvote', 'downvote'
+        let userVote = null;
 
         if (voteType === 'upvote') {
             if (hasUpvoted) {
-                // Đã upvote → bấm lại → BỎ upvote (toggle off)
                 await postRepository.removeUpvote(postId, userId);
                 userVote = null;
             } else {
-                // Nếu đang downvote → bỏ downvote trước
                 if (hasDownvoted) {
                     await postRepository.removeDownvote(postId, userId);
                 }
-                // Thêm upvote
                 await postRepository.addUpvote(postId, userId);
                 userVote = 'upvote';
             }
         } else if (voteType === 'downvote') {
             if (hasDownvoted) {
-                // Đã downvote → bấm lại → BỎ downvote (toggle off)
                 await postRepository.removeDownvote(postId, userId);
                 userVote = null;
             } else {
-                // Nếu đang upvote → bỏ upvote trước
                 if (hasUpvoted) {
                     await postRepository.removeUpvote(postId, userId);
                 }
-                // Thêm downvote
                 await postRepository.addDownvote(postId, userId);
                 userVote = 'downvote';
             }
         }
 
-        // 3. Lấy bài viết đã cập nhật để trả về số liệu mới
         const updatedPost = await postRepository.findById(postId);
 
         return {
             upvoteCount: updatedPost.upvotes.length,
             downvoteCount: updatedPost.downvotes.length,
-            userVote,  // Trạng thái vote của user sau thao tác
+            userVote,
         };
     }
 
@@ -117,39 +207,32 @@ class PostService {
             throw { status: 400, message: 'Tag không được để trống' };
         }
 
-        const relatedPosts = await postRepository.findRelatedByTag(
+        return await postRepository.findRelatedByTag(
             tag.toLowerCase().trim(),
             excludePostId,
-            5  // Giới hạn 5 bài
+            5
         );
-
-        return relatedPosts;
     }
 
     // ==================== HELPER: Xây dựng cây comment ====================
-    // Chuyển danh sách flat comments thành cây nested (parent → replies)
     _buildCommentTree(comments) {
         const commentMap = {};
         const rootComments = [];
 
-        // Bước 1: Tạo map từ tất cả comment
         comments.forEach(comment => {
             const commentObj = comment.toObject();
-            commentObj.replies = [];  // Mảng chứa reply
+            commentObj.replies = [];
             commentMap[commentObj._id.toString()] = commentObj;
         });
 
-        // Bước 2: Gắn reply vào parent tương ứng
         comments.forEach(comment => {
             const commentObj = commentMap[comment._id.toString()];
             if (comment.parentComment) {
-                // Là reply → gắn vào parent
                 const parentId = comment.parentComment.toString();
                 if (commentMap[parentId]) {
                     commentMap[parentId].replies.push(commentObj);
                 }
             } else {
-                // Là comment gốc → đẩy vào mảng root
                 rootComments.push(commentObj);
             }
         });

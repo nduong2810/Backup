@@ -2,7 +2,7 @@ import React from 'react';
 
 const LeftSidebar = () => {
     return (
-        <aside className="w-full lg:w-64 flex-shrink-0">
+        <aside className="w-full lg:w-56 flex-shrink-0">
             <nav className="sticky top-[calc(4rem+1.5rem)] flex flex-col py-stack-lg gap-stack-sm bg-surface dark:bg-background border-r border-outline-variant dark:border-outline h-[calc(100vh-4rem-1.5rem)] hidden lg:flex">
                 <div className="px-4 pb-2">
                     <h2 className="font-label-mono text-label-mono text-outline font-bold tracking-wider mb-1">PUBLIC</h2>

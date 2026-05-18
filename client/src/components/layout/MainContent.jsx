@@ -1,20 +1,19 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchQuestionsThunk } from '../../store/slices/questionSlice';
+import React from 'react';
+import { useSelector } from 'react-redux';
+import { useOutletContext } from 'react-router-dom';
 
 // ==========================================
 // COMPONENT CON: Đại diện cho 1 câu hỏi
 // ==========================================
 const QuestionCard = ({ question }) => {
-    // Đếm số lượng câu trả lời (do answers là 1 mảng)
-    const answerCount = question.answers ? question.answers.length : 0;
+    const answerCount = question.answerCount ?? 0;
 
     return (
         <article className="flex flex-col sm:flex-row gap-stack-md py-stack-md border-b border-outline-variant hover:bg-surface-container-low transition-colors px-2">
             {/* Cột thông số */}
             <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:w-24 flex-shrink-0 text-right">
                 <div className="font-body-sm text-body-sm text-on-surface flex items-center sm:justify-end gap-1">
-                    <span className="font-semibold">{question.votes || 0}</span> votes
+                    <span className="font-semibold">{question.upvotes || 0}</span> votes
                 </div>
                 <div className={`font-body-sm text-body-sm px-2 py-0.5 rounded-DEFAULT flex items-center sm:justify-end gap-1 ${answerCount > 0 ? 'text-[#2e7d32] border border-[#2e7d32] bg-[#e8f5e9]' : 'text-secondary'}`}>
                     <span className="font-semibold">{answerCount}</span> answers
@@ -32,7 +31,7 @@ const QuestionCard = ({ question }) => {
                     </a>
                 </h3>
                 <p className="font-body-sm text-body-sm text-on-surface-variant mb-2 line-clamp-2">
-                    {question.summary}
+                    {question.content}
                 </p>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
@@ -68,15 +67,13 @@ const QuestionCard = ({ question }) => {
 // COMPONENT CHÍNH
 // ==========================================
 const MainContent = () => {
-    const dispatch = useDispatch();
-
-    // Lấy state từ Redux Store
-    const { questionsList, loading, error } = useSelector((state) => state.questions);
-
-    // Tự động gọi API khi trang vừa load
-    useEffect(() => {
-        dispatch(fetchQuestionsThunk());
-    }, [dispatch]);
+    const { list: questionsList, loading, error, pagination } = useSelector((state) => state.posts);
+    const { filters, handleFilterChange, handleApplyFilters } = useOutletContext();
+    const sortOptions = [
+        { label: 'Mới nhất', value: 'Newest' },
+        { label: 'Nhiều lượt xem', value: 'MostViewed' },
+        { label: 'Nhiều upvote', value: 'MostUpvoted' },
+    ];
 
     return (
         <main className="flex-1 flex flex-col min-w-0 pb-12">
@@ -84,22 +81,33 @@ const MainContent = () => {
                 <div>
                     <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">Newest Questions</h1>
                     <p className="font-body-md text-body-md text-secondary">
-                        {questionsList ? questionsList.length : 0} questions
+                        {pagination.total?.toLocaleString('vi-VN') || 0} questions
                     </p>
                 </div>
 
                 {/* Phần thanh công cụ Filter */}
                 <div className="flex items-center gap-2 flex-wrap">
                     <div className="flex border border-outline-variant rounded-DEFAULT overflow-hidden bg-surface-container-lowest">
-                        <button className="px-3 py-1.5 font-body-sm text-body-sm bg-surface-container-low text-on-surface font-semibold border-r border-outline-variant hover:bg-surface-container">Newest</button>
-                        <button className="px-3 py-1.5 font-body-sm text-body-sm text-secondary hover:bg-surface-container hover:text-on-surface border-r border-outline-variant transition-colors">Active</button>
-                        <button className="px-3 py-1.5 font-body-sm text-body-sm text-secondary hover:bg-surface-container hover:text-on-surface border-r border-outline-variant transition-colors">Bountied</button>
-                        <button className="px-3 py-1.5 font-body-sm text-body-sm text-secondary hover:bg-surface-container hover:text-on-surface border-r border-outline-variant transition-colors">Unanswered</button>
-                        <button className="px-3 py-1.5 font-body-sm text-body-sm text-secondary hover:bg-surface-container hover:text-on-surface transition-colors flex items-center gap-1">More <span className="material-symbols-outlined text-[16px]">arrow_drop_down</span></button>
+                        {sortOptions.map((option, index) => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => {
+                                    handleFilterChange?.('sortBy', option.value);
+                                    handleApplyFilters?.({ sortBy: option.value });
+                                }}
+                                className={`px-3 py-1.5 font-body-sm text-body-sm border-outline-variant transition-colors ${
+                                    index < sortOptions.length - 1 ? 'border-r' : ''
+                                } ${
+                                    filters?.sortBy === option.value
+                                        ? 'bg-surface-container-low text-on-surface font-semibold'
+                                        : 'text-secondary hover:bg-surface-container hover:text-on-surface'
+                                }`}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
                     </div>
-                    <button className="flex items-center gap-1 px-3 py-1.5 font-body-sm text-body-sm bg-secondary-fixed text-primary-container rounded-DEFAULT hover:bg-secondary-fixed/80 transition-colors border border-primary-container/20">
-                        <span className="material-symbols-outlined text-[16px]">filter_list</span> Filter
-                    </button>
                 </div>
             </div>
 

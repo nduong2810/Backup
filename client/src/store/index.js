@@ -4,6 +4,7 @@ import profileReducer from './slices/profileSlice';
 import authReducer from './slices/authSlice';
 import loginReducer from './slices/loginSlice';
 import questionReducer from './slices/questionSlice';
+import postReducer from './slices/postSlice'; 
 
 const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ const store = configureStore({
     auth: authReducer,
     login: loginReducer,
     questions: questionReducer,
+    posts: postReducer,
   },
 });
 

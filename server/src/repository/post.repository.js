@@ -75,6 +75,85 @@ class PostRepository {
         .limit(limit)
         .select('title tags images upvotes downvotes viewCount createdAt');  // Chỉ lấy field cần thiết
     }
+
+        // ==================== LIST POSTS ====================
+
+        async findPosts(filter, sort, skip, limit) {
+                return await Post.find(filter)
+                        .sort(sort)
+                        .skip(skip)
+                        .limit(limit)
+                        .populate('author', 'fullName avatar')
+                        .lean();
+        }
+
+        async countPosts(filter) {
+                return await Post.countDocuments(filter);
+        }
+
+        async findPostsForList(filter, sortBy, skip, limit) {
+            const sortStage = (() => {
+                switch (sortBy) {
+                    case 'MostViewed':
+                        return { viewCount: -1 };
+                    case 'MostUpvoted':
+                        return { upvoteCount: -1 };
+                    case 'Newest':
+                    default:
+                        return { createdAt: -1 };
+                }
+            })();
+
+            const pipeline = [
+                { $match: filter },
+                {
+                    $addFields: {
+                        upvoteCount: {
+                            $cond: [
+                                { $isArray: '$upvotes' },
+                                { $size: { $ifNull: ['$upvotes', []] } },
+                                { $ifNull: ['$upvotes', 0] },
+                            ],
+                        },
+                        downvoteCount: {
+                            $cond: [
+                                { $isArray: '$downvotes' },
+                                { $size: { $ifNull: ['$downvotes', []] } },
+                                { $ifNull: ['$downvotes', 0] },
+                            ],
+                        },
+                    },
+                },
+                { $sort: sortStage },
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'author',
+                        foreignField: '_id',
+                        as: 'author',
+                    },
+                },
+                { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+                {
+                    $project: {
+                        title: 1,
+                        content: 1,
+                        tags: 1,
+                        status: 1,
+                        images: 1,
+                        viewCount: 1,
+                        upvoteCount: 1,
+                        downvoteCount: 1,
+                        createdAt: 1,
+                        author: { fullName: 1, avatar: 1 },
+                    },
+                },
+            ];
+
+            return await Post.aggregate(pipeline);
+        }
 }
 
 export default new PostRepository();

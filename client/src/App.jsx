@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, Outlet } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import ForumLayout from './components/layout/ForumLayout';
 import MainContent from './components/layout/MainContent';
 import ForgotPassword from './components/auth/ForgotPassword';
@@ -27,29 +27,84 @@ function Shell({ children }) {
 
 function App() {
   return (
-    <Shell>
-      <Routes>
-        <Route path="/" element={<Navigate to="/auth/login" replace />} />
-        <Route path="/auth" element={<Navigate to="/auth/login" replace />} />
+    <Routes>
+      {/* Home */}
+      <Route element={<ForumLayout />}>
+        <Route index element={<MainContent />} />
+        <Route path="home" element={<MainContent />} />
+      </Route>
 
-        <Route path="/auth/login" element={<LoginPage />} />
-        <Route path="/auth/register" element={<RegisterPage />} />
-        <Route path="/register" element={<Navigate to="/auth/register" replace />} />
+      {/* Auth */}
+      <Route
+        path="/auth/login"
+        element={
+          <Shell>
+            <LoginPage />
+          </Shell>
+        }
+      />
+      <Route
+        path="/auth/register"
+        element={
+          <Shell>
+            <RegisterPage />
+          </Shell>
+        }
+      />
+      <Route path="/auth" element={<Navigate to="/auth/login" replace />} />
+      <Route path="/register" element={<Navigate to="/auth/register" replace />} />
 
-        <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-        <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
+      <Route
+        path="/auth/forgot-password"
+        element={
+          <Shell>
+            <ForgotPassword />
+          </Shell>
+        }
+      />
+      <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
 
-        <Route path="/auth/verify-reset-otp" element={<VerifyResetOTP />} />
-        <Route path="/verify-reset-otp" element={<Navigate to="/auth/verify-reset-otp" replace />} />
+      <Route
+        path="/auth/verify-reset-otp"
+        element={
+          <Shell>
+            <VerifyResetOTP />
+          </Shell>
+        }
+      />
+      <Route path="/verify-reset-otp" element={<Navigate to="/auth/verify-reset-otp" replace />} />
 
-        <Route path="/auth/reset-password" element={<ResetPassword />} />
-        <Route path="/reset-password" element={<Navigate to="/auth/reset-password" replace />} />
+      <Route
+        path="/auth/reset-password"
+        element={
+          <Shell>
+            <ResetPassword />
+          </Shell>
+        }
+      />
+      <Route path="/reset-password" element={<Navigate to="/auth/reset-password" replace />} />
 
-        <Route path="/user/profile" element={<ProfilePage />} />
-        <Route path="/admin/profile" element={<AdminProfilePage />} />
-        <Route path="*" element={<Navigate to="/auth/login" replace />} />
-      </Routes>
-    </Shell>
+      {/* User / Admin */}
+      <Route
+        path="/user/profile"
+        element={
+          <Shell>
+            <ProfilePage />
+          </Shell>
+        }
+      />
+      <Route
+        path="/admin/profile"
+        element={
+          <Shell>
+            <AdminProfilePage />
+          </Shell>
+        }
+      />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/home" replace />} />
+    </Routes>
   );
 }
 
