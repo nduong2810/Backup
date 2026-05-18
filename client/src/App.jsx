@@ -1,4 +1,6 @@
-﻿import { Navigate, Route, Routes } from 'react-router-dom';
+﻿import { Navigate, Route, Routes, Outlet } from 'react-router-dom';
+import ForumLayout from './components/layout/ForumLayout';
+import MainContent from './components/layout/MainContent';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import VerifyResetOTP from './components/auth/VerifyResetOTP';
@@ -8,48 +10,65 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import './App.css';
 
-function Shell({ children }) {
-  return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#dbeafe,_#f8fafc_55%)] px-4 py-10">
-      <div className="mx-auto w-full max-w-3xl">
-        <header className="mb-6 rounded-2xl border border-sky-100 bg-white/80 px-5 py-4 shadow-sm backdrop-blur">
-          <h1 className="text-2xl font-bold text-slate-900">IT Forum</h1>
-          <p className="mt-1 text-sm text-slate-600">Không gian hỏi đáp và chia sẻ kiến thức công nghệ.</p>
-        </header>
-        {children}
-      </div>
-    </div>
-  );
+// 2. Bỏ { children } đi vì React Router không truyền component qua children
+function Shell() {
+    return (
+        <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#dbeafe,_#f8fafc_55%)] px-4 py-10">
+            <div className="mx-auto w-full max-w-3xl">
+                <header className="mb-6 rounded-2xl border border-sky-100 bg-white/80 px-5 py-4 shadow-sm backdrop-blur">
+                    <h1 className="text-2xl font-bold text-slate-900">IT Forum</h1>
+                    <p className="mt-1 text-sm text-slate-600">Không gian hỏi đáp và chia sẻ kiến thức công nghệ.</p>
+                </header>
+
+                {/* ĐÂY LÀ ĐIỂM QUAN TRỌNG NHẤT: Dùng <Outlet /> thay cho {children} */}
+                <Outlet />
+
+            </div>
+        </div>
+    );
 }
 
 function App() {
-  return (
-    <Shell>
-      <Routes>
-        <Route path="/" element={<Navigate to="/auth/login" replace />} />
-        <Route path="/auth" element={<Navigate to="/auth/login" replace />} />
+    return (
+        <Routes>
+            {/* =========================================
+          NHÓM 1: GIAO DIỆN DIỄN ĐÀN (Dùng ForumLayout)
+          ========================================= */}
+            <Route element={<ForumLayout />}>
+                {/* Đường dẫn gốc "/" hiển thị danh sách câu hỏi */}
+                <Route path="/" element={<MainContent />} />
+            </Route>
 
-        <Route path="/auth/login" element={<LoginPage />} />
-        <Route path="/auth/register" element={<RegisterPage />} />
-        <Route path="/register" element={<Navigate to="/auth/register" replace />} />
+            {/* =========================================
+          NHÓM 2: GIAO DIỆN XÁC THỰC (Dùng Shell Layout)
+          ========================================= */}
+            <Route element={<Shell />}>
+                {/* Khi truy cập /auth, tự động chuyển về /auth/login */}
+                <Route path="/auth" element={<Navigate to="/auth/login" replace />} />
 
-        <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-        <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
+                <Route path="/auth/login" element={<LoginPage />} />
+                <Route path="/auth/register" element={<RegisterPage />} />
+                <Route path="/register" element={<Navigate to="/auth/register" replace />} />
 
-        <Route path="/auth/verify-reset-otp" element={<VerifyResetOTP />} />
-        <Route path="/verify-reset-otp" element={<Navigate to="/auth/verify-reset-otp" replace />} />
+                <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+                <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
 
-        <Route path="/auth/reset-password" element={<ResetPassword />} />
-        <Route path="/reset-password" element={<Navigate to="/auth/reset-password" replace />} />
+                <Route path="/auth/verify-reset-otp" element={<VerifyResetOTP />} />
+                <Route path="/verify-reset-otp" element={<Navigate to="/auth/verify-reset-otp" replace />} />
 
-        <Route path="/user/profile" element={<ProfilePage />} />
-        <Route path="/admin/profile" element={<AdminProfilePage />} />
-        <Route path="*" element={<Navigate to="/auth/login" replace />} />
-      </Routes>
-    </Shell>
-  );
+                <Route path="/auth/reset-password" element={<ResetPassword />} />
+                <Route path="/reset-password" element={<Navigate to="/auth/reset-password" replace />} />
+
+                <Route path="/user/profile" element={<ProfilePage />} />
+                <Route path="/admin/profile" element={<AdminProfilePage />} />
+            </Route>
+
+            {/* =========================================
+          NHÓM 3: BẮT LỖI URL KHÔNG TỒN TẠI (404)
+          ========================================= */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+    );
 }
 
 export default App;
-
-

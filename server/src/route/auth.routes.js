@@ -29,6 +29,11 @@ router.post('/login',
     authController.login.bind(authController)       // Controller
 );
 
+// THÊM API LOGOUT VÀO ĐÂY
+router.post('/logout',
+    authController.logout.bind(authController)
+);
+
 // ==================== FORGOT PASSWORD ====================
 router.post('/forgot-password', 
     authLimiter, 
