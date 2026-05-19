@@ -1,7 +1,42 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 import FilterSidebar from '../common/FilterSidebar';
+import { getPostDetailSidebarData } from '../../services/postService';
 
 const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
+    const [popularTags, setPopularTags] = useState([]);
+    const [tagsLoading, setTagsLoading] = useState(true);
+
+    useEffect(() => {
+        let mounted = true;
+
+        const loadPopularTags = async () => {
+            try {
+                setTagsLoading(true);
+                const response = await getPostDetailSidebarData();
+                const data = response?.data?.data?.popularTags;
+                if (!mounted) return;
+                setPopularTags(Array.isArray(data) ? data : []);
+            } catch (error) {
+                if (!mounted) return;
+                setPopularTags([]);
+            } finally {
+                if (mounted) setTagsLoading(false);
+            }
+        };
+
+        loadPopularTags();
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const handlePopularTagClick = (tag) => {
+        const normalized = String(tag || '').trim();
+        if (!normalized) return;
+        onFilterChange?.('tags', normalized);
+        onApply?.({ tags: normalized });
+    };
+
     return (
         <aside className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-stack-lg pb-12">
             {/* Announcements Card */}
@@ -42,22 +77,27 @@ const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
                     <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Popular Tags</h2>
                 </div>
                 <div className="p-4 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                        <span className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 cursor-pointer">react</span>
-                        <span className="font-body-sm text-body-sm text-secondary">x 10k</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <span className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 cursor-pointer">python</span>
-                        <span className="font-body-sm text-body-sm text-secondary">x 8k</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <span className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 cursor-pointer">nodejs</span>
-                        <span className="font-body-sm text-body-sm text-secondary">x 5k</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <span className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 cursor-pointer">ai</span>
-                        <span className="font-body-sm text-body-sm text-secondary">x 2k</span>
-                    </div>
+                    {tagsLoading && (
+                        <p className="font-body-sm text-body-sm text-secondary">Đang tải...</p>
+                    )}
+                    {!tagsLoading && popularTags.length === 0 && (
+                        <p className="font-body-sm text-body-sm text-secondary">Chưa có dữ liệu.</p>
+                    )}
+                    {!tagsLoading && popularTags.length > 0 && popularTags.map((item) => (
+                        <div key={item.tag} className="flex items-center justify-between">
+                            <button
+                                type="button"
+                                onClick={() => handlePopularTagClick(item.tag)}
+                                className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 transition-colors"
+                                aria-label={`Lọc theo tag ${item.tag}`}
+                            >
+                                {item.tag}
+                            </button>
+                            <span className="font-body-sm text-body-sm text-secondary">
+                                x {Number(item.count || 0).toLocaleString('vi-VN')}
+                            </span>
+                        </div>
+                    ))}
                 </div>
             </div>
         </aside>

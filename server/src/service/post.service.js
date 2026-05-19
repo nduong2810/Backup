@@ -13,6 +13,12 @@ const mapStatusFilter = (status) => {
     return normalized;
 };
 
+const getTodayStart = () => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now;
+};
+
 class PostService {
 
     // ==================== API 0: LẤY DANH SÁCH BÀI VIẾT ====================
@@ -120,7 +126,12 @@ class PostService {
 
         // 3. Tăng lượt xem (+1)
         if (incrementView) {
-            await postRepository.incrementViewCount(postId);
+            const todayStart = getTodayStart();
+            const sameDay = post.dailyViewDate && post.dailyViewDate.getTime() === todayStart.getTime();
+            await postRepository.incrementViewCount(postId, {
+                resetDaily: !sameDay,
+                todayStart,
+            });
         }
 
         // 4. Lấy danh sách comments + tổng số comment
@@ -217,7 +228,7 @@ class PostService {
     async getPostDetailSidebarData() {
         const [hotQuestions, popularTags] = await Promise.all([
             postRepository.findHotNetworkQuestions(10),
-            postRepository.findPopularTags(8),
+            postRepository.findPopularTags(5),
         ]);
 
         return {
@@ -227,6 +238,18 @@ class PostService {
             })),
             popularTags,
         };
+    }
+
+    async getTrendingToday(query = {}) {
+        const limitNum = Math.min(20, Math.max(1, parseInt(query.limit, 10) || 10));
+        const todayStart = getTodayStart();
+        const posts = await postRepository.findTrendingToday(todayStart, limitNum);
+
+        return posts.map((post) => ({
+            ...post,
+            viewsToday: post.dailyViewCount ?? 0,
+            views: post.viewCount ?? 0,
+        }));
     }
 
     // ==================== HELPER: Xây dựng cây comment ====================

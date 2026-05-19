@@ -51,6 +51,16 @@ const postSchema = new mongoose.Schema({
         default: 0 
     },
 
+    // Lượt xem trong ngày (reset khi sang ngày mới)
+    dailyViewCount: {
+        type: Number,
+        default: 0
+    },
+    dailyViewDate: {
+        type: Date,
+        default: null
+    },
+
     // Trạng thái bài viết
     status: { 
         type: String, 
@@ -78,6 +88,8 @@ postSchema.virtual('downvoteCount').get(function() {
 postSchema.index({ tags: 1 });
 // Index cho sắp xếp theo thời gian
 postSchema.index({ createdAt: -1 });
+// Index cho truy vấn trending trong ngày
+postSchema.index({ dailyViewDate: -1, dailyViewCount: -1 });
 
 const Post = mongoose.model('Post', postSchema);
 export default Post;

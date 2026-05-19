@@ -29,3 +29,7 @@ export const getRelatedPosts = (tag, excludePostId) =>
 // API 5: Du lieu sidebar ben phai cho trang chi tiet
 export const getPostDetailSidebarData = () =>
   apiClient.get('/posts/sidebar');
+
+// API 6: Trending top 10 bai viet hom nay
+export const getTrendingTodayPosts = (limit = 10) =>
+  apiClient.get('/posts/trending-today', { params: { limit } });

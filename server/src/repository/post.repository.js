@@ -14,12 +14,18 @@ class PostRepository {
     }
 
     // Tăng viewCount +1 mỗi khi xem chi tiết bài viết
-    async incrementViewCount(postId) {
-        return await Post.findByIdAndUpdate(
-            postId,
-            { $inc: { viewCount: 1 } },
-            { new: true }
-        );
+    // Đồng thời cập nhật dailyViewCount để phục vụ trending trong ngày
+    async incrementViewCount(postId, options = {}) {
+        const { resetDaily = false, todayStart = null } = options;
+        const update = { $inc: { viewCount: 1 } };
+
+        if (resetDaily && todayStart) {
+            update.$set = { dailyViewCount: 1, dailyViewDate: todayStart };
+        } else if (todayStart) {
+            update.$inc.dailyViewCount = 1;
+        }
+
+        return await Post.findByIdAndUpdate(postId, update, { new: true });
     }
 
     // ==================== VOTE OPERATIONS ====================
@@ -175,6 +181,41 @@ class PostRepository {
                     $project: {
                         _id: 1,
                         title: 1,
+                    },
+                },
+            ]);
+        }
+
+        async findTrendingToday(todayStart, limit = 10) {
+            return await Post.aggregate([
+                {
+                    $match: {
+                        status: { $ne: 'deleted' },
+                        dailyViewDate: todayStart,
+                        dailyViewCount: { $gt: 0 },
+                    },
+                },
+                { $sort: { dailyViewCount: -1, viewCount: -1, createdAt: -1 } },
+                { $limit: limit },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'author',
+                        foreignField: '_id',
+                        as: 'author',
+                    },
+                },
+                { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+                {
+                    $project: {
+                        _id: 1,
+                        title: 1,
+                        tags: 1,
+                        images: 1,
+                        createdAt: 1,
+                        viewCount: 1,
+                        dailyViewCount: 1,
+                        author: { fullName: 1, avatar: 1 },
                     },
                 },
             ]);
