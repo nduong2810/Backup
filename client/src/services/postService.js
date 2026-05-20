@@ -26,10 +26,14 @@ export const votePost = (postId, voteType) =>
 export const getRelatedPosts = (tag, excludePostId) =>
   apiClient.get(`/posts/related/${tag}`, { params: { excludePostId } });
 
-// API 5: Du lieu sidebar ben phai cho trang chi tiet
+// API 5: Dữ liệu sidebar cho trang chi tiết bài viết
 export const getPostDetailSidebarData = () =>
   apiClient.get('/posts/sidebar');
 
 // API 6: Trending top 10 bai viet hom nay
 export const getTrendingTodayPosts = (limit = 10) =>
   apiClient.get('/posts/trending-today', { params: { limit } });
+
+// API 7: Danh sách tag (cho filter và hiển thị tag)
+export const getTagsApi = (params = {}) =>
+  apiClient.get('/tags', { params });

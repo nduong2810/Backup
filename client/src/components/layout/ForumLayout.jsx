@@ -10,6 +10,8 @@ import { usePostFilters } from '../../hook/usePostFilters';
 export default function ForumLayout() {
     const {
         filters,
+        searchInput,
+        handleSearchChange,
         handleFilterChange,
         handleSearch,
         handleApplyFilters,
@@ -19,8 +21,8 @@ export default function ForumLayout() {
     return (
         <div className="bg-background text-on-background font-body-md text-body-md antialiased min-h-screen flex flex-col">
             <Header
-                searchValue={filters.keyword}
-                onSearchChange={(value) => handleFilterChange('keyword', value)}
+                searchValue={searchInput}
+                onSearchChange={handleSearchChange}
                 onSearch={handleSearch}
             />
             <div className="w-full max-w-none mx-auto px-4 lg:px-6 flex flex-col lg:flex-row gap-stack-md pt-stack-lg flex-1">

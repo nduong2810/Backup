@@ -38,11 +38,13 @@ const postSchema = new mongoose.Schema({
     // Lưu mảng userId đã vote → dễ toggle, đếm tổng, kiểm tra trùng
     upvotes: [{ 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User' 
+        ref: 'User',
+        default: []
     }],
     downvotes: [{ 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User' 
+        ref: 'User',
+        default: []
     }],
 
     // Đếm lượt xem bài viết

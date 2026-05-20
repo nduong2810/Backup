@@ -1,41 +1,27 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import FilterSidebar from '../common/FilterSidebar';
-import { getPostDetailSidebarData } from '../../services/postService';
+import { fetchTagsThunk } from '../../store/slices/tagSlice';
 
 const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
-    const [popularTags, setPopularTags] = useState([]);
-    const [tagsLoading, setTagsLoading] = useState(true);
+    const dispatch = useDispatch();
+    const tagCollection = useSelector((state) =>
+        state.tags?.collections?.sidebarTags || {
+            items: [],
+            loading: false,
+            error: null,
+            pagination: { total: 0, page: 1, limit: 0, totalPages: 0 },
+        }
+    );
+    const tags = tagCollection.items || [];
+    const loadingTags = tagCollection.loading;
 
     useEffect(() => {
-        let mounted = true;
-
-        const loadPopularTags = async () => {
-            try {
-                setTagsLoading(true);
-                const response = await getPostDetailSidebarData();
-                const data = response?.data?.data?.popularTags;
-                if (!mounted) return;
-                setPopularTags(Array.isArray(data) ? data : []);
-            } catch (error) {
-                if (!mounted) return;
-                setPopularTags([]);
-            } finally {
-                if (mounted) setTagsLoading(false);
-            }
-        };
-
-        loadPopularTags();
-        return () => {
-            mounted = false;
-        };
-    }, []);
-
-    const handlePopularTagClick = (tag) => {
-        const normalized = String(tag || '').trim();
-        if (!normalized) return;
-        onFilterChange?.('tags', normalized);
-        onApply?.({ tags: normalized });
-    };
+        if (!tags.length && !loadingTags) {
+            dispatch(fetchTagsThunk({ key: 'sidebarTags', params: { limit: 8, page: 1 } }));
+        }
+    }, [dispatch, loadingTags, tags.length]);
 
     return (
         <aside className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-stack-lg pb-12">
@@ -60,7 +46,7 @@ const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
             <div className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm overflow-hidden">
                 <div className="bg-surface-container-low border-b border-outline-variant px-4 py-3 flex items-center gap-2">
                     <span className="material-symbols-outlined text-secondary text-[20px]">filter_alt</span>
-                    <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Filter Questions</h2>
+                    <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Lọc câu hỏi</h2>
                 </div>
                 <FilterSidebar
                     filters={filters}
@@ -74,30 +60,29 @@ const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
             {/* Popular Tags Card */}
             <div className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm overflow-hidden">
                 <div className="bg-surface-container-low border-b border-outline-variant px-4 py-3">
-                    <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Popular Tags</h2>
+                    <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Tags</h2>
                 </div>
                 <div className="p-4 flex flex-col gap-3">
-                    {tagsLoading && (
-                        <p className="font-body-sm text-body-sm text-secondary">Đang tải...</p>
+                    {loadingTags && (
+                        <p className="font-body-sm text-body-sm text-secondary">Đang tải tags...</p>
                     )}
-                    {!tagsLoading && popularTags.length === 0 && (
-                        <p className="font-body-sm text-body-sm text-secondary">Chưa có dữ liệu.</p>
+                    {!loadingTags && tags.length === 0 && (
+                        <p className="font-body-sm text-body-sm text-secondary">Chưa có tags.</p>
                     )}
-                    {!tagsLoading && popularTags.length > 0 && popularTags.map((item) => (
-                        <div key={item.tag} className="flex items-center justify-between">
-                            <button
-                                type="button"
-                                onClick={() => handlePopularTagClick(item.tag)}
-                                className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 transition-colors"
-                                aria-label={`Lọc theo tag ${item.tag}`}
+                    {tags.map((item) => {
+                        const tagLabel = item.name || item.slug;
+                        return (
+                        <div key={item.slug} className="flex items-center justify-between">
+                            <Link
+                                to={`/home?tags=${encodeURIComponent(item.slug)}`}
+                                className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80"
+                                title={`Lọc bài viết theo tag: ${tagLabel}`}
                             >
-                                {item.tag}
-                            </button>
-                            <span className="font-body-sm text-body-sm text-secondary">
-                                x {Number(item.count || 0).toLocaleString('vi-VN')}
-                            </span>
+                                {tagLabel}
+                            </Link>
+                            <span className="font-body-sm text-body-sm text-secondary">x {item.totalCount}</span>
                         </div>
-                    ))}
+                    )})}
                 </div>
             </div>
         </aside>

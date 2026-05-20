@@ -12,6 +12,7 @@ import ProfilePage from './pages/profile/ProfilePage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import PostDetailPage from './pages/post/PostDetailPage';
+import TagsPage from './pages/tags/TagsPage';
 import './App.css';
 
 function Shell({ children }) {
@@ -35,6 +36,7 @@ function App() {
       <Route element={<ForumLayout />}>
         <Route index element={<MainContent />} />
         <Route path="home" element={<MainContent />} />
+        <Route path="tags" element={<TagsPage />} />
       </Route>
 
       {/* Auth */}

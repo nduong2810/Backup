@@ -1,4 +1,6 @@
-const SUGGESTED_TAGS = ['react', 'nodejs', 'python', 'java', 'css', 'git', 'html', 'sql'];
+import { useEffect, useMemo, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchTagsThunk } from '../../store/slices/tagSlice';
 
 const parseTags = (value) =>
   value
@@ -11,6 +13,24 @@ const normalizeTag = (tag) => tag.trim().toLowerCase();
 function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = false }) {
   const selectedTags = Array.from(new Set(parseTags(filters.tags).map(normalizeTag)));
   const selectedTagSet = new Set(selectedTags);
+  const dispatch = useDispatch();
+  const tagCollection = useSelector((state) =>
+    state.tags?.collections?.filterTags || {
+      items: [],
+      loading: false,
+      error: null,
+      pagination: { total: 0, page: 1, limit: 0, totalPages: 0 },
+    }
+  );
+  const tagOptions = tagCollection.items || [];
+  const loadingTags = tagCollection.loading;
+  const tagPagination = tagCollection.pagination || { page: 1, totalPages: 0 };
+  const hasMoreTags = tagPagination.totalPages
+    ? tagPagination.page < tagPagination.totalPages
+    : false;
+  const tagListRef = useRef(null);
+  const tagLimit = 12;
+  const tagListHeight = embed ? 'h-32' : 'h-40';
 
   const controlClass = embed
     ? 'w-full bg-surface-container-lowest border border-outline-variant rounded-DEFAULT px-3 py-2 font-body-sm text-body-sm focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none'
@@ -43,6 +63,54 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
     }
     onFilterChange?.('tags', Array.from(next).join(', '));
   };
+
+  useEffect(() => {
+    if (!tagOptions.length && !loadingTags) {
+      dispatch(
+        fetchTagsThunk({
+          key: 'filterTags',
+          params: { limit: tagLimit, page: 1 },
+          append: false,
+        })
+      );
+    }
+  }, [dispatch, loadingTags, tagLimit, tagOptions.length]);
+
+  useEffect(() => {
+    if (loadingTags || !hasMoreTags) return;
+    const container = tagListRef.current;
+    if (!container) return;
+
+    const canScroll = container.scrollHeight > container.clientHeight + 4;
+    if (!canScroll) {
+      dispatch(
+        fetchTagsThunk({
+          key: 'filterTags',
+          params: { limit: tagLimit, page: tagPagination.page + 1 },
+          append: true,
+        })
+      );
+    }
+  }, [dispatch, hasMoreTags, loadingTags, tagLimit, tagOptions.length, tagPagination.page]);
+
+  const handleTagScroll = (event) => {
+    if (loadingTags || !hasMoreTags) return;
+
+    const target = event.currentTarget;
+    const nearBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+
+    if (nearBottom) {
+      dispatch(
+        fetchTagsThunk({
+          key: 'filterTags',
+          params: { limit: tagLimit, page: tagPagination.page + 1 },
+          append: true,
+        })
+      );
+    }
+  };
+
+  const visibleTags = useMemo(() => tagOptions, [tagOptions]);
 
   const body = (
     <div className="p-4 flex flex-col gap-4">
@@ -81,14 +149,30 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
             className={`${controlClass} placeholder:text-outline`}
           />
           <p className={helpTextClass}>Nhiều tag cách nhau bằng dấu phẩy</p>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {SUGGESTED_TAGS.map((tag) => {
-              const isActive = selectedTagSet.has(tag);
+          <div
+            ref={tagListRef}
+            className={`flex flex-wrap gap-2 pt-1 overflow-y-auto pr-1 ${tagListHeight}`}
+            onScroll={handleTagScroll}
+            role="list"
+            aria-live="polite"
+          >
+            {loadingTags && tagOptions.length === 0 && (
+              <span className={helpTextClass}>Đang tải tags...</span>
+            )}
+            {!loadingTags && tagOptions.length === 0 && (
+              <span className={helpTextClass}>Chưa có tags.</span>
+            )}
+            {visibleTags.map((item) => {
+              const tagValue = normalizeTag(item.slug || item.name || '');
+              const tagLabel = item.name || item.slug || '';
+              if (!tagValue) return null;
+
+              const isActive = selectedTagSet.has(tagValue);
               return (
                 <button
-                  key={tag}
+                  key={tagValue}
                   type="button"
-                  onClick={() => handleToggleTag(tag)}
+                  onClick={() => handleToggleTag(tagValue)}
                   className={`
                     inline-flex items-center gap-1
                     px-2.5 py-1 rounded-full text-xs font-semibold
@@ -101,11 +185,17 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
                   `}
                   aria-pressed={isActive}
                 >
-                  <span>{tag}</span>
+                  <span>{tagLabel}</span>
                   {isActive && <span className="text-xs">×</span>}
                 </button>
               );
             })}
+            {loadingTags && tagOptions.length > 0 && (
+              <span className={helpTextClass}>Đang tải thêm...</span>
+            )}
+            {!loadingTags && !hasMoreTags && tagOptions.length > 0 && (
+              <span className={helpTextClass}>Đã tải hết tags.</span>
+            )}
           </div>
         </div>
 
@@ -131,7 +221,7 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
             <label htmlFor="filter-min-views" className={labelClass}>
-              Min Views
+              Lượt xem tối thiểu
             </label>
             <input
               id="filter-min-views"
@@ -147,7 +237,7 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
 
           <div className="flex flex-col gap-1">
             <label htmlFor="filter-min-upvotes" className={labelClass}>
-              Min Upvotes
+              Upvote tối thiểu
             </label>
             <input
               id="filter-min-upvotes"

@@ -144,8 +144,10 @@ class PostService {
         // 6. Trả về dữ liệu đầy đủ
         let userVote = null;
         if (userId) {
-            const hasUpvoted = post.upvotes.some(id => id.toString() === userId);
-            const hasDownvoted = post.downvotes.some(id => id.toString() === userId);
+            const upvotes = Array.isArray(post.upvotes) ? post.upvotes : [];
+            const downvotes = Array.isArray(post.downvotes) ? post.downvotes : [];
+            const hasUpvoted = upvotes.some(id => id.toString() === userId);
+            const hasDownvoted = downvotes.some(id => id.toString() === userId);
             if (hasUpvoted) userVote = 'upvote';
             else if (hasDownvoted) userVote = 'downvote';
         }

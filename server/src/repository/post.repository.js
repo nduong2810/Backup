@@ -130,6 +130,23 @@ class PostRepository {
                         },
                     },
                 },
+                {
+                    $lookup: {
+                        from: 'comments',
+                        let: { postId: '$_id' },
+                        pipeline: [
+                            { $match: { $expr: { $eq: ['$post', '$$postId'] } } },
+                            { $count: 'count' },
+                        ],
+                        as: 'answerMeta',
+                    },
+                },
+                {
+                    $addFields: {
+                        answerCount: { $ifNull: [{ $arrayElemAt: ['$answerMeta.count', 0] }, 0] },
+                    },
+                },
+                { $project: { answerMeta: 0 } },
                 { $sort: sortStage },
                 { $skip: skip },
                 { $limit: limit },
@@ -152,6 +169,7 @@ class PostRepository {
                         viewCount: 1,
                         upvoteCount: 1,
                         downvoteCount: 1,
+                        answerCount: 1,
                         createdAt: 1,
                         author: { fullName: 1, avatar: 1 },
                     },
