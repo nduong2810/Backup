@@ -34,6 +34,10 @@ export const getPostDetailSidebarData = () =>
 export const getTrendingTodayPosts = (limit = 10) =>
   apiClient.get('/posts/trending-today', { params: { limit } });
 
-// API 7: Danh sách tag (cho filter và hiển thị tag)
+// API 7: Top 10 bai viet nhieu upvote nhat
+export const getTopUpvotedPosts = (limit = 10) =>
+  apiClient.get('/posts/top-upvoted', { params: { limit } });
+
+// API 8: Danh sách tag (cho filter và hiển thị tag)
 export const getTagsApi = (params = {}) =>
   apiClient.get('/tags', { params });

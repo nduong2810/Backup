@@ -239,6 +239,69 @@ class PostRepository {
             ]);
         }
 
+        async findTopUpvoted(todayStart, limit = 10) {
+            return await Post.aggregate([
+                {
+                    $match: {
+                        status: { $ne: 'deleted' },
+                        dailyUpvoteDate: todayStart,
+                        dailyUpvoteCount: { $gt: 0 },
+                    },
+                },
+                {
+                    $addFields: {
+                        upvoteCount: {
+                            $cond: [
+                                { $isArray: '$upvotes' },
+                                { $size: { $ifNull: ['$upvotes', []] } },
+                                { $ifNull: ['$upvotes', 0] },
+                            ],
+                        },
+                        downvoteCount: {
+                            $cond: [
+                                { $isArray: '$downvotes' },
+                                { $size: { $ifNull: ['$downvotes', []] } },
+                                { $ifNull: ['$downvotes', 0] },
+                            ],
+                        },
+                    },
+                },
+                { $sort: { dailyUpvoteCount: -1, upvoteCount: -1, createdAt: -1 } },
+                { $limit: limit },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'author',
+                        foreignField: '_id',
+                        as: 'author',
+                    },
+                },
+                { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+                {
+                    $project: {
+                        _id: 1,
+                        title: 1,
+                        tags: 1,
+                        images: 1,
+                        createdAt: 1,
+                        viewCount: 1,
+                        dailyUpvoteCount: 1,
+                        upvoteCount: 1,
+                        downvoteCount: 1,
+                        author: { fullName: 1, avatar: 1 },
+                    },
+                },
+            ]);
+        }
+
+        async updateDailyVoteStats(postId, updates) {
+            return await Post.findByIdAndUpdate(
+                postId,
+                { $set: updates },
+                { new: true }
+            );
+        }
+
         async findPopularTags(limit = 8) {
             return await Post.aggregate([
                 { $match: { status: { $ne: 'deleted' }, tags: { $exists: true, $ne: [] } } },

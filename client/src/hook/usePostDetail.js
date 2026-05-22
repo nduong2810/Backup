@@ -64,7 +64,8 @@ export default function usePostDetail(postId) {
 
     setVoteLoading(true);
     try {
-      const response = await votePost(postId, voteType);
+      const effectiveVoteType = userVote && userVote !== voteType ? userVote : voteType;
+      const response = await votePost(postId, effectiveVoteType);
       const { upvoteCount: up, downvoteCount: down, userVote: vote } = response.data.data;
 
       // Cập nhật state local ngay lập tức (không reload)
@@ -79,7 +80,7 @@ export default function usePostDetail(postId) {
     } finally {
       setVoteLoading(false);
     }
-  }, [postId, voteLoading]);
+  }, [postId, voteLoading, userVote]);
 
   // === Effects ===
   useEffect(() => {

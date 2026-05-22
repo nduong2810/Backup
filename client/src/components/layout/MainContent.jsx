@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useOutletContext } from 'react-router-dom';
-import { getTrendingTodayPosts } from '../../services/postService';
+import { getTopUpvotedPosts, getTrendingTodayPosts } from '../../services/postService';
 
 const PER_PAGE_OPTIONS = [15, 30, 50];
 
@@ -23,6 +23,11 @@ const buildPaginationItems = (current, total) => {
 
     items.push(total);
     return items;
+};
+
+const getPlainText = (value) => {
+    if (!value) return '';
+    return String(value).replace(/<[^>]+>/g, '').trim();
 };
 
 // ==========================================
@@ -54,7 +59,7 @@ const QuestionCard = ({ question }) => {
                     </Link>
                 </h3>
                 <p className="font-body-sm text-body-sm text-on-surface-variant mb-2 line-clamp-2">
-                    {question.content}
+                    {getPlainText(question.content) || 'Chua co noi dung.'}
                 </p>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
@@ -148,6 +153,64 @@ const TrendingCard = ({ post, rank, onTagClick }) => {
     );
 };
 
+const TopUpvotedCard = ({ post, rank, onTagClick }) => {
+    const tags = Array.isArray(post.tags) ? post.tags.slice(0, 3) : [];
+    const upvotes = post.upvoteCount ?? 0;
+    const upvotesToday = post.upvotesToday ?? 0;
+
+    return (
+        <article className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm p-4 flex flex-col gap-3 h-full">
+            <div className="flex items-center justify-between text-xs text-secondary">
+                <span className="inline-flex items-center justify-center h-6 px-2 rounded-DEFAULT bg-primary-container/15 text-primary-container font-semibold">
+                    #{rank}
+                </span>
+                <span>{new Date(post.createdAt).toLocaleDateString('vi-VN')}</span>
+            </div>
+
+            <div className="flex flex-col gap-2 flex-1">
+                <h3 className="font-headline-md text-headline-md leading-snug line-clamp-2 min-h-[3.25rem]">
+                    <Link className="text-primary-container hover:text-primary-container/80 transition-colors" to={`/posts/${post._id}`}>
+                        {post.title}
+                    </Link>
+                </h3>
+                <div className="flex flex-wrap gap-1 min-h-[1.75rem]">
+                    {tags.map((tag) => (
+                        <button
+                            key={tag}
+                            type="button"
+                            onClick={() => onTagClick?.(tag)}
+                            className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 transition-colors"
+                            aria-label={`Loc theo tag ${tag}`}
+                        >
+                            {tag}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-secondary">
+                <span>
+                    Hôm nay <span className="font-semibold text-on-surface">{upvotesToday}</span> upvotes
+                </span>
+                <span>
+                    Tổng <span className="font-semibold text-on-surface">{upvotes}</span>
+                </span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-secondary">
+                <img
+                    alt="Author Avatar"
+                    className="w-6 h-6 rounded-DEFAULT object-cover"
+                    src={post.author?.avatar || 'https://i.pravatar.cc/150'}
+                />
+                <span className="text-on-surface">
+                    {post.author?.fullName || post.author?.username || 'Ẩn danh'}
+                </span>
+            </div>
+
+        </article>
+    );
+};
+
 const TrendingCardSkeleton = () => (
     <div className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm p-4 flex flex-col gap-3 animate-pulse h-full">
         <div className="flex items-center justify-between">
@@ -181,6 +244,11 @@ const MainContent = () => {
     const [trendingError, setTrendingError] = useState('');
     const [trendingPage, setTrendingPage] = useState(0);
     const initialLoadRef = useRef(true);
+    const [topUpvoted, setTopUpvoted] = useState([]);
+    const [topUpvotedLoading, setTopUpvotedLoading] = useState(true);
+    const [topUpvotedError, setTopUpvotedError] = useState('');
+    const [topUpvotedPage, setTopUpvotedPage] = useState(0);
+    const topUpvotedInitialLoadRef = useRef(true);
     const [pageSize, setPageSize] = useState(() => {
         if (typeof window === 'undefined') return 4;
         return getTrendingPageSize(window.innerWidth);
@@ -192,9 +260,19 @@ const MainContent = () => {
     }, [trending.length, pageSize]);
     const maxTrendingPage = Math.max(0, totalTrendingPages - 1);
     const visibleTrending = useMemo(() => {
-        const startIndex = trendingPage * pageSize;
+        const startIndex = Math.min(trendingPage, maxTrendingPage) * pageSize;
         return trending.slice(startIndex, startIndex + pageSize);
-    }, [trending, trendingPage, pageSize]);
+    }, [trending, trendingPage, pageSize, maxTrendingPage]);
+
+    const totalTopUpvotedPages = useMemo(() => {
+        if (!topUpvoted.length) return 0;
+        return Math.ceil(topUpvoted.length / pageSize);
+    }, [topUpvoted.length, pageSize]);
+    const maxTopUpvotedPage = Math.max(0, totalTopUpvotedPages - 1);
+    const visibleTopUpvoted = useMemo(() => {
+        const startIndex = Math.min(topUpvotedPage, maxTopUpvotedPage) * pageSize;
+        return topUpvoted.slice(startIndex, startIndex + pageSize);
+    }, [topUpvoted, topUpvotedPage, pageSize, maxTopUpvotedPage]);
 
     useEffect(() => {
         let mounted = true;
@@ -208,7 +286,7 @@ const MainContent = () => {
                 setTrending(Array.isArray(data) ? data : []);
                 setTrendingError('');
                 if (!silent) setTrendingPage(0);
-            } catch (err) {
+            } catch {
                 if (!mounted) return;
                 if (!silent) {
                     setTrending([]);
@@ -232,33 +310,74 @@ const MainContent = () => {
     }, []);
 
     useEffect(() => {
+        let mounted = true;
+
+        const loadTopUpvoted = async (silent = false) => {
+            try {
+                if (!silent) setTopUpvotedLoading(true);
+                const response = await getTopUpvotedPosts(10);
+                const data = response?.data?.data;
+                if (!mounted) return;
+                const normalized = Array.isArray(data)
+                    ? data.map((item) => ({ ...item, userVote: item.userVote ?? null }))
+                    : [];
+                setTopUpvoted(normalized);
+                setTopUpvotedError('');
+                if (!silent) setTopUpvotedPage(0);
+            } catch {
+                if (!mounted) return;
+                if (!silent) {
+                    setTopUpvoted([]);
+                    setTopUpvotedError('Không thể tải dữ liệu top upvote.');
+                }
+            } finally {
+                if (!silent && mounted) setTopUpvotedLoading(false);
+                if (mounted) topUpvotedInitialLoadRef.current = false;
+            }
+        };
+
+        loadTopUpvoted(false);
+        const intervalId = setInterval(() => {
+            if (topUpvotedInitialLoadRef.current) return;
+            loadTopUpvoted(true);
+        }, 15000);
+        return () => {
+            mounted = false;
+            clearInterval(intervalId);
+        };
+    }, []);
+
+    useEffect(() => {
         if (typeof window === 'undefined') return undefined;
         const handleResize = () => setPageSize(getTrendingPageSize(window.innerWidth));
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    useEffect(() => {
-        if (trendingPage > maxTrendingPage) {
-            setTrendingPage(maxTrendingPage);
-        }
-    }, [trendingPage, maxTrendingPage]);
+    const safeTrendingPage = Math.min(trendingPage, maxTrendingPage);
+    const safeTopUpvotedPage = Math.min(topUpvotedPage, maxTopUpvotedPage);
     const sortOptions = [
         { label: 'Mới nhất', value: 'Newest' },
         { label: 'Nhiều lượt xem', value: 'MostViewed' },
         { label: 'Nhiều upvote', value: 'MostUpvoted' },
     ];
-    const canGoPrev = trendingPage > 0;
-    const canGoNext = trendingPage < maxTrendingPage;
+    const canGoPrev = safeTrendingPage > 0;
+    const canGoNext = safeTrendingPage < maxTrendingPage;
     const trendingPageLabel = totalTrendingPages
-        ? `${trendingPage + 1} / ${totalTrendingPages}`
+        ? `${safeTrendingPage + 1} / ${totalTrendingPages}`
         : '0 / 0';
-    const applyTrendingTagFilter = (tag) => {
+    const canGoPrevTopUpvoted = safeTopUpvotedPage > 0;
+    const canGoNextTopUpvoted = safeTopUpvotedPage < maxTopUpvotedPage;
+    const topUpvotedPageLabel = totalTopUpvotedPages
+        ? `${safeTopUpvotedPage + 1} / ${totalTopUpvotedPages}`
+        : '0 / 0';
+    const applyTagFilter = (tag) => {
         const normalized = String(tag || '').trim();
         if (!normalized) return;
         handleFilterChange?.('tags', normalized);
         handleApplyFilters?.({ tags: normalized });
     };
+
 
     const currentPage = pagination.page || 1;
     const totalPages = pagination.totalPages || 1;
@@ -277,7 +396,7 @@ const MainContent = () => {
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
-                            onClick={() => setTrendingPage((prev) => Math.max(0, prev - 1))}
+                            onClick={() => setTrendingPage((prev) => Math.min(maxTrendingPage, Math.max(0, prev - 1)))}
                             disabled={!canGoPrev}
                             className={`h-9 w-9 rounded-DEFAULT border border-outline-variant flex items-center justify-center transition-colors ${
                                 canGoPrev
@@ -331,8 +450,81 @@ const MainContent = () => {
                             <TrendingCard
                                 key={post._id}
                                 post={post}
-                                rank={trendingPage * pageSize + index + 1}
-                                onTagClick={applyTrendingTagFilter}
+                                rank={safeTrendingPage * pageSize + index + 1}
+                                onTagClick={applyTagFilter}
+                            />
+                        ))}
+                    </div>
+                )}
+            </section>
+
+            <section className="mb-stack-lg">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 className="font-headline-xl text-headline-xl text-on-surface tracking-wide">TOP UPVOTED</h2>
+                        <p className="font-body-sm text-body-sm text-secondary">
+                            Top 10 bài viết có nhiều upvote nhất hôm nay
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setTopUpvotedPage((prev) => Math.min(maxTopUpvotedPage, Math.max(0, prev - 1)))}
+                            disabled={!canGoPrevTopUpvoted}
+                            className={`h-9 w-9 rounded-DEFAULT border border-outline-variant flex items-center justify-center transition-colors ${
+                                canGoPrevTopUpvoted
+                                    ? 'bg-surface-container-lowest text-on-surface hover:bg-surface-container'
+                                    : 'bg-surface-container-low text-outline cursor-not-allowed'
+                            }`}
+                            aria-label="Trang trước"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                        </button>
+                        <span className="font-body-sm text-body-sm text-secondary">{topUpvotedPageLabel}</span>
+                        <button
+                            type="button"
+                            onClick={() => setTopUpvotedPage((prev) => Math.min(maxTopUpvotedPage, prev + 1))}
+                            disabled={!canGoNextTopUpvoted}
+                            className={`h-9 w-9 rounded-DEFAULT border border-outline-variant flex items-center justify-center transition-colors ${
+                                canGoNextTopUpvoted
+                                    ? 'bg-surface-container-lowest text-on-surface hover:bg-surface-container'
+                                    : 'bg-surface-container-low text-outline cursor-not-allowed'
+                            }`}
+                            aria-label="Trang tiếp"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                        </button>
+                    </div>
+                </div>
+
+                {topUpvotedLoading && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {Array.from({ length: pageSize }, (_, index) => (
+                            <TrendingCardSkeleton key={index} />
+                        ))}
+                    </div>
+                )}
+
+                {!topUpvotedLoading && topUpvotedError && (
+                    <div className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT p-4 text-secondary">
+                        {topUpvotedError}
+                    </div>
+                )}
+
+                {!topUpvotedLoading && !topUpvotedError && topUpvoted.length === 0 && (
+                    <div className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT p-4 text-secondary">
+                        Chưa có dữ liệu top upvote.
+                    </div>
+                )}
+
+                {!topUpvotedLoading && !topUpvotedError && topUpvoted.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {visibleTopUpvoted.map((post, index) => (
+                            <TopUpvotedCard
+                                key={post._id}
+                                post={post}
+                                rank={safeTopUpvotedPage * pageSize + index + 1}
+                                onTagClick={applyTagFilter}
                             />
                         ))}
                     </div>

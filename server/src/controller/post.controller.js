@@ -176,6 +176,24 @@ class PostController {
             });
         }
     }
+
+    async getTopUpvoted(req, res) {
+        try {
+            const data = await postService.getTopUpvoted(req.query);
+
+            res.status(200).json({
+                success: true,
+                message: 'Lay du lieu top upvote thanh cong',
+                data,
+            });
+        } catch (error) {
+            const status = error.status || 500;
+            res.status(status).json({
+                success: false,
+                message: error.message || 'Loi server khi lay du lieu top upvote',
+            });
+        }
+    }
 }
 
 export default new PostController();

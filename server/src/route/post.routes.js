@@ -21,6 +21,9 @@ router.get('/sidebar', postController.getPostDetailSidebar.bind(postController))
 // GET /api/posts/trending-today — Top 10 lượt xem trong ngày
 router.get('/trending-today', postController.getTrendingToday.bind(postController));
 
+// GET /api/posts/top-upvoted — Top 10 lượt upvote
+router.get('/top-upvoted', postController.getTopUpvoted.bind(postController));
+
 // GET /api/posts/:id — Xem chi tiết (Public)
 router.get('/:id',
   optionalAuthenticateToken,

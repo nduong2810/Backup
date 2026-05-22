@@ -13,10 +13,16 @@ const mapStatusFilter = (status) => {
     return normalized;
 };
 
+const VN_TZ_OFFSET_MIN = 7 * 60;
+
 const getTodayStart = () => {
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now;
+    const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+    const vnNow = new Date(utcMs + VN_TZ_OFFSET_MIN * 60000);
+    const vnStart = new Date(vnNow);
+    vnStart.setHours(0, 0, 0, 0);
+    const vnStartUtcMs = vnStart.getTime() - VN_TZ_OFFSET_MIN * 60000;
+    return new Date(vnStartUtcMs);
 };
 
 class PostService {
@@ -180,29 +186,58 @@ class PostService {
         const hasDownvoted = post.downvotes.some(id => id.toString() === userId);
 
         let userVote = null;
+        const todayStart = getTodayStart();
+        const dailyUpdates = {};
+        const applyDailyUpdate = (countField, dateField, delta, currentDate, currentCount) => {
+            if (!delta) return;
+            const sameDay = currentDate && currentDate.getTime() === todayStart.getTime();
+            if (sameDay) {
+                dailyUpdates[countField] = Math.max(0, (currentCount ?? 0) + delta);
+                dailyUpdates[dateField] = todayStart;
+                return;
+            }
+            if (delta > 0) {
+                dailyUpdates[countField] = 1;
+                dailyUpdates[dateField] = todayStart;
+            }
+        };
 
         if (voteType === 'upvote') {
             if (hasUpvoted) {
                 await postRepository.removeUpvote(postId, userId);
                 userVote = null;
+                applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', -1, post.dailyUpvoteDate, post.dailyUpvoteCount);
             } else {
                 if (hasDownvoted) {
                     await postRepository.removeDownvote(postId, userId);
+                    userVote = null;
+                    applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', -1, post.dailyDownvoteDate, post.dailyDownvoteCount);
+                } else {
+                    await postRepository.addUpvote(postId, userId);
+                    userVote = 'upvote';
+                    applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', 1, post.dailyUpvoteDate, post.dailyUpvoteCount);
                 }
-                await postRepository.addUpvote(postId, userId);
-                userVote = 'upvote';
             }
         } else if (voteType === 'downvote') {
             if (hasDownvoted) {
                 await postRepository.removeDownvote(postId, userId);
                 userVote = null;
+                applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', -1, post.dailyDownvoteDate, post.dailyDownvoteCount);
             } else {
                 if (hasUpvoted) {
                     await postRepository.removeUpvote(postId, userId);
+                    userVote = null;
+                    applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', -1, post.dailyUpvoteDate, post.dailyUpvoteCount);
+                } else {
+                    await postRepository.addDownvote(postId, userId);
+                    userVote = 'downvote';
+                    applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', 1, post.dailyDownvoteDate, post.dailyDownvoteCount);
                 }
-                await postRepository.addDownvote(postId, userId);
-                userVote = 'downvote';
             }
+        }
+
+        if (Object.keys(dailyUpdates).length > 0) {
+            await postRepository.updateDailyVoteStats(postId, dailyUpdates);
         }
 
         const updatedPost = await postRepository.findById(postId);
@@ -250,6 +285,20 @@ class PostService {
         return posts.map((post) => ({
             ...post,
             viewsToday: post.dailyViewCount ?? 0,
+            views: post.viewCount ?? 0,
+        }));
+    }
+
+    async getTopUpvoted(query = {}) {
+        const limitNum = Math.min(20, Math.max(1, parseInt(query.limit, 10) || 10));
+        const todayStart = getTodayStart();
+        const posts = await postRepository.findTopUpvoted(todayStart, limitNum);
+
+        return posts.map((post) => ({
+            ...post,
+            upvotesToday: post.dailyUpvoteCount ?? 0,
+            upvoteCount: post.upvoteCount ?? 0,
+            downvoteCount: post.downvoteCount ?? 0,
             views: post.viewCount ?? 0,
         }));
     }
