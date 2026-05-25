@@ -14,12 +14,18 @@ class PostRepository {
     }
 
     // Tăng viewCount +1 mỗi khi xem chi tiết bài viết
-    async incrementViewCount(postId) {
-        return await Post.findByIdAndUpdate(
-            postId,
-            { $inc: { viewCount: 1 } },
-            { new: true }
-        );
+    // Đồng thời cập nhật dailyViewCount để phục vụ trending trong ngày
+    async incrementViewCount(postId, options = {}) {
+        const { resetDaily = false, todayStart = null } = options;
+        const update = { $inc: { viewCount: 1 } };
+
+        if (resetDaily && todayStart) {
+            update.$set = { dailyViewCount: 1, dailyViewDate: todayStart };
+        } else if (todayStart) {
+            update.$inc.dailyViewCount = 1;
+        }
+
+        return await Post.findByIdAndUpdate(postId, update, { new: true });
     }
 
     // ==================== VOTE OPERATIONS ====================
@@ -124,6 +130,23 @@ class PostRepository {
                         },
                     },
                 },
+                {
+                    $lookup: {
+                        from: 'comments',
+                        let: { postId: '$_id' },
+                        pipeline: [
+                            { $match: { $expr: { $eq: ['$post', '$$postId'] } } },
+                            { $count: 'count' },
+                        ],
+                        as: 'answerMeta',
+                    },
+                },
+                {
+                    $addFields: {
+                        answerCount: { $ifNull: [{ $arrayElemAt: ['$answerMeta.count', 0] }, 0] },
+                    },
+                },
+                { $project: { answerMeta: 0 } },
                 { $sort: sortStage },
                 { $skip: skip },
                 { $limit: limit },
@@ -146,6 +169,7 @@ class PostRepository {
                         viewCount: 1,
                         upvoteCount: 1,
                         downvoteCount: 1,
+                        answerCount: 1,
                         createdAt: 1,
                         author: { fullName: 1, avatar: 1 },
                     },
@@ -178,6 +202,104 @@ class PostRepository {
                     },
                 },
             ]);
+        }
+
+        async findTrendingToday(todayStart, limit = 10) {
+            return await Post.aggregate([
+                {
+                    $match: {
+                        status: { $ne: 'deleted' },
+                        dailyViewDate: todayStart,
+                        dailyViewCount: { $gt: 0 },
+                    },
+                },
+                { $sort: { dailyViewCount: -1, viewCount: -1, createdAt: -1 } },
+                { $limit: limit },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'author',
+                        foreignField: '_id',
+                        as: 'author',
+                    },
+                },
+                { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+                {
+                    $project: {
+                        _id: 1,
+                        title: 1,
+                        tags: 1,
+                        images: 1,
+                        createdAt: 1,
+                        viewCount: 1,
+                        dailyViewCount: 1,
+                        author: { fullName: 1, avatar: 1 },
+                    },
+                },
+            ]);
+        }
+
+        async findTopUpvoted(todayStart, limit = 10) {
+            return await Post.aggregate([
+                {
+                    $match: {
+                        status: { $ne: 'deleted' },
+                        dailyUpvoteDate: todayStart,
+                        dailyUpvoteCount: { $gt: 0 },
+                    },
+                },
+                {
+                    $addFields: {
+                        upvoteCount: {
+                            $cond: [
+                                { $isArray: '$upvotes' },
+                                { $size: { $ifNull: ['$upvotes', []] } },
+                                { $ifNull: ['$upvotes', 0] },
+                            ],
+                        },
+                        downvoteCount: {
+                            $cond: [
+                                { $isArray: '$downvotes' },
+                                { $size: { $ifNull: ['$downvotes', []] } },
+                                { $ifNull: ['$downvotes', 0] },
+                            ],
+                        },
+                    },
+                },
+                { $sort: { dailyUpvoteCount: -1, upvoteCount: -1, createdAt: -1 } },
+                { $limit: limit },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'author',
+                        foreignField: '_id',
+                        as: 'author',
+                    },
+                },
+                { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
+                {
+                    $project: {
+                        _id: 1,
+                        title: 1,
+                        tags: 1,
+                        images: 1,
+                        createdAt: 1,
+                        viewCount: 1,
+                        dailyUpvoteCount: 1,
+                        upvoteCount: 1,
+                        downvoteCount: 1,
+                        author: { fullName: 1, avatar: 1 },
+                    },
+                },
+            ]);
+        }
+
+        async updateDailyVoteStats(postId, updates) {
+            return await Post.findByIdAndUpdate(
+                postId,
+                { $set: updates },
+                { new: true }
+            );
         }
 
         async findPopularTags(limit = 8) {

@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { registerUser, verifyRegisterOtp } from '../../services/authService';
+import { registerUser, resendRegisterOtp, verifyRegisterOtp } from '../../services/authService';
 
 const initialState = {
     step: 1, // 1: Đăng ký, 2: Xác thực OTP
@@ -53,6 +53,19 @@ export const verifyRegisterOtpThunk = createAsyncThunk(
     }
 );
 
+export const resendRegisterOtpThunk = createAsyncThunk(
+    'auth/resendOtp',
+    async (_, { getState, rejectWithValue }) => {
+        try {
+            const { registeredEmail } = getState().auth;
+            const response = await resendRegisterOtp(registeredEmail.trim());
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(extractError(error));
+        }
+    }
+);
+
 const authSlice = createSlice({
     name: 'auth',
     initialState,
@@ -87,6 +100,17 @@ const authSlice = createSlice({
                 state.successMessage = action.payload.message || 'Kích hoạt tài khoản thành công.';
             })
             .addCase(verifyRegisterOtpThunk.rejected, (state, action) => {
+                state.loading = false; state.errorMessage = action.payload;
+            })
+            // Xử lý Gửi lại OTP
+            .addCase(resendRegisterOtpThunk.pending, (state) => {
+                state.loading = true; state.errorMessage = ''; state.successMessage = '';
+            })
+            .addCase(resendRegisterOtpThunk.fulfilled, (state, action) => {
+                state.loading = false;
+                state.successMessage = action.payload.message || 'Đã gửi lại OTP.';
+            })
+            .addCase(resendRegisterOtpThunk.rejected, (state, action) => {
                 state.loading = false; state.errorMessage = action.payload;
             });
     },

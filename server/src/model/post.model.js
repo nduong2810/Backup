@@ -38,17 +38,47 @@ const postSchema = new mongoose.Schema({
     // Lưu mảng userId đã vote → dễ toggle, đếm tổng, kiểm tra trùng
     upvotes: [{ 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User' 
+        ref: 'User',
+        default: []
     }],
     downvotes: [{ 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User' 
+        ref: 'User',
+        default: []
     }],
 
     // Đếm lượt xem bài viết
     viewCount: { 
         type: Number, 
         default: 0 
+    },
+
+    // Lượt xem trong ngày (reset khi sang ngày mới)
+    dailyViewCount: {
+        type: Number,
+        default: 0
+    },
+    dailyViewDate: {
+        type: Date,
+        default: null
+    },
+
+    // Upvote/Downvote trong ngày (reset khi sang ngày mới)
+    dailyUpvoteCount: {
+        type: Number,
+        default: 0
+    },
+    dailyUpvoteDate: {
+        type: Date,
+        default: null
+    },
+    dailyDownvoteCount: {
+        type: Number,
+        default: 0
+    },
+    dailyDownvoteDate: {
+        type: Date,
+        default: null
     },
 
     // Trạng thái bài viết
@@ -78,6 +108,10 @@ postSchema.virtual('downvoteCount').get(function() {
 postSchema.index({ tags: 1 });
 // Index cho sắp xếp theo thời gian
 postSchema.index({ createdAt: -1 });
+// Index cho truy vấn trending trong ngày
+postSchema.index({ dailyViewDate: -1, dailyViewCount: -1 });
+// Index cho truy vấn top upvote trong ngày
+postSchema.index({ dailyUpvoteDate: -1, dailyUpvoteCount: -1 });
 
 const Post = mongoose.model('Post', postSchema);
 export default Post;

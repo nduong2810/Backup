@@ -13,6 +13,18 @@ const mapStatusFilter = (status) => {
     return normalized;
 };
 
+const VN_TZ_OFFSET_MIN = 7 * 60;
+
+const getTodayStart = () => {
+    const now = new Date();
+    const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+    const vnNow = new Date(utcMs + VN_TZ_OFFSET_MIN * 60000);
+    const vnStart = new Date(vnNow);
+    vnStart.setHours(0, 0, 0, 0);
+    const vnStartUtcMs = vnStart.getTime() - VN_TZ_OFFSET_MIN * 60000;
+    return new Date(vnStartUtcMs);
+};
+
 class PostService {
 
     // ==================== API 0: LẤY DANH SÁCH BÀI VIẾT ====================
@@ -120,7 +132,12 @@ class PostService {
 
         // 3. Tăng lượt xem (+1)
         if (incrementView) {
-            await postRepository.incrementViewCount(postId);
+            const todayStart = getTodayStart();
+            const sameDay = post.dailyViewDate && post.dailyViewDate.getTime() === todayStart.getTime();
+            await postRepository.incrementViewCount(postId, {
+                resetDaily: !sameDay,
+                todayStart,
+            });
         }
 
         // 4. Lấy danh sách comments + tổng số comment
@@ -133,8 +150,10 @@ class PostService {
         // 6. Trả về dữ liệu đầy đủ
         let userVote = null;
         if (userId) {
-            const hasUpvoted = post.upvotes.some(id => id.toString() === userId);
-            const hasDownvoted = post.downvotes.some(id => id.toString() === userId);
+            const upvotes = Array.isArray(post.upvotes) ? post.upvotes : [];
+            const downvotes = Array.isArray(post.downvotes) ? post.downvotes : [];
+            const hasUpvoted = upvotes.some(id => id.toString() === userId);
+            const hasDownvoted = downvotes.some(id => id.toString() === userId);
             if (hasUpvoted) userVote = 'upvote';
             else if (hasDownvoted) userVote = 'downvote';
         }
@@ -167,29 +186,58 @@ class PostService {
         const hasDownvoted = post.downvotes.some(id => id.toString() === userId);
 
         let userVote = null;
+        const todayStart = getTodayStart();
+        const dailyUpdates = {};
+        const applyDailyUpdate = (countField, dateField, delta, currentDate, currentCount) => {
+            if (!delta) return;
+            const sameDay = currentDate && currentDate.getTime() === todayStart.getTime();
+            if (sameDay) {
+                dailyUpdates[countField] = Math.max(0, (currentCount ?? 0) + delta);
+                dailyUpdates[dateField] = todayStart;
+                return;
+            }
+            if (delta > 0) {
+                dailyUpdates[countField] = 1;
+                dailyUpdates[dateField] = todayStart;
+            }
+        };
 
         if (voteType === 'upvote') {
             if (hasUpvoted) {
                 await postRepository.removeUpvote(postId, userId);
                 userVote = null;
+                applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', -1, post.dailyUpvoteDate, post.dailyUpvoteCount);
             } else {
                 if (hasDownvoted) {
                     await postRepository.removeDownvote(postId, userId);
+                    userVote = null;
+                    applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', -1, post.dailyDownvoteDate, post.dailyDownvoteCount);
+                } else {
+                    await postRepository.addUpvote(postId, userId);
+                    userVote = 'upvote';
+                    applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', 1, post.dailyUpvoteDate, post.dailyUpvoteCount);
                 }
-                await postRepository.addUpvote(postId, userId);
-                userVote = 'upvote';
             }
         } else if (voteType === 'downvote') {
             if (hasDownvoted) {
                 await postRepository.removeDownvote(postId, userId);
                 userVote = null;
+                applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', -1, post.dailyDownvoteDate, post.dailyDownvoteCount);
             } else {
                 if (hasUpvoted) {
                     await postRepository.removeUpvote(postId, userId);
+                    userVote = null;
+                    applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', -1, post.dailyUpvoteDate, post.dailyUpvoteCount);
+                } else {
+                    await postRepository.addDownvote(postId, userId);
+                    userVote = 'downvote';
+                    applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', 1, post.dailyDownvoteDate, post.dailyDownvoteCount);
                 }
-                await postRepository.addDownvote(postId, userId);
-                userVote = 'downvote';
             }
+        }
+
+        if (Object.keys(dailyUpdates).length > 0) {
+            await postRepository.updateDailyVoteStats(postId, dailyUpdates);
         }
 
         const updatedPost = await postRepository.findById(postId);
@@ -217,7 +265,7 @@ class PostService {
     async getPostDetailSidebarData() {
         const [hotQuestions, popularTags] = await Promise.all([
             postRepository.findHotNetworkQuestions(10),
-            postRepository.findPopularTags(8),
+            postRepository.findPopularTags(5),
         ]);
 
         return {
@@ -227,6 +275,32 @@ class PostService {
             })),
             popularTags,
         };
+    }
+
+    async getTrendingToday(query = {}) {
+        const limitNum = Math.min(20, Math.max(1, parseInt(query.limit, 10) || 10));
+        const todayStart = getTodayStart();
+        const posts = await postRepository.findTrendingToday(todayStart, limitNum);
+
+        return posts.map((post) => ({
+            ...post,
+            viewsToday: post.dailyViewCount ?? 0,
+            views: post.viewCount ?? 0,
+        }));
+    }
+
+    async getTopUpvoted(query = {}) {
+        const limitNum = Math.min(20, Math.max(1, parseInt(query.limit, 10) || 10));
+        const todayStart = getTodayStart();
+        const posts = await postRepository.findTopUpvoted(todayStart, limitNum);
+
+        return posts.map((post) => ({
+            ...post,
+            upvotesToday: post.dailyUpvoteCount ?? 0,
+            upvoteCount: post.upvoteCount ?? 0,
+            downvoteCount: post.downvoteCount ?? 0,
+            views: post.viewCount ?? 0,
+        }));
     }
 
     // ==================== HELPER: Xây dựng cây comment ====================

@@ -60,6 +60,10 @@ const loginSlice = createSlice({
       state.accessToken = null;
       state.isAuthenticated = false;
       state.redirectUrl = '';
+      state.loading = false;
+      state.successMessage = '';
+      state.errorMessage = '';
+      state.form = { email: '', password: '' };
 
       // Dọn sạch dấu vết đăng nhập ở LocalStorage
       localStorage.removeItem('user');

@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 
 const LeftSidebar = () => {
     return (
@@ -9,18 +10,36 @@ const LeftSidebar = () => {
                     <p className="font-body-sm text-body-sm text-secondary">Community Forum</p>
                 </div>
                 <div className="flex flex-col gap-1">
-                    <a className="bg-surface-container-high text-primary font-bold border-r-4 border-primary py-2 px-4 flex items-center gap-2 hover:bg-surface-container transition-colors" href="#">
+                    <NavLink
+                        to="/home"
+                        className={({ isActive }) =>
+                            `py-2 px-4 flex items-center gap-2 hover:bg-surface-container transition-colors ${
+                                isActive
+                                    ? 'bg-surface-container-high text-primary font-bold border-r-4 border-primary'
+                                    : 'text-secondary'
+                            }`
+                        }
+                    >
                         <span className="material-symbols-outlined text-[18px]">home</span>
                         <span>Home</span>
-                    </a>
+                    </NavLink>
                     <a className="text-secondary py-2 px-4 flex items-center gap-2 hover:bg-surface-container transition-colors" href="#">
                         <span className="material-symbols-outlined text-[18px]">help</span>
                         <span>Questions</span>
                     </a>
-                    <a className="text-secondary py-2 px-4 flex items-center gap-2 hover:bg-surface-container transition-colors" href="#">
+                    <NavLink
+                        to="/tags"
+                        className={({ isActive }) =>
+                            `py-2 px-4 flex items-center gap-2 hover:bg-surface-container transition-colors ${
+                                isActive
+                                    ? 'bg-surface-container-high text-primary font-bold border-r-4 border-primary'
+                                    : 'text-secondary'
+                            }`
+                        }
+                    >
                         <span className="material-symbols-outlined text-[18px]">sell</span>
                         <span>Tags</span>
-                    </a>
+                    </NavLink>
                     <a className="text-secondary py-2 px-4 flex items-center gap-2 hover:bg-surface-container transition-colors" href="#">
                         <span className="material-symbols-outlined text-[18px]">group</span>
                         <span>Users</span>

@@ -45,6 +45,23 @@ class AuthController {
         }
     }
 
+    async resendOTP(req, res) {
+        const validationError = this.checkValidationErrors(req, res);
+        if (validationError) return validationError;
+
+        try {
+            const { email } = req.body;
+            await authService.resendActivationOTP(email);
+
+            res.status(200).json({
+                message: "OTP đã được gửi lại. Vui lòng kiểm tra email"
+            });
+        } catch (error) {
+            const status = error.message === "Email không tồn tại" ? 404 : 400;
+            res.status(status).json({ message: error.message });
+        }
+    }
+
     async login(req, res) {
         const validationError = this.checkValidationErrors(req, res);
         if (validationError) return validationError;

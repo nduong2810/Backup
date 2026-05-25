@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from 'react';
+
 function SearchBar({
   placeholder = 'Tìm kiếm câu hỏi, tag, chủ đề...',
   className = '',
@@ -9,19 +11,34 @@ function SearchBar({
   showButton = true,
   showIcon = true,
 }) {
+  const [showHelper, setShowHelper] = useState(false);
+  const containerRef = useRef(null);
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       onSearch?.();
+      setShowHelper(false);
     }
   };
 
   const handleSearch = () => {
     onSearch?.();
+    setShowHelper(false);
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setShowHelper(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
-    <div className={`relative w-full ${className}`}>
+    <div ref={containerRef} className={`relative w-full ${className}`}>
       {/* Icon Search */}
       {showIcon && (
         <svg
@@ -47,6 +64,7 @@ function SearchBar({
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         onKeyDown={handleKeyDown}
+        onFocus={() => setShowHelper(true)}
         placeholder={placeholder}
         aria-label="Tìm kiếm bài đăng"
         className={`
@@ -81,6 +99,27 @@ function SearchBar({
         >
           Tìm
         </button>
+      )}
+
+      {showHelper && (
+        <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-lg p-4 z-50">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-600">
+            <div className="flex items-start gap-2">
+              <span className="font-mono text-slate-900">[tag]</span>
+              <span>Tìm trong tag cụ thể</span>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+            <span>Gợi ý cú pháp tìm kiếm</span>
+            <button
+              type="button"
+              onClick={() => setShowHelper(false)}
+              className="text-sky-600 hover:text-sky-700"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

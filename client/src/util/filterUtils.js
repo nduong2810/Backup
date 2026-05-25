@@ -5,6 +5,8 @@ export const DEFAULT_FILTERS = {
   sortBy: 'Newest',
   minViews: '',
   minUpvotes: '',
+  page: 1,
+  limit: 15,
 };
 
 export const parseFiltersFromSearchParams = (searchParams) => ({
@@ -14,7 +16,27 @@ export const parseFiltersFromSearchParams = (searchParams) => ({
   sortBy: searchParams.get('sortBy') ?? 'Newest',
   minViews: searchParams.get('minViews') ?? '',
   minUpvotes: searchParams.get('minUpvotes') ?? '',
+  page: Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1),
+  limit: Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '15', 10) || 15)),
 });
+
+export const parseSearchQuery = (query) => {
+  const value = query || '';
+  const tags = [];
+
+  let remaining = value;
+
+  const tagRegex = /\[([^\]]+)\]/g;
+  remaining = remaining.replace(tagRegex, (_, tagName) => {
+    if (tagName?.trim()) tags.push(tagName.trim());
+    return ' ';
+  });
+
+  return {
+    keyword: remaining.replace(/\s+/g, ' ').trim(),
+    tags: tags.join(', '),
+  };
+};
 
 export const buildSearchParams = (filters) => {
   const params = {};
@@ -31,6 +53,8 @@ export const buildSearchParams = (filters) => {
   if (filters.minUpvotes !== '' && filters.minUpvotes !== null && filters.minUpvotes !== undefined) {
     params.minUpvotes = String(filters.minUpvotes);
   }
+  if (filters.page && Number(filters.page) > 1) params.page = String(filters.page);
+  if (filters.limit && Number(filters.limit) !== 15) params.limit = String(filters.limit);
 
   return params;
 };
