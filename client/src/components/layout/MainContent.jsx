@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { Link, useOutletContext } from 'react-router-dom';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { getTopUpvotedPosts, getTrendingTodayPosts } from '../../services/postService';
+import SaveIconButton from '../ui/SaveIconButton';
+import { fetchCollectionsThunk, savePostToCollectionThunk, toggleSaveThunk } from '../../store/slices/savedSlice';
 
 const PER_PAGE_OPTIONS = [15, 30, 50];
 
@@ -33,11 +35,11 @@ const getPlainText = (value) => {
 // ==========================================
 // COMPONENT CON: Đại diện cho 1 câu hỏi
 // ==========================================
-const QuestionCard = ({ question }) => {
+const QuestionCard = ({ question, isSaved, onToggleSave }) => {
     const answerCount = question.answerCount ?? 0;
 
     return (
-        <article className="flex flex-col sm:flex-row gap-stack-md py-stack-md border-b border-outline-variant hover:bg-surface-container-low transition-colors px-2">
+        <article className="flex flex-col sm:flex-row gap-stack-md py-stack-md border-b border-outline-variant hover:bg-surface-container-low transition-colors px-3">
             {/* Cột thông số */}
             <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:w-24 flex-shrink-0 text-right">
                 <div className="font-body-sm text-body-sm text-on-surface flex items-center sm:justify-end gap-1">
@@ -53,11 +55,19 @@ const QuestionCard = ({ question }) => {
 
             {/* Cột Nội dung */}
             <div className="flex-1 min-w-0">
-                <h3 className="font-headline-md text-headline-md mb-1">
-                    <Link className="text-primary-container hover:text-primary-container/80 transition-colors break-words" to={`/posts/${question._id}`}>
-                        {question.title}
-                    </Link>
-                </h3>
+                <div className="flex items-start justify-between gap-5 pr-1">
+                    <h3 className="font-headline-md text-headline-md mb-1 flex-1 min-w-0">
+                        <Link className="text-primary-container hover:text-primary-container/80 transition-colors break-words" to={`/posts/${question._id}`}>
+                            {question.title}
+                        </Link>
+                    </h3>
+                    <SaveIconButton
+                        saved={isSaved}
+                        onClick={() => onToggleSave?.(question._id, isSaved)}
+                        className="-mt-1 ml-2 shrink-0"
+                        title={isSaved ? 'Bo luu bai viet' : 'Luu bai viet'}
+                    />
+                </div>
                 <p className="font-body-sm text-body-sm text-on-surface-variant mb-2 line-clamp-2">
                     {getPlainText(question.content) || 'Chua co noi dung.'}
                 </p>
@@ -237,7 +247,11 @@ const TrendingCardSkeleton = () => (
 // COMPONENT CHÍNH
 // ==========================================
 const MainContent = () => {
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
     const { list: questionsList, loading, error, pagination } = useSelector((state) => state.posts);
+    const { ids: savedIds, collections, loadingCollections } = useSelector((state) => state.saved);
+    const isAuthenticated = useSelector((state) => state.login.isAuthenticated);
     const { filters, handleFilterChange, handleApplyFilters } = useOutletContext();
     const [trending, setTrending] = useState([]);
     const [trendingLoading, setTrendingLoading] = useState(true);
@@ -253,11 +267,40 @@ const MainContent = () => {
         if (typeof window === 'undefined') return 4;
         return getTrendingPageSize(window.innerWidth);
     });
+    const [saveModalOpen, setSaveModalOpen] = useState(false);
+    const [savePostId, setSavePostId] = useState(null);
+    const [selectedCollectionId, setSelectedCollectionId] = useState('');
 
     const totalTrendingPages = useMemo(() => {
         if (!trending.length) return 0;
         return Math.ceil(trending.length / pageSize);
     }, [trending.length, pageSize]);
+
+    const savedIdSet = useMemo(() => new Set(savedIds), [savedIds]);
+
+    const handleToggleSave = (postId, isSaved) => {
+        if (!isAuthenticated) {
+            navigate('/auth/login');
+            return;
+        }
+        if (isSaved) {
+            dispatch(toggleSaveThunk(postId));
+            return;
+        }
+        setSavePostId(postId);
+        setSaveModalOpen(true);
+        dispatch(fetchCollectionsThunk());
+    };
+    const handleConfirmSaveToCollection = async () => {
+        if (!savePostId) return;
+        await dispatch(savePostToCollectionThunk({
+            postId: savePostId,
+            collectionId: selectedCollectionId || null,
+        }));
+        setSaveModalOpen(false);
+        setSavePostId(null);
+        setSelectedCollectionId('');
+    };
     const maxTrendingPage = Math.max(0, totalTrendingPages - 1);
     const visibleTrending = useMemo(() => {
         const startIndex = Math.min(trendingPage, maxTrendingPage) * pageSize;
@@ -388,7 +431,7 @@ const MainContent = () => {
             <section className="mb-stack-lg">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <div>
-                        <h2 className="font-headline-xl text-headline-xl text-on-surface tracking-wide">TRENDING TODAY</h2>
+                        <h2 className="font-headline-xl text-headline-xl text-on-surface tracking-wide">Trending Today</h2>
                         <p className="font-body-sm text-body-sm text-secondary">
                             Top 10 bài viết có lượt xem cao nhất hôm nay
                         </p>
@@ -461,7 +504,7 @@ const MainContent = () => {
             <section className="mb-stack-lg">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <div>
-                        <h2 className="font-headline-xl text-headline-xl text-on-surface tracking-wide">TOP UPVOTED</h2>
+                        <h2 className="font-headline-xl text-headline-xl text-on-surface tracking-wide">Top Upvoted</h2>
                         <p className="font-body-sm text-body-sm text-secondary">
                             Top 10 bài viết có nhiều upvote nhất hôm nay
                         </p>
@@ -575,7 +618,12 @@ const MainContent = () => {
                 {/* Render danh sách bài viết từ Backend */}
                 {!loading && !error && questionsList && questionsList.length > 0 && (
                     questionsList.map((q) => (
-                        <QuestionCard key={q._id} question={q} />
+                        <QuestionCard
+                            key={q._id}
+                            question={q}
+                            isSaved={savedIdSet.has(q._id)}
+                            onToggleSave={handleToggleSave}
+                        />
                     ))
                 )}
 
@@ -646,8 +694,65 @@ const MainContent = () => {
                     </div>
                 </div>
             )}
+
+            {saveModalOpen && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setSaveModalOpen(false);
+                            setSavePostId(null);
+                            setSelectedCollectionId('');
+                        }}
+                        className="absolute inset-0 bg-black/45"
+                        aria-label="Đóng"
+                    />
+                    <div className="relative w-full max-w-md rounded-xl border border-outline-variant bg-surface-container-lowest shadow-xl">
+                        <div className="px-5 py-4 border-b border-outline-variant">
+                            <h3 className="text-lg font-semibold text-on-surface">Lưu bài viết vào thư mục</h3>
+                        </div>
+                        <div className="px-5 py-4">
+                            <label className="block text-sm text-secondary mb-2">Chọn thư mục</label>
+                            <select
+                                value={selectedCollectionId}
+                                onChange={(event) => setSelectedCollectionId(event.target.value)}
+                                className="w-full rounded-DEFAULT border border-outline-variant px-3 py-2 text-sm bg-surface-container-lowest"
+                            >
+                                <option value="">Lưu vào thư mục mặc định (Lưu trữ)</option>
+                                {collections.filter((collection) => !collection.isDefault).map((collection) => (
+                                    <option key={collection._id} value={collection._id}>
+                                        {collection.isDefault ? 'Lưu trữ' : collection.name}
+                                    </option>
+                                ))}
+                            </select>
+                            {loadingCollections && <p className="text-xs text-secondary mt-2">Đang tải thư mục...</p>}
+                        </div>
+                        <div className="px-5 py-4 border-t border-outline-variant flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSaveModalOpen(false);
+                                    setSavePostId(null);
+                                    setSelectedCollectionId('');
+                                }}
+                                className="px-3 py-1.5 text-sm rounded-DEFAULT border border-outline-variant hover:bg-surface-container-low"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmSaveToCollection}
+                                className="px-3 py-1.5 text-sm rounded-DEFAULT bg-primary text-white hover:bg-primary/90"
+                            >
+                                Lưu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 };
 
 export default MainContent;
+

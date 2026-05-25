@@ -1,20 +1,23 @@
-import { useParams, useNavigate } from 'react-router-dom';
+﻿import { useState } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import usePostDetail from '../../hook/usePostDetail';
 import ImageSlider from '../../components/post/ImageSlider';
 import VoteSidebar from '../../components/post/VoteSidebar';
 import PostContent from '../../components/post/PostContent';
 import CommentSection from '../../components/post/CommentSection';
 import RelatedPosts from '../../components/post/RelatedPosts';
-
-// ====================================================================
-// PostDetailPage — Trang chi tiết bài viết
-// Sử dụng usePostDetail hook → Component chỉ lo render UI
-// Đã tích hợp design tokens từ hệ thống thiết kế chính
-// ====================================================================
+import { fetchCollectionsThunk, savePostToCollectionThunk, toggleSaveThunk } from '../../store/slices/savedSlice';
 
 export default function PostDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
+  const { ids: savedIds, collections, loadingCollections } = useSelector((state) => state.saved);
+  const isAuthenticated = useSelector((state) => state.login.isAuthenticated);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [selectedCollectionId, setSelectedCollectionId] = useState('');
 
   const {
     post,
@@ -30,7 +33,6 @@ export default function PostDetailPage() {
     relatedPosts,
   } = usePostDetail(id);
 
-  // === Loading state ===
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -40,7 +42,6 @@ export default function PostDetailPage() {
     );
   }
 
-  // === Error state ===
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -62,11 +63,43 @@ export default function PostDetailPage() {
 
   if (!post) return null;
 
+  const isSaved = savedIds.includes(post._id);
+  const handleToggleSave = () => {
+    if (!isAuthenticated) {
+      navigate('/auth/login');
+      return;
+    }
+
+    if (isSaved) {
+      dispatch(toggleSaveThunk(post._id));
+      return;
+    }
+
+    setSaveModalOpen(true);
+    dispatch(fetchCollectionsThunk());
+  };
+
+  const handleConfirmSaveToCollection = async () => {
+    await dispatch(savePostToCollectionThunk({
+      postId: post._id,
+      collectionId: selectedCollectionId || null,
+    }));
+    setSaveModalOpen(false);
+    setSelectedCollectionId('');
+  };
+
+  const handleBack = () => {
+    if (location.state?.from === '/user/saves') {
+      navigate('/user/saves');
+      return;
+    }
+    navigate(-1);
+  };
+
   return (
     <div className="flex-1 min-w-0 max-w-4xl mx-auto pb-12">
-      {/* Nút quay lại */}
       <button
-        onClick={() => navigate(-1)}
+        onClick={handleBack}
         className="flex items-center gap-1 font-body-sm text-body-sm text-secondary hover:text-primary transition-colors mb-4"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -75,9 +108,7 @@ export default function PostDetailPage() {
         Quay lại
       </button>
 
-      {/* Content Grid: Vote Sidebar + Post Body */}
       <div className="flex gap-4 sm:gap-6">
-        {/* Vote Sidebar — ẩn trên mobile nhỏ */}
         <div className="hidden sm:block">
           <VoteSidebar
             upvoteCount={upvoteCount}
@@ -88,11 +119,14 @@ export default function PostDetailPage() {
           />
         </div>
 
-        {/* Nội dung bài viết */}
-        <PostContent post={post} commentCount={commentCount} />
+        <PostContent
+          post={post}
+          commentCount={commentCount}
+          isSaved={isSaved}
+          onToggleSave={handleToggleSave}
+        />
       </div>
 
-      {/* Vote Mobile — hiện trên mobile */}
       <div className="sm:hidden flex items-center justify-center gap-4 mt-4 py-3 bg-surface-container-lowest rounded-xl border border-outline-variant">
         <button
           onClick={() => handleVote('upvote')}
@@ -127,20 +161,72 @@ export default function PostDetailPage() {
         </button>
       </div>
 
-      {/* Swiper Image Slider (đặt cuối bài, trước phần bình luận) */}
       <div className="mt-10 sm:mt-12">
         <ImageSlider images={post.images} />
       </div>
 
-      {/* Bình luận */}
       <CommentSection
         comments={comments}
         commentCount={commentCount}
         postAuthorId={post.author?._id}
       />
 
-      {/* Bài viết liên quan */}
       <RelatedPosts posts={relatedPosts} />
+
+      {saveModalOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <button
+            type="button"
+            onClick={() => {
+              setSaveModalOpen(false);
+              setSelectedCollectionId('');
+            }}
+            className="absolute inset-0 bg-black/45"
+            aria-label="Đóng"
+          />
+          <div className="relative w-full max-w-md rounded-xl border border-outline-variant bg-surface-container-lowest shadow-xl">
+            <div className="px-5 py-4 border-b border-outline-variant">
+              <h3 className="text-lg font-semibold text-on-surface">Lưu bài viết vào thư mục</h3>
+            </div>
+            <div className="px-5 py-4">
+              <label className="block text-sm text-secondary mb-2">Chọn thư mục</label>
+              <select
+                value={selectedCollectionId}
+                onChange={(event) => setSelectedCollectionId(event.target.value)}
+                className="w-full rounded-DEFAULT border border-outline-variant px-3 py-2 text-sm bg-surface-container-lowest"
+              >
+                <option value="">Lưu vào thư mục mặc định (Lưu trữ)</option>
+                {collections.filter((collection) => !collection.isDefault).map((collection) => (
+                  <option key={collection._id} value={collection._id}>
+                    {collection.isDefault ? 'Lưu trữ' : collection.name}
+                  </option>
+                ))}
+              </select>
+              {loadingCollections && <p className="text-xs text-secondary mt-2">Đang tải thư mục...</p>}
+            </div>
+            <div className="px-5 py-4 border-t border-outline-variant flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSaveModalOpen(false);
+                  setSelectedCollectionId('');
+                }}
+                className="px-3 py-1.5 text-sm rounded-DEFAULT border border-outline-variant hover:bg-surface-container-low"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSaveToCollection}
+                className="px-3 py-1.5 text-sm rounded-DEFAULT bg-primary text-white hover:bg-primary/90"
+              >
+                Lưu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
