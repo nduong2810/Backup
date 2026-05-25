@@ -3,7 +3,7 @@ import authController from '../controller/auth.controller.js';
 import userController from '../controller/user.controller.js';
 import { authLimiter } from '../middleware/rateLimit.middleware.js';
 import { authenticateToken, authorizeRole } from '../middleware/auth.middleware.js';
-import { forgotPasswordValidation, loginValidation, resetPasswordValidation,  registerValidation, verifyOtpValidation} from '../validation/auth.validation.js';
+import { forgotPasswordValidation, loginValidation, resendOtpValidation, resetPasswordValidation, registerValidation, verifyOtpValidation } from '../validation/auth.validation.js';
 
 const router = express.Router();
 
@@ -19,6 +19,12 @@ router.post('/verify-otp',
     authLimiter,                                    // Lớp 2: Rate Limiting chống dò mã OTP
     verifyOtpValidation,                            // Lớp 1: Kiểm tra đầu vào
     authController.verifyOTP.bind(authController)
+);
+
+router.post('/resend-otp',
+    authLimiter,
+    resendOtpValidation,
+    authController.resendOTP.bind(authController)
 );
 
 // ==================== LOGIN ====================

@@ -1,35 +1,58 @@
 import userRepository from '../repository/user.repository.js';
+import pendingUserRepository from '../repository/pendingUser.repository.js';
 import sendEmail from '../util/email.util.js';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import env from '../config/environment.js';
 
+const OTP_EXPIRES_IN_MS = 5 * 60 * 1000;
+
+const generateOtpPayload = () => {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + OTP_EXPIRES_IN_MS);
+    return { otp, otpExpiry };
+};
+
 class AuthService {
 
     // Logic Đăng ký tài khoản
     async registerUser(fullName, email, password) {
         const existingUser = await userRepository.findByEmail(email);
-        if (existingUser) throw new Error("Email đã được sử dụng");
+        if (existingUser && existingUser.isActive) throw new Error("Email đã được sử dụng");
 
         // Hash mật khẩu
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Tạo OTP 6 số và Hạn 5 phút
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpiry = Date.now() + 5 * 60 * 1000;
+        const { otp, otpExpiry } = generateOtpPayload();
 
-        // Lưu thông tin người dùng (isActive: false)
-        await userRepository.createUser({
-            fullName,
-            email,
-            password: hashedPassword,
-            otp,
-            otpExpiry,
-            role: "user",
-            isActive: false
-        });
+        if (existingUser && !existingUser.isActive) {
+            await userRepository.updateUserByEmail(email, {
+                fullName,
+                password: hashedPassword,
+                otp,
+                otpExpiry
+            });
+        } else {
+            const pendingUser = await pendingUserRepository.findByEmail(email);
+            if (pendingUser) {
+                await pendingUserRepository.updatePendingUserByEmail(email, {
+                    fullName,
+                    password: hashedPassword,
+                    otp,
+                    otpExpiry
+                });
+            } else {
+                await pendingUserRepository.createPendingUser({
+                    fullName,
+                    email,
+                    password: hashedPassword,
+                    otp,
+                    otpExpiry
+                });
+            }
+        }
 
         // Gửi email chứa OTP
         const message = `Mã OTP kích hoạt tài khoản của bạn là: ${otp}\nMã có hiệu lực trong 5 phút.`;
@@ -38,6 +61,36 @@ class AuthService {
 
     //  Logic Xác thực OTP kích hoạt
     async verifyActivationOTP(email, otp) {
+        const pendingUser = await pendingUserRepository.findByEmail(email);
+
+        if (pendingUser) {
+            if (pendingUser.otp !== otp) throw new Error("OTP không chính xác");
+            if (Date.now() > pendingUser.otpExpiry) throw new Error("OTP đã hết hạn");
+
+            const existingUser = await userRepository.findByEmail(email);
+            if (existingUser) {
+                if (existingUser.isActive) throw new Error("Tài khoản đã được kích hoạt");
+                await userRepository.updateUserByEmail(email, {
+                    isActive: true,
+                    otp: null,
+                    otpExpiry: null
+                });
+                await pendingUserRepository.deleteByEmail(email);
+                return;
+            }
+
+            await userRepository.createUser({
+                fullName: pendingUser.fullName,
+                email: pendingUser.email,
+                password: pendingUser.password,
+                role: "user",
+                isActive: true
+            });
+
+            await pendingUserRepository.deleteByEmail(email);
+            return;
+        }
+
         const user = await userRepository.findByEmail(email);
 
         if (!user) throw new Error("Email không tồn tại");
@@ -51,6 +104,32 @@ class AuthService {
             otp: null,
             otpExpiry: null
         });
+    }
+
+    async resendActivationOTP(email) {
+        const pendingUser = await pendingUserRepository.findByEmail(email);
+        const { otp, otpExpiry } = generateOtpPayload();
+
+        if (pendingUser) {
+            await pendingUserRepository.updatePendingUserByEmail(email, { otp, otpExpiry });
+
+            const message = `Mã OTP kích hoạt tài khoản của bạn là: ${otp}\nMã có hiệu lực trong 5 phút.`;
+            await sendEmail(email, "Kích hoạt tài khoản Forum", message);
+            return;
+        }
+
+        const user = await userRepository.findByEmail(email);
+
+        if (!user) throw new Error("Email không tồn tại");
+        if (user.isActive) throw new Error("Tài khoản đã được kích hoạt");
+
+        await userRepository.updateUserByEmail(email, {
+            otp,
+            otpExpiry
+        });
+
+        const message = `Mã OTP kích hoạt tài khoản của bạn là: ${otp}\nMã có hiệu lực trong 5 phút.`;
+        await sendEmail(email, "Kích hoạt tài khoản Forum", message);
     }
 
     async login(email, password) {
@@ -91,7 +170,7 @@ class AuthService {
 
         // Tạo OTP 6 số ngẫu nhiên
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpiry = Date.now() + 5 * 60 * 1000; // Hạn 5 phút
+        const otpExpiry = new Date(Date.now() + OTP_EXPIRES_IN_MS); // Hạn 5 phút
 
         await userRepository.updateUserByEmail(email, {
             resetOTP: otp,

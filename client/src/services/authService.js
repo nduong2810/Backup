@@ -20,5 +20,8 @@ export const registerUser = (userData) =>
 export const verifyRegisterOtp = (email, otp) =>
   apiClient.post('/auth/verify-otp', { email, otp });
 
+export const resendRegisterOtp = (email) =>
+  apiClient.post('/auth/resend-otp', { email });
+
 export const loginUser = (email, password) =>
   apiClient.post('/auth/login', { email, password });

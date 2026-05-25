@@ -5,6 +5,7 @@ import {
     setAuthField,
     resetAuthState,
     registerThunk,
+    resendRegisterOtpThunk,
     verifyRegisterOtpThunk
 } from '../../store/slices/authSlice';
 
@@ -48,6 +49,11 @@ export default function RegisterPage() {
         dispatch(resetAuthState());
     };
 
+    const handleResendOtp = async () => {
+        const resultAction = await dispatch(resendRegisterOtpThunk());
+        return resendRegisterOtpThunk.fulfilled.match(resultAction);
+    };
+
     return (
         <AuthLayout>
 
@@ -72,6 +78,7 @@ export default function RegisterPage() {
                     successMessage={successMessage}
                     onSubmitOTP={handleVerifyOtpSubmit}
                     onBack={handleBackToRegister}
+                    onResendOTP={handleResendOtp}
                 />
             )}
 

@@ -29,7 +29,7 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
 
   return (
     <header className="bg-surface-container-lowest dark:bg-inverse-surface border-b border-outline-variant dark:border-outline shadow-sm dark:shadow-none docked full-width top-0 sticky z-50">
-      <div className="flex items-center h-16 w-full px-4 lg:px-6 max-w-none mx-auto">
+      <div className="grid grid-cols-[auto,1fr,auto] items-center h-16 w-full px-4 lg:px-6 max-w-none mx-auto gap-4">
         <div className="flex items-center gap-4 shrink-0">
           <div className="flex items-center gap-2 lg:w-56">
             <Link className="flex items-center gap-2 font-headline-lg text-headline-lg font-bold text-on-surface dark:text-inverse-on-surface" to="/home">
@@ -37,25 +37,27 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
               <span>ITForum</span>
             </Link>
           </div>
-          <nav className="hidden md:flex gap-3">
+          <nav className="hidden md:flex gap-4">
             <a className="text-secondary dark:text-secondary-fixed-dim font-body-md text-body-md hover:text-primary hover:bg-surface-container-low transition-colors duration-200 px-2 py-1 rounded" href="#">About</a>
             <a className="text-secondary dark:text-secondary-fixed-dim font-body-md text-body-md hover:text-primary hover:bg-surface-container-low transition-colors duration-200 px-2 py-1 rounded" href="#">Products</a>
             <a className="text-secondary dark:text-secondary-fixed-dim font-body-md text-body-md hover:text-primary hover:bg-surface-container-low transition-colors duration-200 px-2 py-1 rounded" href="#">For Teams</a>
           </nav>
         </div>
 
-        <div className="flex-1 max-w-xl px-4 hidden lg:block">
-          <SearchBar
-            value={searchValue}
-            onChange={onSearchChange}
-            onSearch={onSearch}
-            className="max-w-xl"
-            showButton={false}
-            inputClassName="bg-surface-container-lowest border-outline-variant rounded-DEFAULT pl-10 pr-4 py-2 font-body-sm text-body-sm focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 text-on-surface placeholder:text-outline shadow-none"
-          />
+        <div className="hidden lg:flex w-full justify-center">
+          <div className="w-full max-w-xl">
+            <SearchBar
+              value={searchValue}
+              onChange={onSearchChange}
+              onSearch={onSearch}
+              className="w-full"
+              showButton={false}
+              inputClassName="bg-surface-container-lowest border-outline-variant rounded-DEFAULT pl-10 pr-4 py-2 font-body-sm text-body-sm focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 text-on-surface placeholder:text-outline shadow-none"
+            />
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-4 shrink-0 justify-end min-w-[220px] lg:min-w-[320px] lg:max-w-[320px]">
           <button className="bg-primary-container hover:bg-primary-container/90 text-on-primary font-label-mono text-label-mono px-4 py-2 rounded-DEFAULT transition-colors">
             Ask Question
           </button>
@@ -64,14 +66,14 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
             <div ref={menuRef} className="relative hidden md:block">
               <button
                 onClick={() => setMenuOpen((prev) => !prev)}
-                className="flex items-center gap-2 px-2 py-1 rounded-DEFAULT hover:bg-surface-container-low transition-colors"
+                className="flex items-center gap-2 px-2 py-1 min-w-0 rounded-DEFAULT hover:bg-surface-container-low transition-colors"
               >
                 <img
                   alt="User Avatar"
                   className="w-8 h-8 rounded-full border border-outline-variant object-cover"
                   src={user.avatar || 'https://i.pravatar.cc/150'}
                 />
-                <span className="font-body-sm text-body-sm font-semibold">
+                <span className="font-body-sm text-body-sm font-semibold max-w-[160px] truncate">
                   Hi, {user.fullName || user.username}
                 </span>
                 <span className="material-symbols-outlined text-[18px] text-secondary">expand_more</span>

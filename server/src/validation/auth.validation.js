@@ -4,6 +4,10 @@ export const forgotPasswordValidation = [
     body('email').isEmail().normalizeEmail().withMessage('Email không hợp lệ')
 ];
 
+export const resendOtpValidation = [
+    body('email').isEmail().normalizeEmail().withMessage('Email không hợp lệ')
+];
+
 export const loginValidation = [
     body('email')
         .isEmail().withMessage('Email không hợp lệ')
