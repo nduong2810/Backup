@@ -5,6 +5,7 @@ import authReducer from './slices/authSlice';
 import loginReducer from './slices/loginSlice';
 import postReducer from './slices/postSlice'; 
 import tagReducer from './slices/tagSlice';
+import reportReducer from './slices/reportSlice';
 
 const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ const store = configureStore({
     login: loginReducer,
     posts: postReducer,
     tags: tagReducer,
+    reports: reportReducer,
   },
 });
 

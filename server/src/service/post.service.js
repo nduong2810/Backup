@@ -40,7 +40,8 @@ class PostService {
             limit = 15,
         } = query;
 
-        const filter = {};
+        // Mặc định ẩn bài đã xóa khỏi danh sách public.
+        const filter = { status: { $ne: 'deleted' } };
 
         if (keyword.trim()) {
             const regex = new RegExp(keyword.trim(), 'i');
@@ -58,7 +59,8 @@ class PostService {
         }
 
         if (status && status !== 'All') {
-            filter.status = mapStatusFilter(status);
+            const mappedStatus = mapStatusFilter(status);
+            filter.status = mappedStatus;
         }
 
         if (minViews !== '' && !isNaN(Number(minViews))) {

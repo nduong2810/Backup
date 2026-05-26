@@ -4,6 +4,7 @@ import userRoutes from './user.routes.js'
 import adminRoutes from './admin.routes.js'
 import postRoutes from './post.routes.js'
 import tagRoutes from './tag.routes.js'
+import reportRoutes from './report.routes.js'
 
 const router = express.Router()
 
@@ -13,6 +14,7 @@ router.use('/user', userRoutes)
 router.use('/admin', adminRoutes)
 router.use('/posts', postRoutes)
 router.use('/tags', tagRoutes)
+router.use('/reports', reportRoutes)
 
 // Health check
 router.get('/health', (req, res) => {

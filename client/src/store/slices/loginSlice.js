@@ -3,6 +3,9 @@ import { loginUser } from '../../services/authService';
 import apiClient from '../../lib/apiClient';
 
 // 1. Cập nhật initialState: Kiểm tra localStorage để giữ phiên đăng nhập khi F5
+const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+const storedToken = localStorage.getItem('accessToken');
+
 const initialState = {
   form: {
     email: '',
@@ -12,11 +15,11 @@ const initialState = {
   successMessage: '',
   errorMessage: '',
   // Lấy user và token từ bộ nhớ trình duyệt (nếu có)
-  user: JSON.parse(localStorage.getItem('user')) || null,
-  accessToken: localStorage.getItem('accessToken') || null,
+  user: storedUser,
+  accessToken: storedToken || null,
   redirectUrl: '',
   // Nếu có accessToken trong máy thì đánh dấu là đã đăng nhập
-  isAuthenticated: !!localStorage.getItem('accessToken'),
+  isAuthenticated: !!(storedToken || storedUser),
 };
 
 const extractError = (error) => {

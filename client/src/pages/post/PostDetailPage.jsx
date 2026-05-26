@@ -1,20 +1,64 @@
-import { useParams, useNavigate } from 'react-router-dom';
+﻿import { useParams, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { useState } from 'react';
 import usePostDetail from '../../hook/usePostDetail';
 import ImageSlider from '../../components/post/ImageSlider';
 import VoteSidebar from '../../components/post/VoteSidebar';
 import PostContent from '../../components/post/PostContent';
 import CommentSection from '../../components/post/CommentSection';
 import RelatedPosts from '../../components/post/RelatedPosts';
+import {
+  clearReportCreateMessages,
+  createReportTicketThunk,
+  fetchPostFlagSummaryThunk,
+} from '../../store/slices/reportSlice';
 
-// ====================================================================
-// PostDetailPage — Trang chi tiết bài viết
-// Sử dụng usePostDetail hook → Component chỉ lo render UI
-// Đã tích hợp design tokens từ hệ thống thiết kế chính
-// ====================================================================
+const flagOptions = [
+  { value: 'spam', label: 'Xóa vì spam quảng cáo hàng loạt' },
+  { value: 'rude_abusive', label: 'Xóa vì công kích/xúc phạm' },
+  { value: 'off_topic', label: 'Không đúng chủ đề cộng đồng' },
+  { value: 'needs_detail', label: 'Cần thêm chi tiết hoặc làm rõ' },
+  { value: 'needs_focus', label: 'Cần tập trung vào một vấn đề cụ thể' },
+  { value: 'opinion_based', label: 'Dựa trên quan điểm cá nhân' },
+  { value: 'duplicate', label: 'Trùng bài viết/câu hỏi đã có' },
+  { value: 'very_low_quality', label: 'Chất lượng rất thấp, khó cứu vãn' },
+  { value: 'moderator_attention', label: 'Cần moderator xem thủ công' },
+];
+
+const flagTypeLabelMap = {
+  spam: 'Spam quảng cáo hàng loạt',
+  rude_abusive: 'Công kích/xúc phạm',
+  off_topic: 'Lạc chủ đề cộng đồng',
+  needs_detail: 'Cần thêm chi tiết/làm rõ',
+  needs_focus: 'Cần tập trung vào một vấn đề cụ thể',
+  opinion_based: 'Dựa trên quan điểm cá nhân',
+  duplicate: 'Trùng bài viết/câu hỏi đã có',
+  very_low_quality: 'Chất lượng rất thấp, khó cứu vãn',
+  moderator_attention: 'Cần moderator xem thủ công',
+};
+
+const postStatusLabelMap = {
+  active: 'Đang hiển thị',
+  closed: 'Đã khóa',
+  deleted: 'Đã xóa',
+};
 
 export default function PostDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.login);
+  const {
+    creating,
+    createSuccessMessage,
+    createErrorMessage,
+    ownerSummary,
+    loadingOwnerSummary,
+    ownerSummaryErrorMessage,
+  } = useSelector((state) => state.reports);
+  const [flagType, setFlagType] = useState('');
+  const [details, setDetails] = useState('');
+  const [showOwnerSummary, setShowOwnerSummary] = useState(false);
 
   const {
     post,
@@ -30,30 +74,25 @@ export default function PostDetailPage() {
     relatedPosts,
   } = usePostDetail(id);
 
-  // === Loading state ===
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-3">
-        <div className="w-10 h-10 border-4 border-outline-variant border-t-primary rounded-full animate-spin" />
-        <p className="text-secondary font-body-sm text-body-sm">Đang tải bài viết...</p>
+      <div className="flex flex-col items-center justify-center gap-3 py-20">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-outline-variant border-t-primary" />
+        <p className="text-body-sm font-body-sm text-secondary">Đang tải bài viết...</p>
       </div>
     );
   }
 
-  // === Error state ===
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <div className="w-16 h-16 rounded-full bg-error-container flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex flex-col items-center justify-center gap-4 py-20">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-error-container">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
         </div>
-        <p className="text-error font-body-md text-body-md font-medium">{error}</p>
-        <button
-          onClick={() => navigate(-1)}
-          className="font-body-sm text-body-sm text-primary hover:underline"
-        >
+        <p className="text-body-md font-body-md font-medium text-error">{error}</p>
+        <button onClick={() => navigate(-1)} className="text-body-sm font-body-sm text-primary hover:underline">
           ← Quay lại
         </button>
       </div>
@@ -61,23 +100,37 @@ export default function PostDetailPage() {
   }
 
   if (!post) return null;
+  const isPostOwner = user?._id && post?.author?._id && user._id === post.author._id;
+
+  const handleSubmitReport = async (event) => {
+    event.preventDefault();
+    if (!user?._id) {
+      alert('Bạn cần đăng nhập để gửi cờ báo cáo.');
+      return;
+    }
+
+    if (!flagType) return;
+
+    const action = await dispatch(createReportTicketThunk({ postId: id, flagType, details: details.trim() }));
+    if (createReportTicketThunk.fulfilled.match(action)) {
+      setFlagType('');
+      setDetails('');
+    }
+  };
 
   return (
-    <div className="flex-1 min-w-0 max-w-4xl mx-auto pb-12">
-      {/* Nút quay lại */}
+    <div className="mx-auto flex-1 min-w-0 max-w-4xl pb-12">
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-1 font-body-sm text-body-sm text-secondary hover:text-primary transition-colors mb-4"
+        className="mb-4 flex items-center gap-1 text-body-sm font-body-sm text-secondary transition-colors hover:text-primary"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
         </svg>
         Quay lại
       </button>
 
-      {/* Content Grid: Vote Sidebar + Post Body */}
       <div className="flex gap-4 sm:gap-6">
-        {/* Vote Sidebar — ẩn trên mobile nhỏ */}
         <div className="hidden sm:block">
           <VoteSidebar
             upvoteCount={upvoteCount}
@@ -88,59 +141,148 @@ export default function PostDetailPage() {
           />
         </div>
 
-        {/* Nội dung bài viết */}
         <PostContent post={post} commentCount={commentCount} />
       </div>
 
-      {/* Vote Mobile — hiện trên mobile */}
-      <div className="sm:hidden flex items-center justify-center gap-4 mt-4 py-3 bg-surface-container-lowest rounded-xl border border-outline-variant">
+      <div className="mt-4 flex items-center justify-center gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest py-3 sm:hidden">
         <button
           onClick={() => handleVote('upvote')}
           disabled={voteLoading}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-body-sm text-body-sm font-medium transition-all
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all
             ${userVote === 'upvote'
-              ? 'bg-primary-fixed text-primary border border-primary/30'
-              : 'bg-surface-container-low text-secondary border border-outline-variant hover:bg-primary-fixed/30'
+              ? 'border border-primary/30 bg-primary-fixed text-primary'
+              : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30'
             }`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
             <path d="M12 4l-8 8h5v8h6v-8h5z" />
           </svg>
           {upvoteCount}
         </button>
-        <span className="text-lg font-bold text-on-surface">
-          {upvoteCount - downvoteCount}
-        </span>
+        <span className="text-lg font-bold text-on-surface">{upvoteCount - downvoteCount}</span>
         <button
           onClick={() => handleVote('downvote')}
           disabled={voteLoading}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg font-body-sm text-body-sm font-medium transition-all
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all
             ${userVote === 'downvote'
-              ? 'bg-error-container text-error border border-error/30'
-              : 'bg-surface-container-low text-secondary border border-outline-variant hover:bg-error-container/30'
+              ? 'border border-error/30 bg-error-container text-error'
+              : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'
             }`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
             <path d="M12 20l8-8h-5V4H9v8H4z" />
           </svg>
           {downvoteCount}
         </button>
       </div>
 
-      {/* Swiper Image Slider (đặt cuối bài, trước phần bình luận) */}
       <div className="mt-10 sm:mt-12">
         <ImageSlider images={post.images} />
       </div>
 
-      {/* Bình luận */}
-      <CommentSection
-        comments={comments}
-        commentCount={commentCount}
-        postAuthorId={post.author?._id}
-      />
-
-      {/* Bài viết liên quan */}
+      <CommentSection comments={comments} commentCount={commentCount} postAuthorId={post.author?._id} />
       <RelatedPosts posts={relatedPosts} />
+
+      <section className="mt-8 rounded-2xl border border-rose-200 bg-rose-50/60 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-rose-900">Gắn cờ bài viết</h3>
+            <p className="mt-1 text-sm text-rose-800">
+              Chọn lý do gắn cờ để cộng đồng và admin xử lý.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/reports/history')}
+            className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-medium text-rose-800 hover:bg-rose-100"
+          >
+            Lịch sử cờ báo cáo
+          </button>
+        </div>
+
+        <form className="mt-4 space-y-3" onSubmit={handleSubmitReport}>
+          <select
+            value={flagType}
+            onChange={(e) => {
+              dispatch(clearReportCreateMessages());
+              setFlagType(e.target.value);
+            }}
+            className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
+          >
+            <option value="">Chọn loại cờ...</option>
+            {flagOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+
+          <textarea
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            rows={3}
+            placeholder="Mô tả thêm (đặc biệt hữu ích khi chọn 'Cần moderator xem thủ công')"
+            className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
+          />
+
+          <button
+            type="submit"
+            disabled={creating || !flagType}
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {creating ? 'Đang gửi...' : 'Gửi cờ báo cáo'}
+          </button>
+
+          {createSuccessMessage && <p className="text-sm text-emerald-700">{createSuccessMessage}</p>}
+          {createErrorMessage && <p className="text-sm text-red-700">{createErrorMessage}</p>}
+        </form>
+      </section>
+
+      {isPostOwner && (
+        <section className="mt-6 rounded-2xl border border-blue-200 bg-blue-50/70 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-blue-900">Tình trạng cờ trên bài viết của bạn</h3>
+              <p className="mt-1 text-sm text-blue-800">
+                Dành cho chủ bài: xem tổng hợp số lượng cờ và loại cờ đang tác động lên bài viết.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (showOwnerSummary) {
+                  setShowOwnerSummary(false);
+                  return;
+                }
+                setShowOwnerSummary(true);
+                if (!ownerSummary) {
+                  dispatch(fetchPostFlagSummaryThunk(id));
+                }
+              }}
+              className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-medium text-blue-800 hover:bg-blue-100"
+            >
+              {loadingOwnerSummary ? 'Đang tải...' : showOwnerSummary ? 'Đóng tổng hợp cờ' : 'Xem tổng hợp cờ'}
+            </button>
+          </div>
+
+          {showOwnerSummary && ownerSummaryErrorMessage && <p className="mt-3 text-sm text-red-700">{ownerSummaryErrorMessage}</p>}
+
+          {showOwnerSummary && ownerSummary && (
+            <div className="mt-3 space-y-2 text-sm text-slate-700">
+              <p><strong>Tổng số cờ:</strong> {ownerSummary.totalFlags}</p>
+              <p>
+                <strong>Trạng thái bài:</strong>{' '}
+                {postStatusLabelMap[ownerSummary.postStatus] || ownerSummary.postStatus}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(ownerSummary.summaryByType || {}).map(([key, value]) => (
+                  <span key={key} className="rounded-full border border-blue-200 bg-white px-2.5 py-1 text-xs text-blue-800">
+                    {flagTypeLabelMap[key] || key}: {value} cờ
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

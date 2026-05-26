@@ -324,6 +324,14 @@ class PostRepository {
                 },
             ]);
         }
+
+        async setDeletedStatus(postId) {
+            return await Post.findByIdAndUpdate(
+                postId,
+                { $set: { status: 'deleted' } },
+                { new: true }
+            );
+        }
 }
 
 export default new PostRepository();

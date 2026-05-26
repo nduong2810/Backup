@@ -131,6 +131,15 @@ export default function AdminProfile() {
       </AppCard>
 
       <AppCard title="Tính năng quản trị" subtitle="Các quyền và công cụ dành riêng cho admin">
+        <div className="mb-3">
+          <button
+            type="button"
+            onClick={() => navigate('/admin/flags')}
+            className="rounded-lg border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Mở trang duyệt cờ báo cáo
+          </button>
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-sky-100 bg-sky-50 p-4">
             <p className="text-sm font-semibold text-sky-800">Truy cập Admin API</p>

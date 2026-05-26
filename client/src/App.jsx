@@ -8,11 +8,13 @@ import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import VerifyResetOTP from './components/auth/VerifyResetOTP';
 import AdminProfilePage from './pages/admin/AdminProfilePage';
+import AdminFlagsPage from './pages/admin/AdminFlagsPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import PostDetailPage from './pages/post/PostDetailPage';
 import TagsPage from './pages/tags/TagsPage';
+import ReportHistoryPage from './pages/report/ReportHistoryPage';
 import './App.css';
 
 function Shell({ children }) {
@@ -57,6 +59,8 @@ function App() {
       <Route element={<ProfileShellLayout />}>
         <Route path="/user/profile" element={<ProfilePage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
+        <Route path="/admin/flags" element={<AdminFlagsPage />} />
+        <Route path="/reports/history" element={<ReportHistoryPage />} />
       </Route>
 
       {/* Post Detail */}

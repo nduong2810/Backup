@@ -40,6 +40,19 @@ const LeftSidebar = () => {
                         <span className="material-symbols-outlined text-[18px]">sell</span>
                         <span>Tags</span>
                     </NavLink>
+                    <NavLink
+                        to="/reports/history"
+                        className={({ isActive }) =>
+                            `py-2 px-4 flex items-center gap-2 hover:bg-surface-container transition-colors ${
+                                isActive
+                                    ? 'bg-surface-container-high text-primary font-bold border-r-4 border-primary'
+                                    : 'text-secondary'
+                            }`
+                        }
+                    >
+                        <span className="material-symbols-outlined text-[18px]">history</span>
+                        <span>Flags</span>
+                    </NavLink>
                     <a className="text-secondary py-2 px-4 flex items-center gap-2 hover:bg-surface-container transition-colors" href="#">
                         <span className="material-symbols-outlined text-[18px]">group</span>
                         <span>Users</span>
