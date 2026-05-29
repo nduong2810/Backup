@@ -19,6 +19,10 @@ const env = {
 
   // Client
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+
+  // Redis (optional)
+  REDIS_URL: process.env.REDIS_URL || '',
+  REDIS_SAVED_TTL: process.env.REDIS_SAVED_TTL || '3600',
 }
 
 export default env

@@ -1,6 +1,6 @@
-﻿import { useParams, useNavigate } from 'react-router-dom';
+﻿import { useState } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useState } from 'react';
 import usePostDetail from '../../hook/usePostDetail';
 import ImageSlider from '../../components/post/ImageSlider';
 import VoteSidebar from '../../components/post/VoteSidebar';
@@ -12,6 +12,11 @@ import {
   createReportTicketThunk,
   fetchPostFlagSummaryThunk,
 } from '../../store/slices/reportSlice';
+import {
+  fetchCollectionsThunk,
+  savePostToCollectionThunk,
+  toggleSaveThunk,
+} from '../../store/slices/savedSlice';
 
 const flagOptions = [
   { value: 'spam', label: 'Xóa vì spam quảng cáo hàng loạt' },
@@ -46,8 +51,10 @@ const postStatusLabelMap = {
 export default function PostDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
-  const { user } = useSelector((state) => state.login);
+  const { user, isAuthenticated } = useSelector((state) => state.login);
+  const { ids: savedIds, collections, loadingCollections } = useSelector((state) => state.saved);
   const {
     creating,
     createSuccessMessage,
@@ -59,6 +66,8 @@ export default function PostDetailPage() {
   const [flagType, setFlagType] = useState('');
   const [details, setDetails] = useState('');
   const [showOwnerSummary, setShowOwnerSummary] = useState(false);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [selectedCollectionId, setSelectedCollectionId] = useState('');
 
   const {
     post,
@@ -118,10 +127,43 @@ export default function PostDetailPage() {
     }
   };
 
+  const isSaved = savedIds.includes(post._id);
+  const handleToggleSave = () => {
+    if (!isAuthenticated) {
+      navigate('/auth/login');
+      return;
+    }
+
+    if (isSaved) {
+      dispatch(toggleSaveThunk(post._id));
+      return;
+    }
+
+    setSaveModalOpen(true);
+    dispatch(fetchCollectionsThunk());
+  };
+
+  const handleConfirmSaveToCollection = async () => {
+    await dispatch(savePostToCollectionThunk({
+      postId: post._id,
+      collectionId: selectedCollectionId || null,
+    }));
+    setSaveModalOpen(false);
+    setSelectedCollectionId('');
+  };
+
+  const handleBack = () => {
+    if (location.state?.from === '/user/saves') {
+      navigate('/user/saves');
+      return;
+    }
+    navigate(-1);
+  };
+
   return (
     <div className="mx-auto flex-1 min-w-0 max-w-4xl pb-12">
       <button
-        onClick={() => navigate(-1)}
+        onClick={handleBack}
         className="mb-4 flex items-center gap-1 text-body-sm font-body-sm text-secondary transition-colors hover:text-primary"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -141,7 +183,12 @@ export default function PostDetailPage() {
           />
         </div>
 
-        <PostContent post={post} commentCount={commentCount} />
+        <PostContent
+          post={post}
+          commentCount={commentCount}
+          isSaved={isSaved}
+          onToggleSave={handleToggleSave}
+        />
       </div>
 
       <div className="mt-4 flex items-center justify-center gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest py-3 sm:hidden">
@@ -180,7 +227,12 @@ export default function PostDetailPage() {
         <ImageSlider images={post.images} />
       </div>
 
-      <CommentSection comments={comments} commentCount={commentCount} postAuthorId={post.author?._id} />
+      <CommentSection
+        comments={comments}
+        commentCount={commentCount}
+        postAuthorId={post.author?._id}
+      />
+
       <RelatedPosts posts={relatedPosts} />
 
       <section className="mt-8 rounded-2xl border border-rose-200 bg-rose-50/60 p-5">
@@ -283,6 +335,61 @@ export default function PostDetailPage() {
           )}
         </section>
       )}
+
+      {saveModalOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <button
+            type="button"
+            onClick={() => {
+              setSaveModalOpen(false);
+              setSelectedCollectionId('');
+            }}
+            className="absolute inset-0 bg-black/45"
+            aria-label="Đóng"
+          />
+          <div className="relative w-full max-w-md rounded-xl border border-outline-variant bg-surface-container-lowest shadow-xl">
+            <div className="px-5 py-4 border-b border-outline-variant">
+              <h3 className="text-lg font-semibold text-on-surface">Lưu bài viết vào thư mục</h3>
+            </div>
+            <div className="px-5 py-4">
+              <label className="block text-sm text-secondary mb-2">Chọn thư mục</label>
+              <select
+                value={selectedCollectionId}
+                onChange={(event) => setSelectedCollectionId(event.target.value)}
+                className="w-full rounded-DEFAULT border border-outline-variant px-3 py-2 text-sm bg-surface-container-lowest"
+              >
+                <option value="">Lưu vào thư mục mặc định (Lưu trữ)</option>
+                {collections.filter((collection) => !collection.isDefault).map((collection) => (
+                  <option key={collection._id} value={collection._id}>
+                    {collection.isDefault ? 'Lưu trữ' : collection.name}
+                  </option>
+                ))}
+              </select>
+              {loadingCollections && <p className="text-xs text-secondary mt-2">Đang tải thư mục...</p>}
+            </div>
+            <div className="px-5 py-4 border-t border-outline-variant flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSaveModalOpen(false);
+                  setSelectedCollectionId('');
+                }}
+                className="px-3 py-1.5 text-sm rounded-DEFAULT border border-outline-variant hover:bg-surface-container-low"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSaveToCollection}
+                className="px-3 py-1.5 text-sm rounded-DEFAULT bg-primary text-white hover:bg-primary/90"
+              >
+                Lưu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

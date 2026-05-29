@@ -10,6 +10,7 @@ import VerifyResetOTP from './components/auth/VerifyResetOTP';
 import AdminProfilePage from './pages/admin/AdminProfilePage';
 import AdminFlagsPage from './pages/admin/AdminFlagsPage';
 import ProfilePage from './pages/profile/ProfilePage';
+import SavedPostsPage from './pages/profile/SavedPostsPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import PostDetailPage from './pages/post/PostDetailPage';
@@ -58,6 +59,7 @@ function App() {
       {/* User / Admin */}
       <Route element={<ProfileShellLayout />}>
         <Route path="/user/profile" element={<ProfilePage />} />
+        <Route path="/user/saves" element={<SavedPostsPage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
         <Route path="/admin/flags" element={<AdminFlagsPage />} />
         <Route path="/reports/history" element={<ReportHistoryPage />} />
