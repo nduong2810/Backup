@@ -94,16 +94,21 @@ export default function PostDetailPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-20">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-error-container">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
+      <div className="mx-auto flex-1 min-w-0 max-w-4xl pb-12">
+        <div className="mt-8 flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-error/30 bg-error-container/30 px-6 py-12 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-error-container">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <p className="mt-4 text-body-md font-body-md font-semibold text-error">{error}</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-4 inline-flex items-center gap-1 text-body-sm font-body-sm text-primary hover:underline"
+          >
+            ← Quay lại
+          </button>
         </div>
-        <p className="text-body-md font-body-md font-medium text-error">{error}</p>
-        <button onClick={() => navigate(-1)} className="text-body-sm font-body-sm text-primary hover:underline">
-          ← Quay lại
-        </button>
       </div>
     );
   }
@@ -283,8 +288,18 @@ export default function PostDetailPage() {
             {creating ? 'Đang gửi...' : 'Gửi cờ báo cáo'}
           </button>
 
-          {createSuccessMessage && <p className="text-sm text-emerald-700">{createSuccessMessage}</p>}
-          {createErrorMessage && <p className="text-sm text-red-700">{createErrorMessage}</p>}
+          {createSuccessMessage && (
+            <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              <span className="mt-0.5 text-emerald-700">✓</span>
+              <p className="leading-5">{createSuccessMessage}</p>
+            </div>
+          )}
+          {createErrorMessage && (
+            <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+              <span className="mt-0.5 text-rose-700">!</span>
+              <p className="leading-5">{createErrorMessage}</p>
+            </div>
+          )}
         </form>
       </section>
 

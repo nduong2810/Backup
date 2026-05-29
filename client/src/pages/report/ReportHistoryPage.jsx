@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { fetchMyReportTicketsThunk, retractReportThunk } from '../../store/slices/reportSlice';
 
 const statusClassMap = {
@@ -35,7 +35,6 @@ const buildPagination = (current, total) => {
 
 export default function ReportHistoryPage() {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { tickets, loadingTickets, ticketsErrorMessage, actionLoadingById } = useSelector((state) => state.reports);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
@@ -73,14 +72,7 @@ export default function ReportHistoryPage() {
   }, [currentPage, totalPages]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8">
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900"
-      >
-        ← Quay lại
-      </button>
+    <main className="flex-1 flex flex-col min-w-0 pb-12">
 
       <h1 className="text-2xl font-bold text-slate-900">Lịch sử cờ báo cáo</h1>
       <p className="mt-2 text-sm text-slate-600">Theo dõi trạng thái xử lý các cờ bạn đã gửi.</p>
@@ -221,6 +213,6 @@ export default function ReportHistoryPage() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }

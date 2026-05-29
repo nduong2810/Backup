@@ -19,14 +19,18 @@ const STATUS_LABELS = {
   submitted: 'Mới gửi',
   received: 'Đã tiếp nhận',
   in_review: 'Đang xem xét',
-  action_taken: 'Đã xử lý',
-  closed: 'Đã đóng',
+  action_taken: 'Đã xử lý vi phạm',
+  closed: 'Đã đóng (không xử lý)',
   retracted: 'Đã rút cờ',
 };
 
 const AUTO_DELETE_TYPES = ['spam', 'rude_abusive'];
 const AUTO_DELETE_THRESHOLD = 4;
 const OPEN_STATUSES = ['submitted', 'received', 'in_review'];
+const ADMIN_TRANSITION_MAP = {
+  received: ['in_review'],
+  in_review: ['action_taken', 'closed'],
+};
 // TODO(reputation): Khi có module reputation, chặn flag nếu user chưa đạt ngưỡng quyền.
 
 const normalizeFlag = (ticket) => {
@@ -160,8 +164,8 @@ class ReportService {
     const ticket = await reportRepository.findById(ticketId);
     if (!ticket) throw { status: 404, message: 'Không tìm thấy cờ báo cáo.' };
 
-    const allowed = ['received', 'in_review', 'action_taken', 'closed'];
-    if (!allowed.includes(nextStatus)) {
+    const allowedStatuses = ['received', 'in_review', 'action_taken', 'closed'];
+    if (!allowedStatuses.includes(nextStatus)) {
       throw { status: 400, message: 'Trạng thái admin cập nhật không hợp lệ.' };
     }
 
@@ -170,7 +174,19 @@ class ReportService {
       throw { status: 400, message: 'Cờ đã kết thúc xử lý (đã rút/đã đóng/đã xử lý), không thể đổi trạng thái.' };
     }
 
-    const outcome = nextStatus === 'closed' ? 'declined' : ticket.outcome;
+    const allowedNextStatuses = ADMIN_TRANSITION_MAP[normalized.status] || [];
+    if (!allowedNextStatuses.includes(nextStatus)) {
+      throw {
+        status: 400,
+        message: `Không thể chuyển từ "${STATUS_LABELS[normalized.status] || normalized.status}" sang "${STATUS_LABELS[nextStatus] || nextStatus}".`,
+      };
+    }
+
+    const outcome = nextStatus === 'action_taken'
+      ? 'helpful'
+      : nextStatus === 'closed'
+        ? 'declined'
+        : ticket.outcome;
 
     const updated = await reportRepository.updateById(ticketId, {
       $set: { status: nextStatus, outcome },

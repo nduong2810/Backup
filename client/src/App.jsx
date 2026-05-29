@@ -40,6 +40,7 @@ function App() {
         <Route index element={<MainContent />} />
         <Route path="home" element={<MainContent />} />
         <Route path="tags" element={<TagsPage />} />
+        <Route path="reports/history" element={<ReportHistoryPage />} />
       </Route>
 
       {/* Auth */}
@@ -62,7 +63,6 @@ function App() {
         <Route path="/user/saves" element={<SavedPostsPage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
         <Route path="/admin/flags" element={<AdminFlagsPage />} />
-        <Route path="/reports/history" element={<ReportHistoryPage />} />
       </Route>
 
       {/* Post Detail */}
