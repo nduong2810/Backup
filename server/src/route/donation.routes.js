@@ -14,6 +14,8 @@ router.post('/', authenticateToken, createDonationValidation, donationController
 
 router.post('/gateway/vnpay/confirm', vnpayConfirmValidation, donationController.confirmVnpayPayment.bind(donationController));
 
+router.get('/admin', authenticateToken, authorizeRole('admin'), donationController.listAdminDonations.bind(donationController));
+
 router.patch('/admin/:donationId/approve', authenticateToken, authorizeRole('admin'), donationIdValidation, donationController.approveCodDonation.bind(donationController));
 
 router.get('/authors/:userId', authorIdValidation, donationController.getAuthorProfile.bind(donationController));
