@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import qs from 'qs';
 import donationRepository from '../repository/donation.repository.js';
 import userRepository from '../repository/user.repository.js';
 import postRepository from '../repository/post.repository.js';
@@ -99,17 +100,15 @@ const formatVnpayDate = (date) => {
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 };
 
-const buildVnpayQueryString = (params) => {
-  const searchParams = new URLSearchParams();
+const sortObject = (object) => {
+  const sorted = {};
+  const keys = Object.keys(object).sort();
 
-  Object.keys(params)
-    .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
-    .sort()
-    .forEach((key) => {
-      searchParams.append(key, String(params[key]));
-    });
+  keys.forEach((key) => {
+    sorted[key] = object[key];
+  });
 
-  return searchParams.toString();
+  return sorted;
 };
 
 const safeNotify = async (email, subject, message) => {
@@ -152,19 +151,6 @@ class DonationService {
       }
     }
 
-    /*
-      Xử lý dữ liệu cũ:
-      posts.author có dạng:
-      {
-        username: "dev_pro",
-        fullName: "Nguyễn Văn A",
-        avatar: "..."
-      }
-
-      Vì DonationTransaction.author bắt buộc là ObjectId User,
-      nếu không tìm thấy User thật thì tự tạo một User legacy.
-      Bạn không cần sửa database thủ công.
-    */
     for (const candidate of candidates) {
       if (!candidate || typeof candidate !== 'object') continue;
 
@@ -329,45 +315,45 @@ class DonationService {
     }
 
     const txnRef = `donation_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-    const orderId = txnRef;
-    const orderInfo = `Ung ho tac gia ${author.fullName || 'IT Forum'}`;
-    const orderType = 'other';
-    const locale = 'vn';
-    const currCode = 'VND';
-    const ipAddr = '127.0.0.1';
-    const createDate = formatVnpayDate(new Date());
-    const expireDate = formatVnpayDate(new Date(Date.now() + 15 * 60 * 1000));
 
     const params = {
       vnp_Version: '2.1.0',
       vnp_Command: 'pay',
-      vnp_TmnCode: env.VNPAY_TMN_CODE,
+      vnp_TmnCode: env.VNPAY_TMN_CODE.trim(),
       vnp_Amount: String(Math.round(amount * 100)),
-      vnp_CurrCode: currCode,
+      vnp_CurrCode: 'VND',
       vnp_TxnRef: txnRef,
-      vnp_OrderInfo: orderInfo,
-      vnp_OrderType: orderType,
-      vnp_Locale: locale,
-      vnp_ReturnUrl: env.VNPAY_RETURN_URL,
-      vnp_IpAddr: ipAddr,
-      vnp_CreateDate: createDate,
-      vnp_ExpireDate: expireDate,
+      vnp_OrderInfo: `Ung ho tac gia ${author.fullName || 'IT Forum'}`,
+      vnp_OrderType: 'other',
+      vnp_Locale: 'vn',
+      vnp_ReturnUrl: env.VNPAY_RETURN_URL.trim(),
+      vnp_IpAddr: '127.0.0.1',
+      vnp_CreateDate: formatVnpayDate(new Date()),
+      vnp_ExpireDate: formatVnpayDate(new Date(Date.now() + 15 * 60 * 1000)),
     };
 
-    const signData = buildVnpayQueryString(params);
+    const sortedParams = sortObject(params);
 
-const signature = crypto
-  .createHmac('sha512', env.VNPAY_HASH_SECRET.trim())
-  .update(Buffer.from(signData, 'utf-8'))
-  .digest('hex');
+    const signData = qs.stringify(sortedParams, {
+      encode: false,
+    });
 
-const paymentUrl = `${env.VNPAY_URL}?${signData}&vnp_SecureHash=${signature}`;
+    const secureHash = crypto
+      .createHmac('sha512', env.VNPAY_HASH_SECRET.trim())
+      .update(Buffer.from(signData, 'utf-8'))
+      .digest('hex');
+
+    sortedParams.vnp_SecureHash = secureHash;
+
+    const paymentUrl = `${env.VNPAY_URL.trim()}?${qs.stringify(sortedParams, {
+      encode: false,
+    })}`;
 
     const donation = await donationRepository.createDonation({
       ...basePayload,
       status: 'pending_payment',
       paymentUrl,
-      orderId,
+      orderId: txnRef,
       requestId: txnRef,
       gatewayResponse: {
         provider: 'vnpay',
