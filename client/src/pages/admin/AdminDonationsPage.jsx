@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { approveCodDonationApi, fetchAdminDonationsApi } from '../../services/donationService';
+import { approveCodDonationApi, fetchAdminDonationsApi, rejectCodDonationApi } from '../../services/donationService';
 
 const statusLabels = {
   pending_review: 'Chờ duyệt bill',
@@ -27,6 +27,7 @@ export default function AdminDonationsPage() {
   const [status, setStatus] = useState('pending_review');
   const [loading, setLoading] = useState(false);
   const [approvingId, setApprovingId] = useState('');
+  const [rejectingId, setRejectingId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -75,6 +76,30 @@ export default function AdminDonationsPage() {
       setErrorMessage(error?.response?.data?.message || 'Không thể duyệt bill COD.');
     } finally {
       setApprovingId('');
+    }
+  };
+
+  const handleReject = async (donationId) => {
+    const reason = window.prompt('Nhập lý do không duyệt bill:', 'Bill không hợp lệ hoặc chưa nhận được chuyển khoản');
+
+    if (reason === null) return;
+
+    const finalReason = reason.trim() || 'Admin không duyệt bill COD';
+
+    if (!window.confirm('Xác nhận không duyệt bill COD này?')) return;
+
+    setRejectingId(donationId);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      await rejectCodDonationApi(donationId, finalReason);
+      setSuccessMessage('Đã từ chối bill COD thành công.');
+      await loadDonations();
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.message || 'Không thể từ chối bill COD.');
+    } finally {
+      setRejectingId('');
     }
   };
 
@@ -131,7 +156,8 @@ export default function AdminDonationsPage() {
 
         {donations.map((donation) => {
           const billImage = donation.billImage || '';
-          const canApprove = donation.paymentMethod === 'cod' && donation.status === 'pending_review';
+          const canReview = donation.paymentMethod === 'cod' && donation.status === 'pending_review';
+          const rejectReason = donation.gatewayResponse?.rejectReason || '';
 
           return (
             <article key={donation._id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -165,12 +191,19 @@ export default function AdminDonationsPage() {
                     <p><strong>Phương thức:</strong> {donation.paymentMethod?.toUpperCase()}</p>
                     <p><strong>Ngày tạo:</strong> {new Date(donation.createdAt).toLocaleString('vi-VN')}</p>
                     {donation.completedAt && <p><strong>Hoàn thành:</strong> {new Date(donation.completedAt).toLocaleString('vi-VN')}</p>}
-                    {donation.approvedBy && <p><strong>Admin duyệt:</strong> {donation.approvedBy?.fullName || donation.approvedBy?.email || 'N/A'}</p>}
+                    {donation.rejectedAt && <p><strong>Ngày từ chối:</strong> {new Date(donation.rejectedAt).toLocaleString('vi-VN')}</p>}
+                    {donation.approvedBy && <p><strong>Admin xử lý:</strong> {donation.approvedBy?.fullName || donation.approvedBy?.email || 'N/A'}</p>}
                   </div>
 
                   {donation.note && (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                       <strong>Ghi chú:</strong> {donation.note}
+                    </div>
+                  )}
+
+                  {rejectReason && (
+                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                      <strong>Lý do không duyệt:</strong> {rejectReason}
                     </div>
                   )}
 
@@ -195,15 +228,25 @@ export default function AdminDonationsPage() {
                         Mở bill lớn
                       </a>
                     )}
-                    {canApprove && (
-                      <button
-                        type="button"
-                        onClick={() => handleApprove(donation._id)}
-                        disabled={approvingId === donation._id}
-                        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {approvingId === donation._id ? 'Đang duyệt...' : 'Duyệt bill'}
-                      </button>
+                    {canReview && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(donation._id)}
+                          disabled={approvingId === donation._id || rejectingId === donation._id}
+                          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {approvingId === donation._id ? 'Đang duyệt...' : 'Duyệt bill'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReject(donation._id)}
+                          disabled={approvingId === donation._id || rejectingId === donation._id}
+                          className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {rejectingId === donation._id ? 'Đang từ chối...' : 'Không duyệt bill'}
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
