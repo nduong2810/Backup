@@ -2,12 +2,17 @@ import express from 'express';
 import userController from '../controller/user.controller.js';
 import { authenticateToken, authorizeRole } from '../middleware/auth.middleware.js';
 import { authLimiter } from '../middleware/rateLimit.middleware.js';
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 
 const router = express.Router();
 
 // Route xem Profile (Cần lớp 3, 4)
 router.get('/profile', authenticateToken, authorizeRole('user'), userController.getMyProfile);
+
+// Route public cho hồ sơ tác giả + lịch sử ủng hộ
+router.get('/public/:userId', [
+    param('userId').isMongoId().withMessage('ID tác giả không hợp lệ')
+], userController.getPublicAuthorProfile);
 
 // Route sửa Profile (Cần lớp 1, 2, 3, 4) 
 router.put('/profile', 

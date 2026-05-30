@@ -5,7 +5,7 @@ import CommentItem from './CommentItem';
 // Đã tích hợp design tokens từ hệ thống thiết kế chính
 // ====================================================================
 
-export default function CommentSection({ comments, commentCount, postAuthorId }) {
+export default function CommentSection({ comments, commentCount, postAuthorId, onDonate }) {
   return (
     <section className="mt-8">
       {/* Header */}
@@ -24,6 +24,7 @@ export default function CommentSection({ comments, commentCount, postAuthorId })
               key={comment._id}
               comment={comment}
               postAuthorId={postAuthorId}
+              onDonate={onDonate}
             />
           ))}
         </div>

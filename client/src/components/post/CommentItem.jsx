@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 // ====================================================================
 // CommentItem — Hiển thị 1 comment + nested replies (recursive)
 // Đã tích hợp design tokens từ hệ thống thiết kế chính
@@ -18,7 +20,7 @@ function timeAgo(dateString) {
   return `${days} ngày trước`;
 }
 
-export default function CommentItem({ comment, postAuthorId, depth = 0 }) {
+export default function CommentItem({ comment, postAuthorId, depth = 0, onDonate }) {
   const isAuthor = comment.author?._id === postAuthorId;
   const maxDepth = 3; // Giới hạn indent tối đa
 
@@ -45,7 +47,9 @@ export default function CommentItem({ comment, postAuthorId, depth = 0 }) {
               Tác giả
             </span>
           )}
-          <span className="font-semibold text-primary-container">{comment.author?.fullName}</span>
+          <Link to={comment.author?._id ? `/users/${comment.author._id}` : '#'} className="font-semibold text-primary-container hover:underline">
+            {comment.author?.fullName}
+          </Link>
           <span className="text-outline text-xs">· {timeAgo(comment.createdAt)}</span>
         </div>
 
@@ -53,6 +57,19 @@ export default function CommentItem({ comment, postAuthorId, depth = 0 }) {
         <p className="text-on-surface font-body-sm text-body-sm leading-relaxed whitespace-pre-wrap">
           {comment.content}
         </p>
+
+        {depth === 0 && typeof onDonate === 'function' && comment.author?._id && (
+          <button
+            type="button"
+            onClick={() => onDonate(comment)}
+            className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:border-amber-400 hover:bg-amber-100"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10.5 2.5a1 1 0 00-1 0l-6 3.5a1 1 0 00-.5.866V13.5a1 1 0 00.5.866l6 3.5a1 1 0 001 0l6-3.5a1 1 0 00.5-.866V6.866a1 1 0 00-.5-.866l-6-3.5zM9 6.5h2v2H9v-2zm0 4h2v5H9v-5z" />
+            </svg>
+            Ủng hộ tác giả
+          </button>
+        )}
 
         {/* Nested Replies (recursive) */}
         {comment.replies && comment.replies.length > 0 && (
@@ -63,6 +80,7 @@ export default function CommentItem({ comment, postAuthorId, depth = 0 }) {
                 comment={reply}
                 postAuthorId={postAuthorId}
                 depth={depth + 1}
+                onDonate={onDonate}
               />
             ))}
           </div>

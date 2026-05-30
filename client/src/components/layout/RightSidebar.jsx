@@ -4,16 +4,16 @@ import { useDispatch, useSelector } from 'react-redux';
 import FilterSidebar from '../common/FilterSidebar';
 import { fetchTagsThunk } from '../../store/slices/tagSlice';
 
+const DEFAULT_TAG_COLLECTION = {
+    items: [],
+    loading: false,
+    error: null,
+    pagination: { total: 0, page: 1, limit: 0, totalPages: 0 },
+};
+
 const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
     const dispatch = useDispatch();
-    const tagCollection = useSelector((state) =>
-        state.tags?.collections?.sidebarTags || {
-            items: [],
-            loading: false,
-            error: null,
-            pagination: { total: 0, page: 1, limit: 0, totalPages: 0 },
-        }
-    );
+    const tagCollection = useSelector((state) => state.tags?.collections?.sidebarTags || DEFAULT_TAG_COLLECTION);
     const tags = tagCollection.items || [];
     const loadingTags = tagCollection.loading;
 

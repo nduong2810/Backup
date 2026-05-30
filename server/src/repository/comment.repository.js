@@ -14,6 +14,12 @@ class CommentRepository {
             .sort({ createdAt: 1 });  // Comment cũ nhất lên trước
     }
 
+    async findById(commentId) {
+        return await Comment.findById(commentId)
+            .populate('author', 'fullName avatar major')
+            .populate('post', 'title author');
+    }
+
     // Đếm tổng số comment của 1 bài viết
     async countByPostId(postId) {
         return await Comment.countDocuments({ post: postId });

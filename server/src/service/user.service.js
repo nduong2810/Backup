@@ -1,5 +1,6 @@
 import User from '../model/user.model.js';
 import bcrypt from 'bcryptjs';
+import donationRepository from '../repository/donation.repository.js';
 
 class UserService {
     async getProfile(userId) {
@@ -26,6 +27,25 @@ class UserService {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(newPassword, salt);
         await user.save();
+    }
+
+    async getPublicAuthorProfile(userId) {
+        const [user, donations, summary] = await Promise.all([
+            User.findById(userId).select('-password'),
+            donationRepository.findReceivedByAuthor(userId, 20),
+            donationRepository.getReceivedSummary(userId),
+        ]);
+
+        if (!user) throw { status: 404, message: 'Tác giả không tồn tại' };
+
+        return {
+            user,
+            donationSummary: {
+                totalAmount: summary.totalAmount || 0,
+                donationCount: summary.donationCount || 0,
+            },
+            donations,
+        };
     }
 }
 

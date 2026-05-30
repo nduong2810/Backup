@@ -4,6 +4,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchTagsThunk } from '../../store/slices/tagSlice';
 import { buildSearchParams } from '../../util/filterUtils';
 
+const DEFAULT_TAG_COLLECTION = {
+  items: [],
+  loading: false,
+  error: null,
+  pagination: { total: 0, page: 1, limit: 0, totalPages: 0 },
+};
+
 const TAG_DESCRIPTIONS = {
   javascript: 'Các câu hỏi về JavaScript và hệ sinh thái liên quan.',
   react: 'Thư viện UI phía client cho web apps.',
@@ -43,14 +50,7 @@ const buildPaginationItems = (current, total) => {
 
 const TagsPage = () => {
   const dispatch = useDispatch();
-  const tagCollection = useSelector((state) =>
-    state.tags?.collections?.tagsPage || {
-      items: [],
-      loading: false,
-      error: null,
-      pagination: { total: 0, page: 1, limit: 0, totalPages: 0 },
-    }
-  );
+  const tagCollection = useSelector((state) => state.tags?.collections?.tagsPage || DEFAULT_TAG_COLLECTION);
   const tags = tagCollection.items || [];
   const loading = tagCollection.loading;
   const error = tagCollection.error;

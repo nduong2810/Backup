@@ -1,4 +1,5 @@
-﻿import SaveIconButton from '../ui/SaveIconButton';
+﻿import { Link } from 'react-router-dom';
+import SaveIconButton from '../ui/SaveIconButton';
 
 function timeAgo(dateString) {
   const now = new Date();
@@ -35,15 +36,17 @@ export default function PostContent({ post, commentCount, isSaved, onToggleSave 
 
       <div className="flex flex-wrap items-center gap-4 font-body-sm text-body-sm text-secondary pb-3 border-b border-outline-variant">
         <div className="flex items-center gap-2">
-          <img
-            src={post.author?.avatar && post.author.avatar !== 'default-avatar.png'
-              ? post.author.avatar
-              : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`
-            }
-            alt={post.author?.fullName}
-            className="w-6 h-6 rounded-full border border-outline-variant"
-          />
-          <span className="font-medium text-primary-container">{post.author?.fullName}</span>
+          <Link to={post.author?._id ? `/users/${post.author._id}` : '#'} className="flex items-center gap-2">
+            <img
+              src={post.author?.avatar && post.author.avatar !== 'default-avatar.png'
+                ? post.author.avatar
+                : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`
+              }
+              alt={post.author?.fullName}
+              className="w-6 h-6 rounded-full border border-outline-variant"
+            />
+            <span className="font-medium text-primary-container hover:underline">{post.author?.fullName}</span>
+          </Link>
           {post.author?.major && (
             <span className="text-outline">· {post.author.major}</span>
           )}

@@ -48,6 +48,20 @@ const postStatusLabelMap = {
   deleted: 'Đã xóa',
 };
 
+const normalizeId = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    if (typeof value._id === 'string') return value._id;
+    if (value._id && typeof value._id.toString === 'function') return value._id.toString();
+    if (typeof value.toString === 'function') {
+      const stringValue = value.toString();
+      if (stringValue && stringValue !== '[object Object]') return stringValue;
+    }
+  }
+  return '';
+};
+
 export default function PostDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -165,6 +179,58 @@ export default function PostDetailPage() {
     navigate(-1);
   };
 
+  const handleStartDonate = (comment) => {
+    if (!isAuthenticated) {
+      navigate('/auth/login');
+      return;
+    }
+
+    const isPostDonation = comment?.isPostDonation === true;
+    const targetAuthor = comment.author || comment;
+    const targetAuthorId = normalizeId(targetAuthor?._id || targetAuthor);
+    const postAuthorId = normalizeId(post.author?._id || post.author);
+    const checkoutSearch = new URLSearchParams({
+      postId: post._id,
+      postTitle: post.title,
+      postAuthorId,
+      postAuthorName: post.author?.fullName || '',
+      authorId: targetAuthorId,
+      authorName: targetAuthor?.fullName || '',
+      authorAvatar: targetAuthor?.avatar || '',
+      answerContent: isPostDonation ? '' : (comment.content || ''),
+    });
+
+    if (!isPostDonation && comment.content) {
+      checkoutSearch.set('answerId', comment._id);
+    }
+
+    sessionStorage.setItem('donationCheckoutContext', JSON.stringify({
+      postId: post._id,
+      postTitle: post.title,
+      postAuthorId,
+      postAuthorName: post.author?.fullName || '',
+      authorId: targetAuthorId,
+      authorName: targetAuthor?.fullName || '',
+      authorAvatar: targetAuthor?.avatar || '',
+      answerId: !isPostDonation && comment.content ? comment._id : '',
+      answerContent: comment.content || '',
+    }));
+
+    navigate(`/donate/checkout?${checkoutSearch.toString()}`, {
+      state: {
+        postId: post._id,
+        postTitle: post.title,
+        postAuthorId,
+        postAuthorName: post.author?.fullName,
+        authorId: targetAuthorId,
+        authorName: targetAuthor?.fullName,
+        authorAvatar: targetAuthor?.avatar,
+        answerId: !isPostDonation && comment.content ? comment._id : '',
+        answerContent: comment.content || '',
+      },
+    });
+  };
+
   return (
     <div className="mx-auto flex-1 min-w-0 max-w-4xl pb-12">
       <button
@@ -232,10 +298,33 @@ export default function PostDetailPage() {
         <ImageSlider images={post.images} />
       </div>
 
+      <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-amber-950">Ủng hộ tác giả khi thấy câu trả lời hữu ích</h3>
+            <p className="mt-1 text-sm text-amber-900/80">
+              Chọn mức 20K, 50K hoặc 100K để gửi một tách cafe cho người trả lời.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleStartDonate({
+              author: post.author,
+              _id: post.author?._id,
+              isPostDonation: true,
+            })}
+            className="rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+          >
+            Ủng hộ tác giả của bài viết
+          </button>
+        </div>
+      </section>
+
       <CommentSection
         comments={comments}
         commentCount={commentCount}
         postAuthorId={post.author?._id}
+        onDonate={handleStartDonate}
       />
 
       <RelatedPosts posts={relatedPosts} />
