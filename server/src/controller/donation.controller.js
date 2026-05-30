@@ -32,6 +32,22 @@ class DonationController {
     }
   }
 
+  async listAdminDonations(req, res) {
+    try {
+      const donations = await donationService.getAdminDonations(req.query);
+      return res.status(200).json({
+        success: true,
+        message: 'Lấy danh sách giao dịch thành công',
+        data: donations,
+      });
+    } catch (error) {
+      return res.status(error.status || 500).json({
+        success: false,
+        message: error.message || 'Không thể tải danh sách giao dịch',
+      });
+    }
+  }
+
   async confirmVnpayPayment(req, res) {
     const validationError = this.checkValidationErrors(req, res);
     if (validationError) return validationError;
