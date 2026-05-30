@@ -278,6 +278,13 @@ class DonationService {
 
     const sortedParams = sortObjectForVnpay(params);
     const signData = qs.stringify(sortedParams, { encode: false });
+    console.log('================ VNPAY DEBUG ================');
+    console.log('TMN_CODE:', env.VNPAY_TMN_CODE);
+    console.log('HASH_SECRET:', env.VNPAY_HASH_SECRET);
+    console.log('HASH_SECRET_LENGTH:', env.VNPAY_HASH_SECRET?.length);
+    console.log('RETURN_URL:', env.VNPAY_RETURN_URL);
+    console.log('SIGN_DATA:', signData);
+    console.log('=============================================');
     const secureHash = crypto
       .createHmac('sha512', env.VNPAY_HASH_SECRET.trim())
       .update(Buffer.from(signData, 'utf-8'))
