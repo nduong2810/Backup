@@ -23,6 +23,22 @@ class DonationRepository {
       .populate('answer', 'content');
   }
 
+  async findAdminDonations({ status = '', paymentMethod = '', limit = 100 } = {}) {
+    const filter = {};
+
+    if (status) filter.status = status;
+    if (paymentMethod) filter.paymentMethod = paymentMethod;
+
+    return await DonationTransaction.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(Number(limit) || 100)
+      .populate('donor', 'fullName avatar major email')
+      .populate('author', 'fullName avatar major email')
+      .populate('post', 'title')
+      .populate('answer', 'content')
+      .populate('approvedBy', 'fullName email');
+  }
+
   async findReceivedByAuthor(authorId, limit = 20) {
     return await DonationTransaction.find({
       author: authorId,
