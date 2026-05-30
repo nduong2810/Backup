@@ -3,6 +3,7 @@ import donationRepository from '../repository/donation.repository.js';
 import userRepository from '../repository/user.repository.js';
 import postRepository from '../repository/post.repository.js';
 import commentRepository from '../repository/comment.repository.js';
+import Post from '../model/post.model.js';
 import sendEmail from '../util/email.util.js';
 import env from '../config/environment.js';
 
@@ -13,13 +14,11 @@ const buildSnapshot = (doc) => ({
   avatar: doc?.avatar || '',
   major: doc?.major || '',
 });
+
 const normalizeId = (value) => {
   if (!value) return '';
-
   if (typeof value === 'string') return value;
-
   if (typeof value === 'number') return String(value);
-
   if (typeof value === 'object') {
     if (value.$oid) return normalizeId(value.$oid);
     if (value._id) return normalizeId(value._id);
@@ -29,34 +28,29 @@ const normalizeId = (value) => {
     if (value.author) return normalizeId(value.author);
     if (value.user) return normalizeId(value.user);
     if (value.createdBy) return normalizeId(value.createdBy);
-
     if (typeof value.toString === 'function') {
-      const stringValue = value.toString();
-      if (stringValue && stringValue !== '[object Object]') {
-        return stringValue;
-      }
+      const text = value.toString();
+      if (text && text !== '[object Object]') return text;
     }
   }
-
   return '';
 };
+
+const isMongoId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || '').trim());
 
 const formatVnpayDate = (date) => {
   const pad = (value) => String(value).padStart(2, '0');
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 };
 
-const buildVnpayQueryString = (params) => {
-  return Object.keys(params)
-      .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
-      .sort()
-      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(String(params[key]))}`)
-      .join('&');
-};
+const buildVnpayQueryString = (params) => Object.keys(params)
+  .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
+  .sort()
+  .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(String(params[key]))}`)
+  .join('&');
 
 const safeNotify = async (email, subject, message) => {
   if (!email || !env.EMAIL_USER || !env.EMAIL_PASS) return;
-
   try {
     await sendEmail(email, subject, message);
   } catch (error) {
@@ -67,54 +61,33 @@ const safeNotify = async (email, subject, message) => {
 class DonationService {
   async createCheckout(donorId, payload) {
     const amount = Number(payload.amount);
-
-    const {
-      postId,
-      authorId = '',
-      answerId = null,
-      paymentMethod,
-      note = '',
-      billImage = '',
-    } = payload;
+    const { postId, authorId = '', answerId = null, paymentMethod, note = '', billImage = '' } = payload;
 
     if (!SUPPORTED_AMOUNTS.has(amount)) {
       throw { status: 400, message: 'Chỉ hỗ trợ các mức 20K, 50K, 100K' };
     }
 
-    const [donor, post] = await Promise.all([
+    const [donor, post, rawPost] = await Promise.all([
       userRepository.findById(donorId),
       postRepository.findById(postId),
+      Post.findById(postId).select('author title status'),
     ]);
 
-    if (!donor) {
-      throw { status: 404, message: 'Người donate không tồn tại' };
-    }
+    if (!donor) throw { status: 404, message: 'Người donate không tồn tại' };
+    if (!post && !rawPost) throw { status: 404, message: 'Bài viết không tồn tại' };
 
-    if (!post) {
-      throw { status: 404, message: 'Bài viết không tồn tại' };
-    }
-
-    if (post.status === 'deleted') {
-      throw { status: 410, message: 'Bài viết đã bị xóa' };
-    }
+    const currentPost = post || rawPost;
+    if (currentPost.status === 'deleted') throw { status: 410, message: 'Bài viết đã bị xóa' };
 
     let answer = null;
     let finalAuthorId = normalizeId(authorId);
 
-    /*
-      Donate cho câu trả lời:
-      backend lấy tác giả thật từ answer.author.
-    */
     if (answerId) {
       answer = await commentRepository.findById(answerId);
-
-      if (!answer) {
-        throw { status: 404, message: 'Câu trả lời không tồn tại' };
-      }
+      if (!answer) throw { status: 404, message: 'Câu trả lời không tồn tại' };
 
       const answerPostId = normalizeId(answer.post?._id || answer.post);
-      const currentPostId = normalizeId(post._id);
-
+      const currentPostId = normalizeId(currentPost._id || rawPost?._id || postId);
       if (answerPostId !== currentPostId) {
         throw { status: 400, message: 'Câu trả lời không thuộc bài viết này' };
       }
@@ -122,28 +95,21 @@ class DonationService {
       finalAuthorId = normalizeId(answer.author?._id || answer.author);
     }
 
-    /*
-      Donate cho bài viết:
-      nếu frontend không gửi authorId thì lấy từ post.author.
-    */
     if (!finalAuthorId) {
-      finalAuthorId = normalizeId(post.author?._id || post.author);
+      finalAuthorId = normalizeId(post?.author?._id || post?.author || rawPost?.author);
     }
 
-    if (!finalAuthorId) {
+    if (!isMongoId(finalAuthorId)) {
       throw { status: 400, message: 'Không xác định được tác giả để ủng hộ' };
     }
 
     const author = await userRepository.findById(finalAuthorId);
-
-    if (!author) {
-      throw { status: 404, message: 'Tác giả không tồn tại' };
-    }
+    if (!author) throw { status: 404, message: 'Tác giả không tồn tại' };
 
     const basePayload = {
       donor: donor._id,
       author: author._id,
-      post: post._id,
+      post: currentPost._id,
       answer: answer?._id || null,
       amount,
       paymentMethod,
@@ -151,25 +117,13 @@ class DonationService {
       billImage: billImage || '',
       donorSnapshot: buildSnapshot(donor),
       authorSnapshot: buildSnapshot(author),
-      postSnapshot: {
-        title: post.title || '',
-      },
-      answerSnapshot: {
-        content: answer?.content || '',
-      },
+      postSnapshot: { title: currentPost.title || '' },
+      answerSnapshot: { content: answer?.content || '' },
     };
 
     if (paymentMethod === 'cod') {
-      const donation = await donationRepository.createDonation({
-        ...basePayload,
-        status: 'pending_review',
-      });
-
-      return {
-        donation,
-        paymentUrl: '',
-        message: 'Giao dịch đã được tạo. Đang chờ admin duyệt bill.',
-      };
+      const donation = await donationRepository.createDonation({ ...basePayload, status: 'pending_review' });
+      return { donation, paymentUrl: '', message: 'Giao dịch đã được tạo. Đang chờ admin duyệt bill.' };
     }
 
     if (paymentMethod === 'vnpay') {
@@ -213,12 +167,7 @@ class DonationService {
     };
 
     const signData = buildVnpayQueryString(params);
-
-    const signature = crypto
-        .createHmac('sha512', env.VNPAY_HASH_SECRET)
-        .update(signData)
-        .digest('hex');
-
+    const signature = crypto.createHmac('sha512', env.VNPAY_HASH_SECRET).update(signData).digest('hex');
     const paymentUrl = `${env.VNPAY_URL}?${signData}&vnp_SecureHashType=HmacSHA512&vnp_SecureHash=${signature}`;
 
     const donation = await donationRepository.createDonation({
@@ -227,44 +176,30 @@ class DonationService {
       paymentUrl,
       orderId,
       requestId: txnRef,
-      gatewayResponse: {
-        provider: 'vnpay',
-        paymentUrl,
-      },
+      gatewayResponse: { provider: 'vnpay', paymentUrl },
     });
 
-    return {
-      donation,
-      paymentUrl,
-      message: 'Đã tạo link thanh toán VNPAY sandbox',
-    };
+    return { donation, paymentUrl, message: 'Đã tạo link thanh toán VNPAY sandbox' };
   }
 
   async confirmVnpayPayment({ transactionId, txnRef, responseCode, message = '', amount }) {
     const donation = transactionId
-        ? await donationRepository.findById(transactionId)
-        : await donationRepository.findByOrderId(txnRef);
+      ? await donationRepository.findById(transactionId)
+      : await donationRepository.findByOrderId(txnRef);
 
-    if (!donation) {
-      throw { status: 404, message: 'Không tìm thấy giao dịch' };
-    }
+    if (!donation) throw { status: 404, message: 'Không tìm thấy giao dịch' };
 
     if (String(responseCode) === '00') {
       const updatedDonation = await donationRepository.updateStatus(donation._id, {
         status: 'completed',
         completedAt: new Date(),
-        gatewayResponse: {
-          ...(donation.gatewayResponse || {}),
-          responseCode,
-          message,
-          amount,
-        },
+        gatewayResponse: { ...(donation.gatewayResponse || {}), responseCode, message, amount },
       });
 
       await safeNotify(
-          updatedDonation.author?.email,
-          'Bạn vừa nhận được một lượt ủng hộ',
-          `Bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa nhận ${updatedDonation.amount.toLocaleString('vi-VN')}đ từ một người dùng.`
+        updatedDonation.author?.email,
+        'Bạn vừa nhận được một lượt ủng hộ',
+        `Bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa nhận ${updatedDonation.amount.toLocaleString('vi-VN')}đ từ một người dùng.`
       );
 
       return updatedDonation;
@@ -273,29 +208,15 @@ class DonationService {
     return await donationRepository.updateStatus(donation._id, {
       status: 'rejected',
       rejectedAt: new Date(),
-      gatewayResponse: {
-        ...(donation.gatewayResponse || {}),
-        responseCode,
-        message,
-        amount,
-      },
+      gatewayResponse: { ...(donation.gatewayResponse || {}), responseCode, message, amount },
     });
   }
 
   async approveCodDonation(donationId, adminId) {
     const donation = await donationRepository.findById(donationId);
-
-    if (!donation) {
-      throw { status: 404, message: 'Không tìm thấy giao dịch' };
-    }
-
-    if (donation.paymentMethod !== 'cod') {
-      throw { status: 400, message: 'Chỉ duyệt được giao dịch chuyển khoản thủ công' };
-    }
-
-    if (donation.status !== 'pending_review') {
-      throw { status: 400, message: 'Giao dịch này không ở trạng thái chờ duyệt' };
-    }
+    if (!donation) throw { status: 404, message: 'Không tìm thấy giao dịch' };
+    if (donation.paymentMethod !== 'cod') throw { status: 400, message: 'Chỉ duyệt được giao dịch chuyển khoản thủ công' };
+    if (donation.status !== 'pending_review') throw { status: 400, message: 'Giao dịch này không ở trạng thái chờ duyệt' };
 
     const updatedDonation = await donationRepository.updateStatus(donationId, {
       status: 'completed',
@@ -305,9 +226,9 @@ class DonationService {
     });
 
     await safeNotify(
-        updatedDonation.author?.email,
-        'Một lượt ủng hộ vừa được duyệt',
-        `Bill chuyển khoản cho bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa được admin duyệt với số tiền ${updatedDonation.amount.toLocaleString('vi-VN')}đ.`
+      updatedDonation.author?.email,
+      'Một lượt ủng hộ vừa được duyệt',
+      `Bill chuyển khoản cho bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa được admin duyệt với số tiền ${updatedDonation.amount.toLocaleString('vi-VN')}đ.`
     );
 
     return updatedDonation;
@@ -320,9 +241,7 @@ class DonationService {
       donationRepository.getReceivedSummary(authorId),
     ]);
 
-    if (!author) {
-      throw { status: 404, message: 'Tác giả không tồn tại' };
-    }
+    if (!author) throw { status: 404, message: 'Tác giả không tồn tại' };
 
     return {
       author,
