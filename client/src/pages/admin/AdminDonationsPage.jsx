@@ -22,6 +22,8 @@ const formatCurrency = (value) => {
   });
 };
 
+const defaultRejectReason = 'Bill không hợp lệ hoặc chưa nhận được chuyển khoản';
+
 export default function AdminDonationsPage() {
   const [donations, setDonations] = useState([]);
   const [status, setStatus] = useState('pending_review');
@@ -30,6 +32,8 @@ export default function AdminDonationsPage() {
   const [rejectingId, setRejectingId] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [reviewModal, setReviewModal] = useState(null);
+  const [rejectReason, setRejectReason] = useState(defaultRejectReason);
 
   const loadDonations = async () => {
     setLoading(true);
@@ -61,9 +65,28 @@ export default function AdminDonationsPage() {
     );
   }, [donations]);
 
-  const handleApprove = async (donationId) => {
-    if (!window.confirm('Duyệt bill COD này và chuyển giao dịch sang trạng thái hoàn thành?')) return;
+  const openApproveModal = (donation) => {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setReviewModal({ type: 'approve', donation });
+  };
 
+  const openRejectModal = (donation) => {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setRejectReason(defaultRejectReason);
+    setReviewModal({ type: 'reject', donation });
+  };
+
+  const closeReviewModal = () => {
+    if (approvingId || rejectingId) return;
+    setReviewModal(null);
+  };
+
+  const handleApprove = async () => {
+    if (!reviewModal?.donation?._id) return;
+
+    const donationId = reviewModal.donation._id;
     setApprovingId(donationId);
     setErrorMessage('');
     setSuccessMessage('');
@@ -71,6 +94,7 @@ export default function AdminDonationsPage() {
     try {
       await approveCodDonationApi(donationId);
       setSuccessMessage('Đã duyệt bill COD thành công.');
+      setReviewModal(null);
       await loadDonations();
     } catch (error) {
       setErrorMessage(error?.response?.data?.message || 'Không thể duyệt bill COD.');
@@ -79,14 +103,11 @@ export default function AdminDonationsPage() {
     }
   };
 
-  const handleReject = async (donationId) => {
-    const reason = window.prompt('Nhập lý do không duyệt bill:', 'Bill không hợp lệ hoặc chưa nhận được chuyển khoản');
+  const handleReject = async () => {
+    if (!reviewModal?.donation?._id) return;
 
-    if (reason === null) return;
-
-    const finalReason = reason.trim() || 'Admin không duyệt bill COD';
-
-    if (!window.confirm('Xác nhận không duyệt bill COD này?')) return;
+    const donationId = reviewModal.donation._id;
+    const finalReason = rejectReason.trim() || 'Admin không duyệt bill COD';
 
     setRejectingId(donationId);
     setErrorMessage('');
@@ -95,6 +116,7 @@ export default function AdminDonationsPage() {
     try {
       await rejectCodDonationApi(donationId, finalReason);
       setSuccessMessage('Đã từ chối bill COD thành công.');
+      setReviewModal(null);
       await loadDonations();
     } catch (error) {
       setErrorMessage(error?.response?.data?.message || 'Không thể từ chối bill COD.');
@@ -102,6 +124,11 @@ export default function AdminDonationsPage() {
       setRejectingId('');
     }
   };
+
+  const modalDonation = reviewModal?.donation;
+  const isApproveModal = reviewModal?.type === 'approve';
+  const isRejectModal = reviewModal?.type === 'reject';
+  const modalBusy = !!approvingId || !!rejectingId;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8">
@@ -157,7 +184,7 @@ export default function AdminDonationsPage() {
         {donations.map((donation) => {
           const billImage = donation.billImage || '';
           const canReview = donation.paymentMethod === 'cod' && donation.status === 'pending_review';
-          const rejectReason = donation.gatewayResponse?.rejectReason || '';
+          const rejectReasonText = donation.gatewayResponse?.rejectReason || '';
 
           return (
             <article key={donation._id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -201,9 +228,9 @@ export default function AdminDonationsPage() {
                     </div>
                   )}
 
-                  {rejectReason && (
+                  {rejectReasonText && (
                     <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                      <strong>Lý do không duyệt:</strong> {rejectReason}
+                      <strong>Lý do không duyệt:</strong> {rejectReasonText}
                     </div>
                   )}
 
@@ -232,7 +259,7 @@ export default function AdminDonationsPage() {
                       <>
                         <button
                           type="button"
-                          onClick={() => handleApprove(donation._id)}
+                          onClick={() => openApproveModal(donation)}
                           disabled={approvingId === donation._id || rejectingId === donation._id}
                           className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
@@ -240,7 +267,7 @@ export default function AdminDonationsPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleReject(donation._id)}
+                          onClick={() => openRejectModal(donation)}
                           disabled={approvingId === donation._id || rejectingId === donation._id}
                           className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
@@ -255,6 +282,79 @@ export default function AdminDonationsPage() {
           );
         })}
       </div>
+
+      {reviewModal && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/50 px-4 py-6">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200">
+            <div className="border-b border-slate-200 px-5 py-4">
+              <h2 className="text-lg font-bold text-slate-900">
+                {isApproveModal ? 'Xác nhận duyệt bill COD' : 'Không duyệt bill COD'}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {modalDonation?.postSnapshot?.title || modalDonation?.post?.title || 'Giao dịch ủng hộ'}
+              </p>
+            </div>
+
+            <div className="space-y-4 px-5 py-4">
+              <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                <p><strong>Số tiền:</strong> {formatCurrency(modalDonation?.amount)}</p>
+                <p className="mt-1"><strong>Người ủng hộ:</strong> {modalDonation?.donor?.fullName || modalDonation?.donorSnapshot?.fullName || 'N/A'}</p>
+                <p className="mt-1"><strong>Tác giả nhận:</strong> {modalDonation?.author?.fullName || modalDonation?.authorSnapshot?.fullName || 'N/A'}</p>
+              </div>
+
+              {isApproveModal && (
+                <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  Sau khi duyệt, giao dịch sẽ chuyển sang trạng thái <strong>Đã hoàn thành</strong> và tác giả được ghi nhận lượt ủng hộ.
+                </p>
+              )}
+
+              {isRejectModal && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">Lý do không duyệt</label>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(event) => setRejectReason(event.target.value)}
+                    rows={4}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
+                    placeholder="Nhập lý do không duyệt bill"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">
+              <button
+                type="button"
+                onClick={closeReviewModal}
+                disabled={modalBusy}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Hủy
+              </button>
+              {isApproveModal && (
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={modalBusy}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {approvingId ? 'Đang duyệt...' : 'Xác nhận duyệt'}
+                </button>
+              )}
+              {isRejectModal && (
+                <button
+                  type="button"
+                  onClick={handleReject}
+                  disabled={modalBusy}
+                  className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {rejectingId ? 'Đang từ chối...' : 'Xác nhận không duyệt'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
