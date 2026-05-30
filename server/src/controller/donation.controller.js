@@ -1,5 +1,6 @@
 import { validationResult } from 'express-validator';
 import donationService from '../service/donation.service.js';
+import donationRepository from '../repository/donation.repository.js';
 
 class DonationController {
   checkValidationErrors(req, res) {
@@ -82,6 +83,50 @@ class DonationController {
       return res.status(error.status || 500).json({
         success: false,
         message: error.message || 'Không thể duyệt giao dịch',
+      });
+    }
+  }
+
+  async rejectCodDonation(req, res) {
+    const validationError = this.checkValidationErrors(req, res);
+    if (validationError) return validationError;
+
+    try {
+      const donation = await donationRepository.findById(req.params.donationId);
+
+      if (!donation) {
+        return res.status(404).json({ success: false, message: 'Không tìm thấy giao dịch' });
+      }
+
+      if (donation.paymentMethod !== 'cod') {
+        return res.status(400).json({ success: false, message: 'Chỉ từ chối được giao dịch chuyển khoản thủ công' });
+      }
+
+      if (donation.status !== 'pending_review') {
+        return res.status(400).json({ success: false, message: 'Giao dịch này không ở trạng thái chờ duyệt' });
+      }
+
+      const reason = (req.body?.reason || 'Admin không duyệt bill COD').trim();
+      const updatedDonation = await donationRepository.updateStatus(req.params.donationId, {
+        status: 'rejected',
+        rejectedAt: new Date(),
+        approvedBy: req.user.userId,
+        gatewayResponse: {
+          ...(donation.gatewayResponse || {}),
+          rejectReason: reason,
+          rejectedBy: req.user.userId,
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Đã từ chối giao dịch thành công',
+        data: updatedDonation,
+      });
+    } catch (error) {
+      return res.status(error.status || 500).json({
+        success: false,
+        message: error.message || 'Không thể từ chối giao dịch',
       });
     }
   }
