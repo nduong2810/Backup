@@ -10,13 +10,13 @@ class CommentRepository {
     // Populate author info + sắp xếp cũ nhất trước (dòng thời gian)
     async findByPostId(postId) {
         return await Comment.find({ post: postId })
-            .populate('author', 'fullName avatar')
+            .populate('author', '_id fullName avatar email')
             .sort({ createdAt: 1 });  // Comment cũ nhất lên trước
     }
 
     async findById(commentId) {
         return await Comment.findById(commentId)
-            .populate('author', 'fullName avatar major')
+            .populate('author', '_id fullName avatar major email')
             .populate('post', 'title author');
     }
 
