@@ -17,3 +17,7 @@ export const fetchAdminDonationsApi = ({ status = '', paymentMethod = 'cod' } = 
 export const approveCodDonationApi = (donationId) => {
   return apiClient.patch(`/donations/admin/${donationId}/approve`);
 };
+
+export const rejectCodDonationApi = (donationId, reason = '') => {
+  return apiClient.patch(`/donations/admin/${donationId}/reject`, { reason });
+};
