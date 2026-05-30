@@ -18,6 +18,8 @@ router.get('/admin', authenticateToken, authorizeRole('admin'), donationControll
 
 router.patch('/admin/:donationId/approve', authenticateToken, authorizeRole('admin'), donationIdValidation, donationController.approveCodDonation.bind(donationController));
 
+router.patch('/admin/:donationId/reject', authenticateToken, authorizeRole('admin'), donationIdValidation, donationController.rejectCodDonation.bind(donationController));
+
 router.get('/authors/:userId', authorIdValidation, donationController.getAuthorProfile.bind(donationController));
 
 export default router;
