@@ -18,9 +18,7 @@ const buildSnapshot = (doc) => ({
 
 const normalizeId = (value) => {
   if (!value) return '';
-
   if (typeof value === 'string') return value.trim();
-
   if (typeof value === 'number') return String(value);
 
   if (typeof value === 'object') {
@@ -44,43 +42,21 @@ const normalizeId = (value) => {
 
 const normalizeEmail = (value) => {
   if (!value || typeof value !== 'object') return '';
-
-  return String(
-    value.email ||
-    value.authorEmail ||
-    value.userEmail ||
-    ''
-  ).trim().toLowerCase();
+  return String(value.email || value.authorEmail || value.userEmail || '').trim().toLowerCase();
 };
 
 const normalizeFullName = (value) => {
   if (!value || typeof value !== 'object') return '';
-
-  return String(
-    value.fullName ||
-    value.name ||
-    value.displayName ||
-    ''
-  ).trim();
+  return String(value.fullName || value.name || value.displayName || '').trim();
 };
 
 const normalizeUsername = (value) => {
   if (!value || typeof value !== 'object') return '';
-
-  return String(
-    value.username ||
-    value.userName ||
-    value.slug ||
-    ''
-  ).trim();
+  return String(value.username || value.userName || value.slug || '').trim();
 };
 
 const buildLegacyEmail = (candidate) => {
-  const username =
-    normalizeUsername(candidate) ||
-    normalizeFullName(candidate) ||
-    'legacy-author';
-
+  const username = normalizeUsername(candidate) || normalizeFullName(candidate) || 'legacy-author';
   const safeUsername = username
     .toLowerCase()
     .normalize('NFD')
@@ -96,17 +72,17 @@ const isMongoId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || '').trim()
 
 const formatVnpayDate = (date) => {
   const pad = (value) => String(value).padStart(2, '0');
-
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 };
 
-const sortObject = (object) => {
+const sortObjectForVnpay = (object) => {
   const sorted = {};
-  const keys = Object.keys(object).sort();
 
-  keys.forEach((key) => {
-    sorted[key] = object[key];
-  });
+  Object.keys(object)
+    .sort()
+    .forEach((key) => {
+      sorted[encodeURIComponent(key)] = encodeURIComponent(String(object[key])).replace(/%20/g, '+');
+    });
 
   return sorted;
 };
@@ -137,14 +113,12 @@ class DonationService {
       }
 
       const candidateEmail = normalizeEmail(candidate);
-
       if (candidateEmail) {
         const author = await userRepository.findByEmail(candidateEmail);
         if (author) return author;
       }
 
       const candidateFullName = normalizeFullName(candidate);
-
       if (candidateFullName && typeof userRepository.findByFullName === 'function') {
         const author = await userRepository.findByFullName(candidateFullName);
         if (author) return author;
@@ -161,12 +135,9 @@ class DonationService {
       if (!fullName && !username) continue;
 
       const legacyEmail = normalizeEmail(candidate) || buildLegacyEmail(candidate);
-
       let existingAuthor = await userRepository.findByEmail(legacyEmail);
 
-      if (existingAuthor) {
-        return existingAuthor;
-      }
+      if (existingAuthor) return existingAuthor;
 
       try {
         return await userRepository.createUser({
@@ -181,11 +152,7 @@ class DonationService {
         });
       } catch (error) {
         existingAuthor = await userRepository.findByEmail(legacyEmail);
-
-        if (existingAuthor) {
-          return existingAuthor;
-        }
-
+        if (existingAuthor) return existingAuthor;
         console.error('[DonationService] Cannot create legacy author:', error.message);
       }
     }
@@ -195,15 +162,7 @@ class DonationService {
 
   async createCheckout(donorId, payload) {
     const amount = Number(payload.amount);
-
-    const {
-      postId,
-      authorId = '',
-      answerId = null,
-      paymentMethod,
-      note = '',
-      billImage = '',
-    } = payload;
+    const { postId, authorId = '', answerId = null, paymentMethod, note = '', billImage = '' } = payload;
 
     if (!SUPPORTED_AMOUNTS.has(amount)) {
       throw { status: 400, message: 'Chỉ hỗ trợ các mức 20K, 50K, 100K' };
@@ -215,29 +174,18 @@ class DonationService {
       Post.findById(postId).select('author title status'),
     ]);
 
-    if (!donor) {
-      throw { status: 404, message: 'Người donate không tồn tại' };
-    }
-
-    if (!post && !rawPost) {
-      throw { status: 404, message: 'Bài viết không tồn tại' };
-    }
+    if (!donor) throw { status: 404, message: 'Người donate không tồn tại' };
+    if (!post && !rawPost) throw { status: 404, message: 'Bài viết không tồn tại' };
 
     const currentPost = post || rawPost;
-
-    if (currentPost.status === 'deleted') {
-      throw { status: 410, message: 'Bài viết đã bị xóa' };
-    }
+    if (currentPost.status === 'deleted') throw { status: 410, message: 'Bài viết đã bị xóa' };
 
     let answer = null;
     let authorCandidate = null;
 
     if (answerId) {
       answer = await commentRepository.findById(answerId);
-
-      if (!answer) {
-        throw { status: 404, message: 'Câu trả lời không tồn tại' };
-      }
+      if (!answer) throw { status: 404, message: 'Câu trả lời không tồn tại' };
 
       const answerPostId = normalizeId(answer.post?._id || answer.post);
       const currentPostId = normalizeId(currentPost._id || rawPost?._id || postId);
@@ -279,12 +227,8 @@ class DonationService {
       billImage: billImage || '',
       donorSnapshot: buildSnapshot(donor),
       authorSnapshot: buildSnapshot(author),
-      postSnapshot: {
-        title: currentPost.title || '',
-      },
-      answerSnapshot: {
-        content: answer?.content || '',
-      },
+      postSnapshot: { title: currentPost.title || '' },
+      answerSnapshot: { content: answer?.content || '' },
     };
 
     if (paymentMethod === 'cod') {
@@ -308,7 +252,7 @@ class DonationService {
   }
 
   async _createVnpayCheckout(basePayload) {
-    const { amount, author } = basePayload;
+    const { amount } = basePayload;
 
     if (!env.VNPAY_TMN_CODE || !env.VNPAY_HASH_SECRET || !env.VNPAY_URL || !env.VNPAY_RETURN_URL) {
       throw { status: 400, message: 'Sandbox VNPAY chưa được cấu hình trên server' };
@@ -323,7 +267,7 @@ class DonationService {
       vnp_Amount: String(Math.round(amount * 100)),
       vnp_CurrCode: 'VND',
       vnp_TxnRef: txnRef,
-      vnp_OrderInfo: `Ung ho tac gia ${author.fullName || 'IT Forum'}`,
+      vnp_OrderInfo: `Thanh toan ${txnRef}`,
       vnp_OrderType: 'other',
       vnp_Locale: 'vn',
       vnp_ReturnUrl: env.VNPAY_RETURN_URL.trim(),
@@ -332,12 +276,8 @@ class DonationService {
       vnp_ExpireDate: formatVnpayDate(new Date(Date.now() + 15 * 60 * 1000)),
     };
 
-    const sortedParams = sortObject(params);
-
-    const signData = qs.stringify(sortedParams, {
-      encode: false,
-    });
-
+    const sortedParams = sortObjectForVnpay(params);
+    const signData = qs.stringify(sortedParams, { encode: false });
     const secureHash = crypto
       .createHmac('sha512', env.VNPAY_HASH_SECRET.trim())
       .update(Buffer.from(signData, 'utf-8'))
@@ -345,9 +285,7 @@ class DonationService {
 
     sortedParams.vnp_SecureHash = secureHash;
 
-    const paymentUrl = `${env.VNPAY_URL.trim()}?${qs.stringify(sortedParams, {
-      encode: false,
-    })}`;
+    const paymentUrl = `${env.VNPAY_URL.trim()}?${qs.stringify(sortedParams, { encode: false })}`;
 
     const donation = await donationRepository.createDonation({
       ...basePayload,
@@ -373,9 +311,7 @@ class DonationService {
       ? await donationRepository.findById(transactionId)
       : await donationRepository.findByOrderId(txnRef);
 
-    if (!donation) {
-      throw { status: 404, message: 'Không tìm thấy giao dịch' };
-    }
+    if (!donation) throw { status: 404, message: 'Không tìm thấy giao dịch' };
 
     if (String(responseCode) === '00') {
       const updatedDonation = await donationRepository.updateStatus(donation._id, {
@@ -413,17 +349,9 @@ class DonationService {
   async approveCodDonation(donationId, adminId) {
     const donation = await donationRepository.findById(donationId);
 
-    if (!donation) {
-      throw { status: 404, message: 'Không tìm thấy giao dịch' };
-    }
-
-    if (donation.paymentMethod !== 'cod') {
-      throw { status: 400, message: 'Chỉ duyệt được giao dịch chuyển khoản thủ công' };
-    }
-
-    if (donation.status !== 'pending_review') {
-      throw { status: 400, message: 'Giao dịch này không ở trạng thái chờ duyệt' };
-    }
+    if (!donation) throw { status: 404, message: 'Không tìm thấy giao dịch' };
+    if (donation.paymentMethod !== 'cod') throw { status: 400, message: 'Chỉ duyệt được giao dịch chuyển khoản thủ công' };
+    if (donation.status !== 'pending_review') throw { status: 400, message: 'Giao dịch này không ở trạng thái chờ duyệt' };
 
     const updatedDonation = await donationRepository.updateStatus(donationId, {
       status: 'completed',
@@ -448,9 +376,7 @@ class DonationService {
       donationRepository.getReceivedSummary(authorId),
     ]);
 
-    if (!author) {
-      throw { status: 404, message: 'Tác giả không tồn tại' };
-    }
+    if (!author) throw { status: 404, message: 'Tác giả không tồn tại' };
 
     return {
       author,
