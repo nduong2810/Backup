@@ -41,6 +41,11 @@ const normalizeEmail = (value) => {
   return String(value.email || value.authorEmail || value.userEmail || '').trim().toLowerCase();
 };
 
+const normalizeFullName = (value) => {
+  if (!value || typeof value !== 'object') return '';
+  return String(value.fullName || value.name || value.displayName || '').trim();
+};
+
 const isMongoId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || '').trim());
 
 const formatVnpayDate = (date) => {
@@ -80,6 +85,12 @@ class DonationService {
       const candidateEmail = normalizeEmail(candidate);
       if (candidateEmail) {
         const author = await userRepository.findByEmail(candidateEmail);
+        if (author) return author;
+      }
+
+      const candidateFullName = normalizeFullName(candidate);
+      if (candidateFullName && typeof userRepository.findByFullName === 'function') {
+        const author = await userRepository.findByFullName(candidateFullName);
         if (author) return author;
       }
     }
@@ -132,7 +143,7 @@ class DonationService {
     if (!author) {
       throw {
         status: 400,
-        message: 'Không xác định được tác giả để ủng hộ. Bài viết cần có author là ObjectId user, hoặc author.email trùng với users.email.',
+        message: 'Không xác định được tác giả để ủng hộ. Bài viết cần có author là ObjectId user, hoặc author.fullName/email trùng với users.fullName/email.',
       };
     }
 
