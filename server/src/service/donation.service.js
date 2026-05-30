@@ -100,11 +100,16 @@ const formatVnpayDate = (date) => {
 };
 
 const buildVnpayQueryString = (params) => {
-  return Object.keys(params)
+  const searchParams = new URLSearchParams();
+
+  Object.keys(params)
     .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
     .sort()
-    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(String(params[key]))}`)
-    .join('&');
+    .forEach((key) => {
+      searchParams.append(key, String(params[key]));
+    });
+
+  return searchParams.toString();
 };
 
 const safeNotify = async (email, subject, message) => {
@@ -351,12 +356,12 @@ class DonationService {
 
     const signData = buildVnpayQueryString(params);
 
-    const signature = crypto
-      .createHmac('sha512', env.VNPAY_HASH_SECRET)
-      .update(signData)
-      .digest('hex');
+const signature = crypto
+  .createHmac('sha512', env.VNPAY_HASH_SECRET.trim())
+  .update(Buffer.from(signData, 'utf-8'))
+  .digest('hex');
 
-    const paymentUrl = `${env.VNPAY_URL}?${signData}&vnp_SecureHashType=HmacSHA512&vnp_SecureHash=${signature}`;
+const paymentUrl = `${env.VNPAY_URL}?${signData}&vnp_SecureHash=${signature}`;
 
     const donation = await donationRepository.createDonation({
       ...basePayload,
