@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/loginSlice';
@@ -10,6 +10,7 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
   const { user } = useSelector((state) => state.login);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const isAdmin = user?.role === 'admin';
 
   const handleLogout = () => {
     dispatch(logout());
@@ -80,7 +81,29 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-md overflow-hidden z-50">
+                <div className="absolute right-0 mt-2 w-56 bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-md overflow-hidden z-50">
+                  {isAdmin && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate('/admin/donations');
+                        }}
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm font-semibold text-primary hover:bg-surface-container-low transition-colors"
+                      >
+                        Duyệt bill COD
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate('/admin/flags');
+                        }}
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm font-semibold text-primary hover:bg-surface-container-low transition-colors"
+                      >
+                        Duyệt cờ báo cáo
+                      </button>
+                    </>
+                  )}
                   <button
                     onClick={() => {
                       setMenuOpen(false);
