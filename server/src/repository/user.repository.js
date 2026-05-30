@@ -18,8 +18,15 @@ class UserRepository {
         }).select('-password');
     }
 
-    async updateUserByEmail(email, updateData) {
-        return await User.findOneAndUpdate({ email }, updateData, { new: true });
+    async findByUsername(username) {
+        if (!username) return null;
+        return await User.findOne({
+            username: new RegExp(`^${escapeRegex(username.trim())}$`, 'i'),
+        }).select('-password');
+    }
+
+    updateUserByEmail(email, updateData) {
+        return User.findOneAndUpdate({ email }, updateData, { new: true });
     }
 
     // Khởi tạo user mới vào Database
