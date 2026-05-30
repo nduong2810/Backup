@@ -36,6 +36,11 @@ const normalizeId = (value) => {
   return '';
 };
 
+const normalizeEmail = (value) => {
+  if (!value || typeof value !== 'object') return '';
+  return String(value.email || value.authorEmail || value.userEmail || '').trim().toLowerCase();
+};
+
 const isMongoId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || '').trim());
 
 const formatVnpayDate = (date) => {
@@ -59,6 +64,29 @@ const safeNotify = async (email, subject, message) => {
 };
 
 class DonationService {
+  async resolveAuthor(authorId, ...candidates) {
+    if (isMongoId(authorId)) {
+      const author = await userRepository.findById(authorId);
+      if (author) return author;
+    }
+
+    for (const candidate of candidates) {
+      const candidateId = normalizeId(candidate);
+      if (isMongoId(candidateId)) {
+        const author = await userRepository.findById(candidateId);
+        if (author) return author;
+      }
+
+      const candidateEmail = normalizeEmail(candidate);
+      if (candidateEmail) {
+        const author = await userRepository.findByEmail(candidateEmail);
+        if (author) return author;
+      }
+    }
+
+    return null;
+  }
+
   async createCheckout(donorId, payload) {
     const amount = Number(payload.amount);
     const { postId, authorId = '', answerId = null, paymentMethod, note = '', billImage = '' } = payload;
@@ -80,7 +108,7 @@ class DonationService {
     if (currentPost.status === 'deleted') throw { status: 410, message: 'Bài viết đã bị xóa' };
 
     let answer = null;
-    let finalAuthorId = normalizeId(authorId);
+    let authorCandidate = null;
 
     if (answerId) {
       answer = await commentRepository.findById(answerId);
@@ -92,19 +120,21 @@ class DonationService {
         throw { status: 400, message: 'Câu trả lời không thuộc bài viết này' };
       }
 
-      finalAuthorId = normalizeId(answer.author?._id || answer.author);
+      authorCandidate = answer.author;
     }
 
-    if (!finalAuthorId) {
-      finalAuthorId = normalizeId(post?.author?._id || post?.author || rawPost?.author);
+    if (!authorCandidate) {
+      authorCandidate = post?.author || rawPost?.author;
     }
 
-    if (!isMongoId(finalAuthorId)) {
-      throw { status: 400, message: 'Không xác định được tác giả để ủng hộ' };
-    }
+    const author = await this.resolveAuthor(authorId, authorCandidate, post?.author, rawPost?.author, answer?.author);
 
-    const author = await userRepository.findById(finalAuthorId);
-    if (!author) throw { status: 404, message: 'Tác giả không tồn tại' };
+    if (!author) {
+      throw {
+        status: 400,
+        message: 'Không xác định được tác giả để ủng hộ. Bài viết cần có author là ObjectId user, hoặc author.email trùng với users.email.',
+      };
+    }
 
     const basePayload = {
       donor: donor._id,
