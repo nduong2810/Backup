@@ -9,6 +9,7 @@ import ResetPassword from './components/auth/ResetPassword';
 import VerifyResetOTP from './components/auth/VerifyResetOTP';
 import AdminProfilePage from './pages/admin/AdminProfilePage';
 import AdminFlagsPage from './pages/admin/AdminFlagsPage';
+import AdminDonationsPage from './pages/admin/AdminDonationsPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import AuthorProfilePage from './pages/profile/AuthorProfilePage';
 import SavedPostsPage from './pages/profile/SavedPostsPage';
@@ -69,6 +70,7 @@ function App() {
         <Route path="/users/:id" element={<AuthorProfilePage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
         <Route path="/admin/flags" element={<AdminFlagsPage />} />
+        <Route path="/admin/donations" element={<AdminDonationsPage />} />
       </Route>
 
       {/* Post Detail */}
