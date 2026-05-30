@@ -160,6 +160,14 @@ class DonationService {
     return null;
   }
 
+  async getAdminDonations(query = {}) {
+    const status = query.status || '';
+    const paymentMethod = query.paymentMethod || '';
+    const limit = query.limit || 100;
+
+    return await donationRepository.findAdminDonations({ status, paymentMethod, limit });
+  }
+
   async createCheckout(donorId, payload) {
     const amount = Number(payload.amount);
     const { postId, authorId = '', answerId = null, paymentMethod, note = '', billImage = '' } = payload;
