@@ -10,7 +10,7 @@ class PostRepository {
     // Tìm bài viết theo ID + populate thông tin author
     async findById(postId) {
         return await Post.findById(postId)
-            .populate('author', 'fullName avatar major');  // Chỉ lấy các field cần hiển thị
+            .populate('author', '_id fullName avatar major email');
     }
 
     // Tăng viewCount +1 mỗi khi xem chi tiết bài viết
@@ -76,7 +76,7 @@ class PostRepository {
             _id: { $ne: excludePostId },   // Loại bỏ bài viết hiện tại
             status: 'active'                // Chỉ lấy bài đang active
         })
-        .populate('author', 'fullName avatar')
+        .populate('author', '_id fullName avatar email')
         .sort({ createdAt: -1 })            // Mới nhất trước
         .limit(limit)
         .select('title tags images upvotes downvotes viewCount createdAt');  // Chỉ lấy field cần thiết
@@ -89,7 +89,7 @@ class PostRepository {
                         .sort(sort)
                         .skip(skip)
                         .limit(limit)
-                        .populate('author', 'fullName avatar')
+                        .populate('author', '_id fullName avatar email')
                         .lean();
         }
 
@@ -171,7 +171,7 @@ class PostRepository {
                         downvoteCount: 1,
                         answerCount: 1,
                         createdAt: 1,
-                        author: { fullName: 1, avatar: 1 },
+                        author: { _id: 1, fullName: 1, avatar: 1, email: 1 },
                     },
                 },
             ];

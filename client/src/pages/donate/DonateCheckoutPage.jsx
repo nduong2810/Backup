@@ -81,8 +81,9 @@ export default function DonateCheckoutPage() {
   const answerId = answerIdValue;
   const answerContent = getTextValue(location.state?.answerContent, sessionContext.answerContent, queryParams.get('answerContent'));
   const postTitle = getTextValue(location.state?.postTitle, sessionContext.postTitle, queryParams.get('postTitle')) || 'Bài viết';
-  const checkoutError = !postId || !authorId ? 'Thiếu dữ liệu bài viết hoặc tác giả. Hãy quay lại trang chi tiết để bắt đầu ủng hộ.' : '';
-
+  const checkoutError = !postId
+      ? 'Thiếu dữ liệu bài viết. Hãy quay lại trang chi tiết để bắt đầu ủng hộ.'
+      : '';
   const selectedAmount = useMemo(() => AMOUNTS.find((item) => item.value === amount) || AMOUNTS[0], [amount]);
 
   const handleBillChange = (event) => {
@@ -119,13 +120,15 @@ export default function DonateCheckoutPage() {
     try {
       const payload = {
         postId,
-        authorId,
         amount,
         paymentMethod,
         note,
         billImage: paymentMethod === 'cod' ? billImage : '',
-
       };
+
+      if (authorId) {
+        payload.authorId = authorId;
+      }
 
       if (answerId) {
         payload.answerId = answerId;

@@ -50,7 +50,9 @@ const postStatusLabelMap = {
 
 const normalizeId = (value) => {
   if (!value) return '';
+
   if (typeof value === 'string') return value;
+
   if (typeof value === 'number') return String(value);
 
   if (typeof value === 'object') {
@@ -65,16 +67,6 @@ const normalizeId = (value) => {
   }
 
   return '';
-};
-
-const getDisplayName = (candidate, fallback = '') => {
-  if (!candidate || typeof candidate !== 'object') return fallback;
-  return candidate.fullName || candidate.name || candidate.email || fallback;
-};
-
-const getAvatar = (candidate) => {
-  if (!candidate || typeof candidate !== 'object') return '';
-  return candidate.avatar || '';
 };
 
 export default function PostDetailPage() {
@@ -125,8 +117,16 @@ export default function PostDetailPage() {
     return (
       <div className="mx-auto flex-1 min-w-0 max-w-4xl pb-12">
         <div className="mt-8 flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-error/30 bg-error-container/30 px-6 py-12 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-error-container">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
           <p className="mt-4 text-body-md font-body-md font-semibold text-error">{error}</p>
-          <button onClick={() => navigate(-1)} className="mt-4 inline-flex items-center gap-1 text-body-sm font-body-sm text-primary hover:underline">
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-4 inline-flex items-center gap-1 text-body-sm font-body-sm text-primary hover:underline"
+          >
             ← Quay lại
           </button>
         </div>
@@ -135,12 +135,7 @@ export default function PostDetailPage() {
   }
 
   if (!post) return null;
-
-  const postId = normalizeId(post._id || post.id || id);
-  const postAuthorCandidate = post.author || post.authorId || post.user || post.userId || post.createdBy || '';
-  const postAuthorId = normalizeId(postAuthorCandidate);
-  const isPostOwner = user?._id && postAuthorId && normalizeId(user._id) === postAuthorId;
-  const isSaved = savedIds.includes(post._id);
+  const isPostOwner = user?._id && post?.author?._id && user._id === post.author._id;
 
   const handleSubmitReport = async (event) => {
     event.preventDefault();
@@ -158,6 +153,7 @@ export default function PostDetailPage() {
     }
   };
 
+  const isSaved = savedIds.includes(post._id);
   const handleToggleSave = () => {
     if (!isAuthenticated) {
       navigate('/auth/login');
@@ -197,40 +193,88 @@ export default function PostDetailPage() {
     }
 
     const isPostDonation = comment?.isPostDonation === true;
-    const commentAuthorCandidate = comment.author || comment.authorId || comment.user || comment.userId || comment.createdBy || '';
-    const targetAuthorCandidate = isPostDonation ? postAuthorCandidate : commentAuthorCandidate;
-    const targetAuthorId = normalizeId(targetAuthorCandidate);
-    const finalAuthorId = targetAuthorId || postAuthorId;
 
-    if (!postId || !finalAuthorId) {
-      alert('Thiếu dữ liệu bài viết hoặc tác giả. Vui lòng tải lại trang rồi thử lại.');
+    const realPostId = normalizeId(post?._id || post?.id || id);
+
+    const postAuthorCandidate =
+        post?.author ||
+        post?.authorId ||
+        post?.user ||
+        post?.userId ||
+        post?.createdBy ||
+        '';
+
+    const commentAuthorCandidate =
+        comment?.author ||
+        comment?.authorId ||
+        comment?.user ||
+        comment?.userId ||
+        comment?.createdBy ||
+        '';
+
+    const targetAuthorCandidate = isPostDonation
+        ? postAuthorCandidate
+        : commentAuthorCandidate;
+
+    const postAuthorId = normalizeId(postAuthorCandidate);
+    const targetAuthorId = normalizeId(targetAuthorCandidate);
+
+    /*
+      Quan trọng:
+      Không chặn donate khi thiếu authorId nữa.
+      Chỉ cần có postId, backend sẽ tự suy ra tác giả từ post.author.
+    */
+    if (!realPostId) {
+      alert('Thiếu dữ liệu bài viết. Vui lòng tải lại trang rồi thử lại.');
       return;
     }
 
-    const answerId = !isPostDonation ? normalizeId(comment._id || comment.id) : '';
-    const answerContent = !isPostDonation ? (comment.content || comment.body || '') : '';
+    const answerId = !isPostDonation
+        ? normalizeId(comment?._id || comment?.id)
+        : '';
+
+    const answerContent = !isPostDonation
+        ? (comment?.content || comment?.body || '')
+        : '';
 
     const checkoutPayload = {
-      postId,
-      postTitle: post.title || 'Bài viết',
-      postAuthorId: postAuthorId || finalAuthorId,
-      postAuthorName: getDisplayName(postAuthorCandidate, ''),
-      authorId: finalAuthorId,
-      authorName: getDisplayName(targetAuthorCandidate, 'tác giả'),
-      authorAvatar: getAvatar(targetAuthorCandidate),
+      postId: realPostId,
+      postTitle: post?.title || 'Bài viết',
+
+      // Có thì gửi, không có thì để rỗng cho backend tự suy ra
+      postAuthorId: postAuthorId || '',
+      postAuthorName: postAuthorCandidate?.fullName || postAuthorCandidate?.email || '',
+
+      authorId: targetAuthorId || postAuthorId || '',
+      authorName: targetAuthorCandidate?.fullName || targetAuthorCandidate?.email || 'tác giả',
+      authorAvatar: targetAuthorCandidate?.avatar || '',
+
       answerId,
       answerContent,
     };
 
     const checkoutSearch = new URLSearchParams(checkoutPayload);
-    sessionStorage.setItem('donationCheckoutContext', JSON.stringify(checkoutPayload));
-    navigate(`/donate/checkout?${checkoutSearch.toString()}`, { state: checkoutPayload });
+
+    sessionStorage.setItem(
+        'donationCheckoutContext',
+        JSON.stringify(checkoutPayload)
+    );
+
+    navigate(`/donate/checkout?${checkoutSearch.toString()}`, {
+      state: checkoutPayload,
+    });
   };
 
   return (
     <div className="mx-auto flex-1 min-w-0 max-w-4xl pb-12">
-      <button onClick={handleBack} className="mb-4 flex items-center gap-1 text-body-sm font-body-sm text-secondary transition-colors hover:text-primary">
-        ← Quay lại
+      <button
+        onClick={handleBack}
+        className="mb-4 flex items-center gap-1 text-body-sm font-body-sm text-secondary transition-colors hover:text-primary"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+        </svg>
+        Quay lại
       </button>
 
       <div className="flex gap-4 sm:gap-6">
@@ -253,12 +297,34 @@ export default function PostDetailPage() {
       </div>
 
       <div className="mt-4 flex items-center justify-center gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest py-3 sm:hidden">
-        <button onClick={() => handleVote('upvote')} disabled={voteLoading} className="rounded-lg border border-outline-variant px-4 py-2 text-body-sm font-body-sm text-secondary hover:bg-primary-fixed/30">
-          ▲ {upvoteCount}
+        <button
+          onClick={() => handleVote('upvote')}
+          disabled={voteLoading}
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all
+            ${userVote === 'upvote'
+              ? 'border border-primary/30 bg-primary-fixed text-primary'
+              : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30'
+            }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+            <path d="M12 4l-8 8h5v8h6v-8h5z" />
+          </svg>
+          {upvoteCount}
         </button>
         <span className="text-lg font-bold text-on-surface">{upvoteCount - downvoteCount}</span>
-        <button onClick={() => handleVote('downvote')} disabled={voteLoading} className="rounded-lg border border-outline-variant px-4 py-2 text-body-sm font-body-sm text-secondary hover:bg-error-container/30">
-          ▼ {downvoteCount}
+        <button
+          onClick={() => handleVote('downvote')}
+          disabled={voteLoading}
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all
+            ${userVote === 'downvote'
+              ? 'border border-error/30 bg-error-container text-error'
+              : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'
+            }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+            <path d="M12 20l8-8h-5V4H9v8H4z" />
+          </svg>
+          {downvoteCount}
         </button>
       </div>
 
@@ -276,7 +342,11 @@ export default function PostDetailPage() {
           </div>
           <button
             type="button"
-            onClick={() => handleStartDonate({ isPostDonation: true, author: postAuthorCandidate })}
+            onClick={() => handleStartDonate({
+              author: post.author,
+              _id: post.author?._id,
+              isPostDonation: true,
+            })}
             className="rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
           >
             Ủng hộ tác giả của bài viết
@@ -287,7 +357,7 @@ export default function PostDetailPage() {
       <CommentSection
         comments={comments}
         commentCount={commentCount}
-        postAuthorId={postAuthorId}
+        postAuthorId={post.author?._id}
         onDonate={handleStartDonate}
       />
 
@@ -297,9 +367,15 @@ export default function PostDetailPage() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold text-rose-900">Gắn cờ bài viết</h3>
-            <p className="mt-1 text-sm text-rose-800">Chọn lý do gắn cờ để cộng đồng và admin xử lý.</p>
+            <p className="mt-1 text-sm text-rose-800">
+              Chọn lý do gắn cờ để cộng đồng và admin xử lý.
+            </p>
           </div>
-          <button type="button" onClick={() => navigate('/reports/history')} className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-medium text-rose-800 hover:bg-rose-100">
+          <button
+            type="button"
+            onClick={() => navigate('/reports/history')}
+            className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-medium text-rose-800 hover:bg-rose-100"
+          >
             Lịch sử cờ báo cáo
           </button>
         </div>
@@ -307,9 +383,9 @@ export default function PostDetailPage() {
         <form className="mt-4 space-y-3" onSubmit={handleSubmitReport}>
           <select
             value={flagType}
-            onChange={(event) => {
+            onChange={(e) => {
               dispatch(clearReportCreateMessages());
-              setFlagType(event.target.value);
+              setFlagType(e.target.value);
             }}
             className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
           >
@@ -321,18 +397,32 @@ export default function PostDetailPage() {
 
           <textarea
             value={details}
-            onChange={(event) => setDetails(event.target.value)}
+            onChange={(e) => setDetails(e.target.value)}
             rows={3}
             placeholder="Mô tả thêm (đặc biệt hữu ích khi chọn 'Cần moderator xem thủ công')"
             className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
           />
 
-          <button type="submit" disabled={creating || !flagType} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60">
+          <button
+            type="submit"
+            disabled={creating || !flagType}
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
             {creating ? 'Đang gửi...' : 'Gửi cờ báo cáo'}
           </button>
 
-          {createSuccessMessage && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">✓ {createSuccessMessage}</div>}
-          {createErrorMessage && <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">! {createErrorMessage}</div>}
+          {createSuccessMessage && (
+            <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              <span className="mt-0.5 text-emerald-700">✓</span>
+              <p className="leading-5">{createSuccessMessage}</p>
+            </div>
+          )}
+          {createErrorMessage && (
+            <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+              <span className="mt-0.5 text-rose-700">!</span>
+              <p className="leading-5">{createErrorMessage}</p>
+            </div>
+          )}
         </form>
       </section>
 
@@ -341,7 +431,9 @@ export default function PostDetailPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold text-blue-900">Tình trạng cờ trên bài viết của bạn</h3>
-              <p className="mt-1 text-sm text-blue-800">Dành cho chủ bài: xem tổng hợp số lượng cờ và loại cờ đang tác động lên bài viết.</p>
+              <p className="mt-1 text-sm text-blue-800">
+                Dành cho chủ bài: xem tổng hợp số lượng cờ và loại cờ đang tác động lên bài viết.
+              </p>
             </div>
             <button
               type="button"
@@ -351,7 +443,9 @@ export default function PostDetailPage() {
                   return;
                 }
                 setShowOwnerSummary(true);
-                if (!ownerSummary) dispatch(fetchPostFlagSummaryThunk(id));
+                if (!ownerSummary) {
+                  dispatch(fetchPostFlagSummaryThunk(id));
+                }
               }}
               className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-medium text-blue-800 hover:bg-blue-100"
             >
@@ -360,10 +454,14 @@ export default function PostDetailPage() {
           </div>
 
           {showOwnerSummary && ownerSummaryErrorMessage && <p className="mt-3 text-sm text-red-700">{ownerSummaryErrorMessage}</p>}
+
           {showOwnerSummary && ownerSummary && (
             <div className="mt-3 space-y-2 text-sm text-slate-700">
               <p><strong>Tổng số cờ:</strong> {ownerSummary.totalFlags}</p>
-              <p><strong>Trạng thái bài:</strong> {postStatusLabelMap[ownerSummary.postStatus] || ownerSummary.postStatus}</p>
+              <p>
+                <strong>Trạng thái bài:</strong>{' '}
+                {postStatusLabelMap[ownerSummary.postStatus] || ownerSummary.postStatus}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(ownerSummary.summaryByType || {}).map(([key, value]) => (
                   <span key={key} className="rounded-full border border-blue-200 bg-white px-2.5 py-1 text-xs text-blue-800">
@@ -378,26 +476,51 @@ export default function PostDetailPage() {
 
       {saveModalOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-          <button type="button" onClick={() => { setSaveModalOpen(false); setSelectedCollectionId(''); }} className="absolute inset-0 bg-black/45" aria-label="Đóng" />
+          <button
+            type="button"
+            onClick={() => {
+              setSaveModalOpen(false);
+              setSelectedCollectionId('');
+            }}
+            className="absolute inset-0 bg-black/45"
+            aria-label="Đóng"
+          />
           <div className="relative w-full max-w-md rounded-xl border border-outline-variant bg-surface-container-lowest shadow-xl">
             <div className="px-5 py-4 border-b border-outline-variant">
               <h3 className="text-lg font-semibold text-on-surface">Lưu bài viết vào thư mục</h3>
             </div>
             <div className="px-5 py-4">
               <label className="block text-sm text-secondary mb-2">Chọn thư mục</label>
-              <select value={selectedCollectionId} onChange={(event) => setSelectedCollectionId(event.target.value)} className="w-full rounded-DEFAULT border border-outline-variant px-3 py-2 text-sm bg-surface-container-lowest">
+              <select
+                value={selectedCollectionId}
+                onChange={(event) => setSelectedCollectionId(event.target.value)}
+                className="w-full rounded-DEFAULT border border-outline-variant px-3 py-2 text-sm bg-surface-container-lowest"
+              >
                 <option value="">Lưu vào thư mục mặc định (Lưu trữ)</option>
                 {collections.filter((collection) => !collection.isDefault).map((collection) => (
-                  <option key={collection._id} value={collection._id}>{collection.name}</option>
+                  <option key={collection._id} value={collection._id}>
+                    {collection.isDefault ? 'Lưu trữ' : collection.name}
+                  </option>
                 ))}
               </select>
               {loadingCollections && <p className="text-xs text-secondary mt-2">Đang tải thư mục...</p>}
             </div>
             <div className="px-5 py-4 border-t border-outline-variant flex justify-end gap-2">
-              <button type="button" onClick={() => { setSaveModalOpen(false); setSelectedCollectionId(''); }} className="px-3 py-1.5 text-sm rounded-DEFAULT border border-outline-variant hover:bg-surface-container-low">
+              <button
+                type="button"
+                onClick={() => {
+                  setSaveModalOpen(false);
+                  setSelectedCollectionId('');
+                }}
+                className="px-3 py-1.5 text-sm rounded-DEFAULT border border-outline-variant hover:bg-surface-container-low"
+              >
                 Hủy
               </button>
-              <button type="button" onClick={handleConfirmSaveToCollection} className="px-3 py-1.5 text-sm rounded-DEFAULT bg-primary text-white hover:bg-primary/90">
+              <button
+                type="button"
+                onClick={handleConfirmSaveToCollection}
+                className="px-3 py-1.5 text-sm rounded-DEFAULT bg-primary text-white hover:bg-primary/90"
+              >
                 Lưu
               </button>
             </div>
@@ -407,3 +530,4 @@ export default function PostDetailPage() {
     </div>
   );
 }
+

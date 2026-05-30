@@ -13,6 +13,33 @@ const buildSnapshot = (doc) => ({
   avatar: doc?.avatar || '',
   major: doc?.major || '',
 });
+const normalizeId = (value) => {
+  if (!value) return '';
+
+  if (typeof value === 'string') return value;
+
+  if (typeof value === 'number') return String(value);
+
+  if (typeof value === 'object') {
+    if (value.$oid) return normalizeId(value.$oid);
+    if (value._id) return normalizeId(value._id);
+    if (value.id) return normalizeId(value.id);
+    if (value.authorId) return normalizeId(value.authorId);
+    if (value.userId) return normalizeId(value.userId);
+    if (value.author) return normalizeId(value.author);
+    if (value.user) return normalizeId(value.user);
+    if (value.createdBy) return normalizeId(value.createdBy);
+
+    if (typeof value.toString === 'function') {
+      const stringValue = value.toString();
+      if (stringValue && stringValue !== '[object Object]') {
+        return stringValue;
+      }
+    }
+  }
+
+  return '';
+};
 
 const formatVnpayDate = (date) => {
   const pad = (value) => String(value).padStart(2, '0');
@@ -21,14 +48,15 @@ const formatVnpayDate = (date) => {
 
 const buildVnpayQueryString = (params) => {
   return Object.keys(params)
-    .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
-    .sort()
-    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(String(params[key]))}`)
-    .join('&');
+      .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
+      .sort()
+      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(String(params[key]))}`)
+      .join('&');
 };
 
 const safeNotify = async (email, subject, message) => {
   if (!email || !env.EMAIL_USER || !env.EMAIL_PASS) return;
+
   try {
     await sendEmail(email, subject, message);
   } catch (error) {
@@ -39,33 +67,77 @@ const safeNotify = async (email, subject, message) => {
 class DonationService {
   async createCheckout(donorId, payload) {
     const amount = Number(payload.amount);
-    const { postId, authorId, answerId = null, paymentMethod, note = '', billImage = '' } = payload;
+
+    const {
+      postId,
+      authorId = '',
+      answerId = null,
+      paymentMethod,
+      note = '',
+      billImage = '',
+    } = payload;
 
     if (!SUPPORTED_AMOUNTS.has(amount)) {
       throw { status: 400, message: 'Chỉ hỗ trợ các mức 20K, 50K, 100K' };
     }
 
-    const [donor, post, author] = await Promise.all([
+    const [donor, post] = await Promise.all([
       userRepository.findById(donorId),
       postRepository.findById(postId),
-      userRepository.findById(authorId),
     ]);
 
-    if (!donor) throw { status: 404, message: 'Người donate không tồn tại' };
-    if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
-    if (post.status === 'deleted') throw { status: 410, message: 'Bài viết đã bị xóa' };
-    if (!author) throw { status: 404, message: 'Tác giả không tồn tại' };
+    if (!donor) {
+      throw { status: 404, message: 'Người donate không tồn tại' };
+    }
+
+    if (!post) {
+      throw { status: 404, message: 'Bài viết không tồn tại' };
+    }
+
+    if (post.status === 'deleted') {
+      throw { status: 410, message: 'Bài viết đã bị xóa' };
+    }
 
     let answer = null;
+    let finalAuthorId = normalizeId(authorId);
+
+    /*
+      Donate cho câu trả lời:
+      backend lấy tác giả thật từ answer.author.
+    */
     if (answerId) {
       answer = await commentRepository.findById(answerId);
-      if (!answer) throw { status: 404, message: 'Câu trả lời không tồn tại' };
-      if (answer.post?._id?.toString() !== post._id.toString()) {
+
+      if (!answer) {
+        throw { status: 404, message: 'Câu trả lời không tồn tại' };
+      }
+
+      const answerPostId = normalizeId(answer.post?._id || answer.post);
+      const currentPostId = normalizeId(post._id);
+
+      if (answerPostId !== currentPostId) {
         throw { status: 400, message: 'Câu trả lời không thuộc bài viết này' };
       }
-      if (answer.author?._id?.toString() !== author._id.toString()) {
-        throw { status: 400, message: 'Tác giả câu trả lời không khớp' };
-      }
+
+      finalAuthorId = normalizeId(answer.author?._id || answer.author);
+    }
+
+    /*
+      Donate cho bài viết:
+      nếu frontend không gửi authorId thì lấy từ post.author.
+    */
+    if (!finalAuthorId) {
+      finalAuthorId = normalizeId(post.author?._id || post.author);
+    }
+
+    if (!finalAuthorId) {
+      throw { status: 400, message: 'Không xác định được tác giả để ủng hộ' };
+    }
+
+    const author = await userRepository.findById(finalAuthorId);
+
+    if (!author) {
+      throw { status: 404, message: 'Tác giả không tồn tại' };
     }
 
     const basePayload = {
@@ -79,8 +151,12 @@ class DonationService {
       billImage: billImage || '',
       donorSnapshot: buildSnapshot(donor),
       authorSnapshot: buildSnapshot(author),
-      postSnapshot: { title: post.title || '' },
-      answerSnapshot: { content: answer?.content || '' },
+      postSnapshot: {
+        title: post.title || '',
+      },
+      answerSnapshot: {
+        content: answer?.content || '',
+      },
     };
 
     if (paymentMethod === 'cod') {
@@ -104,7 +180,7 @@ class DonationService {
   }
 
   async _createVnpayCheckout(basePayload) {
-    const { amount, author, donor, post, answer, note } = basePayload;
+    const { amount, author } = basePayload;
 
     if (!env.VNPAY_TMN_CODE || !env.VNPAY_HASH_SECRET || !env.VNPAY_URL || !env.VNPAY_RETURN_URL) {
       throw { status: 400, message: 'Sandbox VNPAY chưa được cấu hình trên server' };
@@ -137,10 +213,11 @@ class DonationService {
     };
 
     const signData = buildVnpayQueryString(params);
+
     const signature = crypto
-      .createHmac('sha512', env.VNPAY_HASH_SECRET)
-      .update(signData)
-      .digest('hex');
+        .createHmac('sha512', env.VNPAY_HASH_SECRET)
+        .update(signData)
+        .digest('hex');
 
     const paymentUrl = `${env.VNPAY_URL}?${signData}&vnp_SecureHashType=HmacSHA512&vnp_SecureHash=${signature}`;
 
@@ -150,7 +227,10 @@ class DonationService {
       paymentUrl,
       orderId,
       requestId: txnRef,
-      gatewayResponse: { provider: 'vnpay', paymentUrl },
+      gatewayResponse: {
+        provider: 'vnpay',
+        paymentUrl,
+      },
     });
 
     return {
@@ -162,8 +242,8 @@ class DonationService {
 
   async confirmVnpayPayment({ transactionId, txnRef, responseCode, message = '', amount }) {
     const donation = transactionId
-      ? await donationRepository.findById(transactionId)
-      : await donationRepository.findByOrderId(txnRef);
+        ? await donationRepository.findById(transactionId)
+        : await donationRepository.findByOrderId(txnRef);
 
     if (!donation) {
       throw { status: 404, message: 'Không tìm thấy giao dịch' };
@@ -182,9 +262,9 @@ class DonationService {
       });
 
       await safeNotify(
-        updatedDonation.author?.email,
-        'Bạn vừa nhận được một lượt ủng hộ',
-        `Bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa nhận ${updatedDonation.amount.toLocaleString('vi-VN')}đ từ một người dùng.`
+          updatedDonation.author?.email,
+          'Bạn vừa nhận được một lượt ủng hộ',
+          `Bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa nhận ${updatedDonation.amount.toLocaleString('vi-VN')}đ từ một người dùng.`
       );
 
       return updatedDonation;
@@ -204,6 +284,7 @@ class DonationService {
 
   async approveCodDonation(donationId, adminId) {
     const donation = await donationRepository.findById(donationId);
+
     if (!donation) {
       throw { status: 404, message: 'Không tìm thấy giao dịch' };
     }
@@ -224,9 +305,9 @@ class DonationService {
     });
 
     await safeNotify(
-      updatedDonation.author?.email,
-      'Một lượt ủng hộ vừa được duyệt',
-      `Bill chuyển khoản cho bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa được admin duyệt với số tiền ${updatedDonation.amount.toLocaleString('vi-VN')}đ.`
+        updatedDonation.author?.email,
+        'Một lượt ủng hộ vừa được duyệt',
+        `Bill chuyển khoản cho bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa được admin duyệt với số tiền ${updatedDonation.amount.toLocaleString('vi-VN')}đ.`
     );
 
     return updatedDonation;
