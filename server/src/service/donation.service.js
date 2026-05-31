@@ -34,10 +34,9 @@ const normalizeId = (value, seen = new WeakSet()) => {
     if (value._id && value._id !== value) return normalizeId(value._id, seen);
     if (typeof value.id === 'string') return value.id.trim();
 
-    if (value.authorId) return normalizeId(value.authorId, seen);
-    if (value.userId) return normalizeId(value.userId, seen);
-    if (value.createdBy) return normalizeId(value.createdBy, seen);
-
+    if (value.authorId && value.authorId !== value) return normalizeId(value.authorId, seen);
+    if (value.userId && value.userId !== value) return normalizeId(value.userId, seen);
+    if (value.createdBy && value.createdBy !== value) return normalizeId(value.createdBy, seen);
     if (value.author && value.author !== value) return normalizeId(value.author, seen);
     if (value.user && value.user !== value) return normalizeId(value.user, seen);
 
