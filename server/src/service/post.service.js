@@ -25,10 +25,22 @@ const getTodayStart = () => {
     return new Date(vnStartUtcMs);
 };
 
+const includesUserId = (items = [], userId = '') => {
+    if (!userId || !Array.isArray(items)) return false;
+    return items.some((id) => String(id) === String(userId));
+};
+
+const getUserVote = (post, userId) => {
+    if (!userId || !post) return null;
+    if (includesUserId(post.upvotes, userId)) return 'upvote';
+    if (includesUserId(post.downvotes, userId)) return 'downvote';
+    return null;
+};
+
 class PostService {
 
     // ==================== API 0: LẤY DANH SÁCH BÀI VIẾT ====================
-    async getPosts(query) {
+    async getPosts(query, userId = null) {
         const {
             keyword = '',
             tags = '',
@@ -99,10 +111,13 @@ class PostService {
 
             return {
                 ...post,
-                status: statusValue,
-                views: post.viewCount ?? 0,
                 upvotes: post.upvoteCount ?? 0,
                 downvotes: post.downvoteCount ?? 0,
+                upvoteCount: post.upvoteCount ?? 0,
+                downvoteCount: post.downvoteCount ?? 0,
+                userVote: getUserVote(post, userId),
+                status: statusValue,
+                views: post.viewCount ?? 0,
                 answerCount: post.answerCount ?? 0,
             };
         });
@@ -142,15 +157,7 @@ class PostService {
         const commentCount = await commentRepository.countByPostId(postId);
         const commentTree = this._buildCommentTree(comments);
 
-        let userVote = null;
-        if (userId) {
-            const upvotes = Array.isArray(post.upvotes) ? post.upvotes : [];
-            const downvotes = Array.isArray(post.downvotes) ? post.downvotes : [];
-            const hasUpvoted = upvotes.some(id => id.toString() === userId);
-            const hasDownvoted = downvotes.some(id => id.toString() === userId);
-            if (hasUpvoted) userVote = 'upvote';
-            else if (hasDownvoted) userVote = 'downvote';
-        }
+        const userVote = getUserVote(post, userId);
 
         return {
             post: {
@@ -214,8 +221,8 @@ class PostService {
             throw { status: 400, message: 'Không thể vote bài viết này' };
         }
 
-        const hasUpvoted = post.upvotes.some(id => id.toString() === userId);
-        const hasDownvoted = post.downvotes.some(id => id.toString() === userId);
+        const hasUpvoted = includesUserId(post.upvotes, userId);
+        const hasDownvoted = includesUserId(post.downvotes, userId);
 
         let userVote = null;
         const todayStart = getTodayStart();
@@ -242,13 +249,11 @@ class PostService {
             } else {
                 if (hasDownvoted) {
                     await postRepository.removeDownvote(postId, userId);
-                    userVote = null;
                     applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', -1, post.dailyDownvoteDate, post.dailyDownvoteCount);
-                } else {
-                    await postRepository.addUpvote(postId, userId);
-                    userVote = 'upvote';
-                    applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', 1, post.dailyUpvoteDate, post.dailyUpvoteCount);
                 }
+                await postRepository.addUpvote(postId, userId);
+                userVote = 'upvote';
+                applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', 1, post.dailyUpvoteDate, post.dailyUpvoteCount);
             }
         } else if (voteType === 'downvote') {
             if (hasDownvoted) {
@@ -258,13 +263,11 @@ class PostService {
             } else {
                 if (hasUpvoted) {
                     await postRepository.removeUpvote(postId, userId);
-                    userVote = null;
                     applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', -1, post.dailyUpvoteDate, post.dailyUpvoteCount);
-                } else {
-                    await postRepository.addDownvote(postId, userId);
-                    userVote = 'downvote';
-                    applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', 1, post.dailyDownvoteDate, post.dailyDownvoteCount);
                 }
+                await postRepository.addDownvote(postId, userId);
+                userVote = 'downvote';
+                applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', 1, post.dailyDownvoteDate, post.dailyDownvoteCount);
             }
         }
 
@@ -275,6 +278,7 @@ class PostService {
         const updatedPost = await postRepository.findById(postId);
 
         return {
+            postId: updatedPost._id,
             upvoteCount: updatedPost.upvotes.length,
             downvoteCount: updatedPost.downvotes.length,
             userVote,
