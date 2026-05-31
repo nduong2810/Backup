@@ -65,22 +65,6 @@ const normalizeId = (value) => {
   return '';
 };
 
-const ReactionButton = ({ active, disabled, onClick, icon, label, count, activeClass, hoverClass }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-      active
-        ? activeClass
-        : `border-outline-variant bg-surface-container-lowest text-secondary ${hoverClass}`
-    }`}
-  >
-    <span className="material-symbols-outlined text-[18px]">{icon}</span>
-    {label} {count}
-  </button>
-);
-
 export default function PostDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -265,32 +249,17 @@ export default function PostDetailPage() {
           <VoteSidebar upvoteCount={upvoteCount} downvoteCount={downvoteCount} userVote={userVote} onVote={handleVote} loading={voteLoading} />
         </div>
 
-        <PostContent post={post} commentCount={commentCount} isSaved={isSaved} onToggleSave={handleToggleSave} />
-      </div>
-
-      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-3">
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <ReactionButton
-            active={userReaction === 'like'}
-            disabled={reactionLoading}
-            onClick={() => requireLoginOrReact('like')}
-            icon="thumb_up"
-            label="Like"
-            count={likeCount}
-            activeClass="border-blue-300 bg-blue-50 text-blue-700"
-            hoverClass="hover:bg-blue-50 hover:text-blue-700"
-          />
-          <ReactionButton
-            active={userReaction === 'dislike'}
-            disabled={reactionLoading}
-            onClick={() => requireLoginOrReact('dislike')}
-            icon="thumb_down"
-            label="Dislike"
-            count={dislikeCount}
-            activeClass="border-rose-300 bg-rose-50 text-rose-700"
-            hoverClass="hover:bg-rose-50 hover:text-rose-700"
-          />
-        </div>
+        <PostContent
+          post={post}
+          commentCount={commentCount}
+          isSaved={isSaved}
+          onToggleSave={handleToggleSave}
+          likeCount={likeCount}
+          dislikeCount={dislikeCount}
+          userReaction={userReaction}
+          reactionLoading={reactionLoading}
+          onPostReaction={requireLoginOrReact}
+        />
       </div>
 
       <div className="mt-4 flex items-center justify-center gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest py-3 sm:hidden">
