@@ -1,8 +1,8 @@
-﻿import express from 'express';
+import express from 'express';
 import postController from '../controller/post.controller.js';
 import { authenticateToken, optionalAuthenticateToken } from '../middleware/auth.middleware.js';
 import { voteLimiter } from '../middleware/rateLimit.middleware.js';
-import { postIdValidation, voteValidation, relatedPostsValidation } from '../validation/post.validation.js';
+import { postIdValidation, voteValidation, relatedPostsValidation, createCommentValidation } from '../validation/post.validation.js';
 
 const router = express.Router();
 
@@ -29,6 +29,13 @@ router.get('/:id',
   optionalAuthenticateToken,
   postIdValidation,
   postController.getPostDetail.bind(postController)
+);
+
+// POST /api/posts/:id/comments — Thêm bình luận trong chi tiết bài viết
+router.post('/:id/comments',
+  authenticateToken,
+  createCommentValidation,
+  postController.createComment.bind(postController)
 );
 
 // POST /api/posts/:id/vote — Upvote/Downvote (Cần đăng nhập)
