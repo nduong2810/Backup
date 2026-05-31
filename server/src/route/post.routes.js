@@ -5,6 +5,7 @@ import { voteLimiter } from '../middleware/rateLimit.middleware.js';
 import {
   postIdValidation,
   voteValidation,
+  postReactionValidation,
   relatedPostsValidation,
   createCommentValidation,
   commentReactionValidation,
@@ -12,7 +13,7 @@ import {
 
 const router = express.Router();
 
-// GET /api/posts — Danh sách + filter (Public, nếu có token thì trả thêm userVote)
+// GET /api/posts — Danh sách + filter (Public, nếu có token thì trả thêm userVote/userReaction)
 router.get('/', optionalAuthenticateToken, postController.getPosts.bind(postController));
 
 // GET /api/posts/related/:tag — Bài viết liên quan (Public)
@@ -51,7 +52,14 @@ router.post('/comments/:commentId/react',
   postController.reactComment.bind(postController)
 );
 
-// POST /api/posts/:id/vote — Upvote/Downvote (Cần đăng nhập)
+// POST /api/posts/:id/react — Like/Dislike bài viết, tách riêng với upvote/downvote
+router.post('/:id/react',
+  authenticateToken,
+  postReactionValidation,
+  postController.reactPost.bind(postController)
+);
+
+// POST /api/posts/:id/vote — Upvote/Downvote bài viết
 router.post('/:id/vote',
   authenticateToken,
   voteLimiter,
