@@ -12,10 +12,10 @@ const initialState = {
   loading: false,
   successMessage: '',
   errorMessage: '',
-  user: storedToken ? storedUser : null,
+  user: storedUser,
   accessToken: storedToken || null,
   redirectUrl: '',
-  isAuthenticated: !!storedToken,
+  isAuthenticated: !!(storedToken || storedUser),
 };
 
 const extractError = (error) => {
@@ -80,11 +80,11 @@ const loginSlice = createSlice({
           state.user = loggedUser;
           state.accessToken = token;
           state.redirectUrl = action.payload.redirectUrl || '/';
-          state.isAuthenticated = !!token;
+          state.isAuthenticated = !!(token || loggedUser);
 
           localStorage.removeItem('user');
           localStorage.removeItem('accessToken');
-          if (loggedUser && token) localStorage.setItem('user', JSON.stringify(loggedUser));
+          if (loggedUser) localStorage.setItem('user', JSON.stringify(loggedUser));
           if (token) localStorage.setItem('accessToken', token);
         })
         .addCase(loginThunk.rejected, (state, action) => {
