@@ -32,7 +32,7 @@ class PostController {
     // Lấy danh sách bài viết + filter/sort
     async getPosts(req, res) {
         try {
-            const result = await postService.getPosts(req.query);
+            const result = await postService.getPosts(req.query, req.user?.userId || null);
 
             return res.status(200).json({
                 success: true,
