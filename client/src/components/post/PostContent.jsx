@@ -17,7 +17,34 @@ function timeAgo(dateString) {
   return `${months} tháng trước`;
 }
 
-export default function PostContent({ post, commentCount, isSaved, onToggleSave }) {
+const SmallReactionButton = ({ active, disabled, onClick, icon, label, count, activeClass, hoverClass }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className={`inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+      active
+        ? activeClass
+        : `border-outline-variant bg-surface-container-lowest text-secondary ${hoverClass}`
+    }`}
+  >
+    <span className="material-symbols-outlined text-[15px]">{icon}</span>
+    <span>{label}</span>
+    <span>{count}</span>
+  </button>
+);
+
+export default function PostContent({
+  post,
+  commentCount,
+  isSaved,
+  onToggleSave,
+  likeCount = 0,
+  dislikeCount = 0,
+  userReaction = null,
+  reactionLoading = false,
+  onPostReaction,
+}) {
   if (!post) return null;
 
   return (
@@ -69,9 +96,9 @@ export default function PostContent({ post, commentCount, isSaved, onToggleSave 
           <span>{commentCount} bình luận</span>
         </div>
 
-        {post.tags && post.tags.length > 0 && (
-          <div className="basis-full flex flex-wrap gap-2 pt-1">
-            {post.tags.map((tag) => (
+        <div className="basis-full flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div className="flex flex-wrap gap-2">
+            {post.tags && post.tags.length > 0 && post.tags.map((tag) => (
               <span
                 key={tag}
                 className="inline-flex items-center px-2.5 py-1 rounded-lg font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] border border-outline-variant hover:bg-secondary-fixed/80 transition-colors cursor-default"
@@ -80,7 +107,30 @@ export default function PostContent({ post, commentCount, isSaved, onToggleSave 
               </span>
             ))}
           </div>
-        )}
+
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <SmallReactionButton
+              active={userReaction === 'like'}
+              disabled={reactionLoading}
+              onClick={() => onPostReaction?.('like')}
+              icon="thumb_up"
+              label="Like"
+              count={likeCount}
+              activeClass="border-blue-300 bg-blue-50 text-blue-700"
+              hoverClass="hover:bg-blue-50 hover:text-blue-700"
+            />
+            <SmallReactionButton
+              active={userReaction === 'dislike'}
+              disabled={reactionLoading}
+              onClick={() => onPostReaction?.('dislike')}
+              icon="thumb_down"
+              label="Dislike"
+              count={dislikeCount}
+              activeClass="border-rose-300 bg-rose-50 text-rose-700"
+              hoverClass="hover:bg-rose-50 hover:text-rose-700"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="text-on-surface font-body-md text-body-md leading-relaxed whitespace-pre-wrap">
