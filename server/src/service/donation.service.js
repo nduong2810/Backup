@@ -9,19 +9,19 @@ import sendEmail from '../util/email.util.js';
 import env from '../config/environment.js';
 
 const SUPPORTED_AMOUNTS = new Set([20000, 50000, 100000]);
-const isMongoId = (value) => mongoose.Types.ObjectId.isValid(String(value || '').trim());
+const isMongoId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || '').trim());
 
 const normalizeId = (value) => {
   if (!value) return '';
-  if (typeof value === 'string') return value.trim();
   if (typeof value === 'number') return String(value);
+  if (typeof value === 'string') return isMongoId(value) ? value.trim() : '';
   if (value instanceof mongoose.Types.ObjectId) return value.toHexString();
   if (typeof value?.toHexString === 'function') return value.toHexString();
   if (typeof value === 'object') {
-    if (typeof value._id === 'string') return value._id.trim();
+    if (typeof value._id === 'string' && isMongoId(value._id)) return value._id.trim();
     if (value._id instanceof mongoose.Types.ObjectId) return value._id.toHexString();
-    if (typeof value.id === 'string') return value.id.trim();
-    if (value.$oid) return String(value.$oid).trim();
+    if (typeof value.id === 'string' && isMongoId(value.id)) return value.id.trim();
+    if (typeof value.$oid === 'string' && isMongoId(value.$oid)) return value.$oid.trim();
   }
   return '';
 };
@@ -39,9 +39,20 @@ const buildSnapshot = (doc = {}) => ({
   major: pickText(doc.major),
 });
 
-const normalizeEmail = (value = {}) => pickText(value.email, value.authorEmail, value.userEmail).toLowerCase();
-const normalizeFullName = (value = {}) => pickText(value.fullName, value.name, value.displayName);
-const normalizeUsername = (value = {}) => pickText(value.username, value.userName, value.slug);
+const normalizeEmail = (value = {}) => {
+  if (typeof value === 'string') return value.includes('@') ? value.trim().toLowerCase() : '';
+  return pickText(value.email, value.authorEmail, value.userEmail).toLowerCase();
+};
+
+const normalizeFullName = (value = {}) => {
+  if (typeof value === 'string') return value.trim();
+  return pickText(value.fullName, value.name, value.displayName);
+};
+
+const normalizeUsername = (value = {}) => {
+  if (typeof value === 'string') return value.trim();
+  return pickText(value.username, value.userName, value.slug);
+};
 
 const buildLegacyEmail = (candidate = {}) => {
   const username = normalizeUsername(candidate) || normalizeFullName(candidate) || 'legacy-author';
@@ -99,19 +110,23 @@ class DonationService {
         if (author) return author;
       }
 
+      const candidateUsername = normalizeUsername(candidate);
+      if (candidateUsername && typeof userRepository.findByUsername === 'function') {
+        const author = await userRepository.findByUsername(candidateUsername);
+        if (author) return author;
+      }
+
       const candidateFullName = normalizeFullName(candidate);
-      if (candidateFullName && typeof userRepository.findByFullName === 'function') {
+      if (candidateFullName && candidateFullName !== candidateUsername && typeof userRepository.findByFullName === 'function') {
         const author = await userRepository.findByFullName(candidateFullName);
         if (author) return author;
       }
     }
 
     for (const candidate of candidates) {
-      if (!candidate || typeof candidate !== 'object') continue;
-
       const fullName = normalizeFullName(candidate);
       const username = normalizeUsername(candidate);
-      const avatar = pickText(candidate.avatar);
+      const avatar = typeof candidate === 'object' ? pickText(candidate.avatar) : '';
       if (!fullName && !username) continue;
 
       const legacyEmail = normalizeEmail(candidate) || buildLegacyEmail(candidate);
@@ -122,11 +137,12 @@ class DonationService {
         return await userRepository.createUser({
           fullName: fullName || username || 'Tác giả',
           email: legacyEmail,
+          username: username || undefined,
           password: crypto.randomBytes(24).toString('hex'),
           role: 'user',
           isActive: true,
           avatar: avatar || 'default-avatar.png',
-          major: pickText(candidate.major),
+          major: typeof candidate === 'object' ? pickText(candidate.major) : '',
           bio: 'Tài khoản tác giả tự động tạo từ dữ liệu bài viết cũ.',
         });
       } catch (error) {
@@ -161,7 +177,7 @@ class DonationService {
 
     const [donor, currentPost] = await Promise.all([
       userRepository.findById(donorId),
-      Post.findById(postId).populate('author', '_id fullName avatar major email username').lean(),
+      Post.findById(postId).select('author title status').lean(),
     ]);
 
     if (!donor) throw { status: 404, message: 'Người donate không tồn tại' };
@@ -172,11 +188,7 @@ class DonationService {
     let authorCandidate = currentPost.author;
 
     if (answerId) {
-      answer = await Comment.findById(answerId)
-        .populate('author', '_id fullName avatar major email username')
-        .select('content author post')
-        .lean();
-
+      answer = await Comment.findById(answerId).select('content author post').lean();
       if (!answer) throw { status: 404, message: 'Câu trả lời không tồn tại' };
       if (normalizeId(answer.post) !== normalizeId(currentPost._id)) {
         throw { status: 400, message: 'Câu trả lời không thuộc bài viết này' };
@@ -185,9 +197,7 @@ class DonationService {
     }
 
     const author = await this.resolveAuthor(authorId, authorCandidate, currentPost.author, answer?.author);
-    if (!author) {
-      throw { status: 400, message: 'Không xác định được tác giả để ủng hộ.' };
-    }
+    if (!author) throw { status: 400, message: 'Không xác định được tác giả để ủng hộ.' };
 
     const basePayload = {
       donor: donor._id,
