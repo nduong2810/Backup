@@ -1,7 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { fetchPostsApi } from '../../services/postService';
 
-
 export const fetchPostsThunk = createAsyncThunk(
   'posts/fetchPosts',
   async (filters = {}, { rejectWithValue }) => {
@@ -9,18 +8,17 @@ export const fetchPostsThunk = createAsyncThunk(
       const response = await fetchPostsApi(filters);
       return response.data;
     } catch (error) {
-      const message =
-        error?.response?.data?.message || 'Không thể tải danh sách bài đăng.';
+      const message = error?.response?.data?.message || 'Không thể tải danh sách bài đăng.';
       return rejectWithValue(message);
     }
   }
 );
 
 const initialState = {
-  list: [],    
-  loading: false,    
-  error: null,        
-  pagination: {       
+  list: [],
+  loading: false,
+  error: null,
+  pagination: {
     total: 0,
     page: 1,
     limit: 15,
@@ -28,7 +26,6 @@ const initialState = {
   },
   activeFilters: {},
 };
-
 
 const postSlice = createSlice({
   name: 'posts',
@@ -41,7 +38,6 @@ const postSlice = createSlice({
 
       state.list = state.list.map((post) => {
         if (String(post._id) !== String(postId)) return post;
-
         return {
           ...post,
           upvotes: upvoteCount ?? post.upvotes ?? 0,
@@ -49,6 +45,22 @@ const postSlice = createSlice({
           upvoteCount: upvoteCount ?? post.upvoteCount ?? 0,
           downvoteCount: downvoteCount ?? post.downvoteCount ?? 0,
           userVote: userVote ?? null,
+        };
+      });
+    },
+    updatePostReactionInList: (state, action) => {
+      const { postId, likeCount, dislikeCount, userReaction } = action.payload || {};
+      if (!postId) return;
+
+      state.list = state.list.map((post) => {
+        if (String(post._id) !== String(postId)) return post;
+        return {
+          ...post,
+          likes: likeCount ?? post.likes ?? 0,
+          dislikes: dislikeCount ?? post.dislikes ?? 0,
+          likeCount: likeCount ?? post.likeCount ?? 0,
+          dislikeCount: dislikeCount ?? post.dislikeCount ?? 0,
+          userReaction: userReaction ?? null,
         };
       });
     },
@@ -73,5 +85,5 @@ const postSlice = createSlice({
   },
 });
 
-export const { resetPostState, updatePostVoteInList } = postSlice.actions;
+export const { resetPostState, updatePostVoteInList, updatePostReactionInList } = postSlice.actions;
 export default postSlice.reducer;
