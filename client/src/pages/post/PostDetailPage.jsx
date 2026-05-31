@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import usePostDetail from '../../hook/usePostDetail';
 import ImageSlider from '../../components/post/ImageSlider';
+import VoteSidebar from '../../components/post/VoteSidebar';
 import PostContent from '../../components/post/PostContent';
 import CommentSection from '../../components/post/CommentSection';
 import RelatedPosts from '../../components/post/RelatedPosts';
@@ -243,22 +244,43 @@ export default function PostDetailPage() {
         Quay lại
       </button>
 
-      <PostContent
-        post={post}
-        commentCount={commentCount}
-        isSaved={isSaved}
-        onToggleSave={handleToggleSave}
-        upvoteCount={upvoteCount}
-        downvoteCount={downvoteCount}
-        userVote={userVote}
-        voteLoading={voteLoading}
-        onVote={handleVote}
-        likeCount={likeCount}
-        dislikeCount={dislikeCount}
-        userReaction={userReaction}
-        reactionLoading={reactionLoading}
-        onPostReaction={requireLoginOrReact}
-      />
+      <div className="flex gap-4 sm:gap-6">
+        <div className="hidden sm:block">
+          <VoteSidebar upvoteCount={upvoteCount} downvoteCount={downvoteCount} userVote={userVote} onVote={handleVote} loading={voteLoading} />
+        </div>
+
+        <PostContent
+          post={post}
+          commentCount={commentCount}
+          isSaved={isSaved}
+          onToggleSave={handleToggleSave}
+          likeCount={likeCount}
+          dislikeCount={dislikeCount}
+          userReaction={userReaction}
+          reactionLoading={reactionLoading}
+          onPostReaction={requireLoginOrReact}
+        />
+      </div>
+
+      <div className="mt-4 flex items-center justify-center gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest py-3 sm:hidden">
+        <button
+          onClick={() => handleVote('upvote')}
+          disabled={voteLoading}
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'upvote' ? 'border border-primary/30 bg-primary-fixed text-primary' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30'}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
+          {upvoteCount}
+        </button>
+        <span className="text-lg font-bold text-on-surface">{upvoteCount - downvoteCount}</span>
+        <button
+          onClick={() => handleVote('downvote')}
+          disabled={voteLoading}
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'downvote' ? 'border border-error/30 bg-error-container text-error' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 20l8-8h-5V4H9v8H4z" /></svg>
+          {downvoteCount}
+        </button>
+      </div>
 
       <div className="mt-10 sm:mt-12">
         <ImageSlider images={post.images} />
