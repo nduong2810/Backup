@@ -1,11 +1,5 @@
 import { Link } from 'react-router-dom';
 
-// ====================================================================
-// CommentItem — Hiển thị 1 comment + nested replies (recursive)
-// Đã tích hợp design tokens từ hệ thống thiết kế chính
-// ====================================================================
-
-// Helper: Format thời gian
 function timeAgo(dateString) {
   const now = new Date();
   const date = new Date(dateString);
@@ -20,16 +14,43 @@ function timeAgo(dateString) {
   return `${days} ngày trước`;
 }
 
-export default function CommentItem({ comment, postAuthorId, depth = 0, onDonate }) {
+const normalizeIds = (items = []) => items.map((item) => String(item?._id || item));
+
+export default function CommentItem({
+  comment,
+  postAuthorId,
+  depth = 0,
+  onDonate,
+  currentUserId = '',
+  isAuthenticated = false,
+  onLoginRequired,
+  onReactComment,
+  reactingCommentId = '',
+}) {
   const isAuthor = comment.author?._id === postAuthorId;
-  const maxDepth = 3; // Giới hạn indent tối đa
+  const maxDepth = 3;
+  const likedUserIds = normalizeIds(comment.likes);
+  const dislikedUserIds = normalizeIds(comment.dislikes);
+  const hasLiked = currentUserId && likedUserIds.includes(String(currentUserId));
+  const hasDisliked = currentUserId && dislikedUserIds.includes(String(currentUserId));
+  const likeCount = comment.likeCount ?? likedUserIds.length ?? 0;
+  const dislikeCount = comment.dislikeCount ?? dislikedUserIds.length ?? 0;
+  const isReacting = reactingCommentId === comment._id;
+
+  const handleReact = (reactionType) => {
+    if (!isAuthenticated) {
+      onLoginRequired?.();
+      return;
+    }
+
+    onReactComment?.(comment._id, reactionType);
+  };
 
   return (
     <div
       className={`flex gap-3 pb-4 ${depth > 0 ? 'border-l-2 border-outline-variant pl-4' : 'border-b border-outline-variant'}`}
       style={{ marginLeft: depth > 0 && depth <= maxDepth ? '0' : '0' }}
     >
-      {/* Avatar */}
       <img
         src={comment.author?.avatar && comment.author.avatar !== 'default-avatar.png'
           ? comment.author.avatar
@@ -40,7 +61,6 @@ export default function CommentItem({ comment, postAuthorId, depth = 0, onDonate
       />
 
       <div className="flex-1 min-w-0">
-        {/* Header: Tên + Badge + Thời gian */}
         <div className="flex items-center gap-2 mb-1 font-body-sm text-body-sm">
           {isAuthor && (
             <span className="font-label-mono text-label-mono font-semibold uppercase px-1.5 py-0.5 rounded border border-primary text-primary bg-primary-fixed">
@@ -53,25 +73,53 @@ export default function CommentItem({ comment, postAuthorId, depth = 0, onDonate
           <span className="text-outline text-xs">· {timeAgo(comment.createdAt)}</span>
         </div>
 
-        {/* Nội dung comment */}
         <p className="text-on-surface font-body-sm text-body-sm leading-relaxed whitespace-pre-wrap">
           {comment.content}
         </p>
 
-        {depth === 0 && typeof onDonate === 'function' && comment.author?._id && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => onDonate(comment)}
-            className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:border-amber-400 hover:bg-amber-100"
+            onClick={() => handleReact('like')}
+            disabled={isReacting}
+            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+              hasLiked
+                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-blue-50 hover:text-blue-700'
+            }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M10.5 2.5a1 1 0 00-1 0l-6 3.5a1 1 0 00-.5.866V13.5a1 1 0 00.5.866l6 3.5a1 1 0 001 0l6-3.5a1 1 0 00.5-.866V6.866a1 1 0 00-.5-.866l-6-3.5zM9 6.5h2v2H9v-2zm0 4h2v5H9v-5z" />
-            </svg>
-            Ủng hộ tác giả
+            <span className="material-symbols-outlined text-[16px]">thumb_up</span>
+            Like {likeCount}
           </button>
-        )}
 
-        {/* Nested Replies (recursive) */}
+          <button
+            type="button"
+            onClick={() => handleReact('dislike')}
+            disabled={isReacting}
+            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+              hasDisliked
+                ? 'border-rose-300 bg-rose-50 text-rose-700'
+                : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-rose-50 hover:text-rose-700'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[16px]">thumb_down</span>
+            Dislike {dislikeCount}
+          </button>
+
+          {depth === 0 && typeof onDonate === 'function' && comment.author?._id && (
+            <button
+              type="button"
+              onClick={() => onDonate(comment)}
+              className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:border-amber-400 hover:bg-amber-100"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10.5 2.5a1 1 0 00-1 0l-6 3.5a1 1 0 00-.5.866V13.5a1 1 0 00.5.866l6 3.5a1 1 0 001 0l6-3.5a1 1 0 00.5-.866V6.866a1 1 0 00-.5-.866l-6-3.5zM9 6.5h2v2H9v-2zm0 4h2v5H9v-5z" />
+              </svg>
+              Ủng hộ tác giả
+            </button>
+          )}
+        </div>
+
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-3 flex flex-col gap-3">
             {comment.replies.map((reply) => (
@@ -81,6 +129,11 @@ export default function CommentItem({ comment, postAuthorId, depth = 0, onDonate
                 postAuthorId={postAuthorId}
                 depth={depth + 1}
                 onDonate={onDonate}
+                currentUserId={currentUserId}
+                isAuthenticated={isAuthenticated}
+                onLoginRequired={onLoginRequired}
+                onReactComment={onReactComment}
+                reactingCommentId={reactingCommentId}
               />
             ))}
           </div>
