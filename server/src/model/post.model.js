@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 // ====================================================================
 // POST MODEL - Schema bài viết trên IT Forum
-// Hỗ trợ: nhiều ảnh (Swiper), tags, upvote/downvote, đếm lượt xem
+// Hỗ trợ: nhiều ảnh (Swiper), tags, upvote/downvote, like/dislike, đếm lượt xem
 // ====================================================================
 
 const postSchema = new mongoose.Schema({
@@ -35,7 +35,7 @@ const postSchema = new mongoose.Schema({
         type: String 
     }],
 
-    // Lưu mảng userId đã vote → dễ toggle, đếm tổng, kiểm tra trùng
+    // Upvote/downvote: dùng cho điểm/xếp hạng bài viết
     upvotes: [{ 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'User',
@@ -43,6 +43,18 @@ const postSchema = new mongoose.Schema({
     }],
     downvotes: [{ 
         type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User',
+        default: []
+    }],
+
+    // Like/dislike: phản ứng riêng, không trộn với upvote/downvote
+    likes: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: []
+    }],
+    dislikes: [{
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         default: []
     }],
@@ -89,7 +101,6 @@ const postSchema = new mongoose.Schema({
     },
 }, { 
     timestamps: true,
-    // Virtual fields: tự động tính upvoteCount, downvoteCount khi toJSON
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
 });
@@ -102,6 +113,16 @@ postSchema.virtual('upvoteCount').get(function() {
 // Virtual: Tổng số downvote
 postSchema.virtual('downvoteCount').get(function() {
     return this.downvotes ? this.downvotes.length : 0;
+});
+
+// Virtual: Tổng số like
+postSchema.virtual('likeCount').get(function() {
+    return this.likes ? this.likes.length : 0;
+});
+
+// Virtual: Tổng số dislike
+postSchema.virtual('dislikeCount').get(function() {
+    return this.dislikes ? this.dislikes.length : 0;
 });
 
 // Index cho tìm kiếm bài viết theo tags
