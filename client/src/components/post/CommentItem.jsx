@@ -93,9 +93,9 @@ export default function CommentItem({
             }`}
           >
             <span className="material-symbols-outlined text-[16px]">thumb_up</span>
-            Like {likeCount}
+            Thích {likeCount}
           </button>
-
+ 
           <button
             type="button"
             onClick={() => handleReact('dislike')}
@@ -107,7 +107,7 @@ export default function CommentItem({
             }`}
           >
             <span className="material-symbols-outlined text-[16px]">thumb_down</span>
-            Dislike {dislikeCount}
+            Không thích {dislikeCount}
           </button>
 
           {depth === 0 && typeof onDonate === 'function' && comment.author?._id && (

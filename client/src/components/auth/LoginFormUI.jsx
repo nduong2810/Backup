@@ -1,16 +1,11 @@
-﻿import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import AppCard from '../ui/AppCard';
 import AppButton from '../ui/AppButton';
 import InputField from '../ui/InputField';
-import FormAlert from '../ui/FormAlert';
 
-export default function LoginFormUI({ form, loading, errorMessage, successMessage, onFieldChange, onSubmit }) {
-  const alertType = errorMessage ? 'error' : successMessage ? 'success' : '';
-  const alertMessage = errorMessage || successMessage || '';
-
+export default function LoginFormUI({ form, loading, onFieldChange, onSubmit }) {
   return (
     <AppCard title="Đăng nhập" subtitle="Chào mừng bạn quay trở lại IT Forum">
-      <FormAlert type={alertType} message={alertMessage} />
 
       <form
         className="mt-4 space-y-4"

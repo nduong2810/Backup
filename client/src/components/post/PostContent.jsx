@@ -118,7 +118,7 @@ export default function PostContent({
               disabled={reactionLoading}
               onClick={() => onPostReaction?.('like')}
               icon="thumb_up"
-              label="Like"
+              label="Thích"
               count={likeCount}
               activeClass="border-blue-300 bg-blue-50 text-blue-700"
               hoverClass="hover:bg-blue-50 hover:text-blue-700"
@@ -128,7 +128,7 @@ export default function PostContent({
               disabled={reactionLoading}
               onClick={() => onPostReaction?.('dislike')}
               icon="thumb_down"
-              label="Dislike"
+              label="Không thích"
               count={dislikeCount}
               activeClass="border-rose-300 bg-rose-50 text-rose-700"
               hoverClass="hover:bg-rose-50 hover:text-rose-700"

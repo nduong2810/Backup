@@ -62,6 +62,10 @@ const loginSlice = createSlice({
       localStorage.removeItem('user');
       localStorage.removeItem('accessToken');
     },
+    updateUser: (state, action) => {
+      state.user = { ...state.user, ...action.payload };
+      localStorage.setItem('user', JSON.stringify(state.user));
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -99,5 +103,5 @@ const loginSlice = createSlice({
   },
 });
 
-export const { setLoginField, clearLoginMessages, resetLoginState, logout } = loginSlice.actions;
+export const { setLoginField, clearLoginMessages, resetLoginState, logout, updateUser } = loginSlice.actions;
 export default loginSlice.reducer;

@@ -4,20 +4,20 @@ import { useNavigate } from 'react-router-dom';
 import AppCard from '../ui/AppCard';
 import AppButton from '../ui/AppButton';
 import InputField from '../ui/InputField';
-import FormAlert from '../ui/FormAlert';
 import ReputationBadge, { getRankInfo } from '../ui/ReputationBadge';
 import {
   fetchProfileThunk,
   setProfileField,
   updateProfileThunk,
+  clearProfileMessages,
 } from '../../store/slices/profileSlice';
-
-
+import { useToast } from '../../context/ToastContext';
 
 export default function Profile() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { form, reputationInfo, loading, saving, successMessage, errorMessage, errorStatus } = useSelector((state) => state.profile);
+  const { toast } = useToast();
 
   const bioCount = useMemo(() => `${form.bio.length}/500`, [form.bio]);
 
@@ -31,8 +31,19 @@ export default function Profile() {
     }
   }, [errorStatus, navigate]);
 
-  const alertType = errorMessage ? 'error' : successMessage ? 'success' : 'info';
-  const alertMessage = errorMessage || successMessage || '';
+  useEffect(() => {
+    if (successMessage) {
+      toast.success(successMessage);
+      dispatch(clearProfileMessages());
+    }
+  }, [successMessage, toast, dispatch]);
+
+  useEffect(() => {
+    if (errorMessage) {
+      toast.error(errorMessage);
+      dispatch(clearProfileMessages());
+    }
+  }, [errorMessage, toast, dispatch]);
 
   if (loading) {
     return (
@@ -50,8 +61,27 @@ export default function Profile() {
     ? Math.min(100, Math.round(((reputation - rank.minRep) / (nextRank.minRep - rank.minRep)) * 100))
     : 100;
 
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        dispatch(setProfileField({ field: 'avatar', value: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDeleteAvatar = () => {
+    dispatch(setProfileField({ field: 'avatar', value: 'default-avatar.png' }));
+  };
+
+  const avatarUrl = form.avatar && form.avatar !== 'default-avatar.png'
+    ? form.avatar
+    : `https://ui-avatars.com/api/?name=${encodeURIComponent(form.fullName || 'U')}&background=0066cc&color=fff&size=120`;
+
   return (
-    <div className="space-y-5">
+    <div className="max-w-4xl mx-auto space-y-5">
       {/* Reputation Card */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
@@ -89,7 +119,6 @@ export default function Profile() {
 
       {/* Edit Form */}
       <AppCard title="Chỉnh sửa hồ sơ" subtitle="Cập nhật thông tin để cộng đồng dễ kết nối hơn">
-        <FormAlert type={alertType} message={alertMessage} />
 
         <form
           className="mt-4 space-y-4"
@@ -98,6 +127,40 @@ export default function Profile() {
             dispatch(updateProfileThunk());
           }}
         >
+          {/* Avatar Change Area */}
+          <div className="flex flex-col items-center gap-3 pb-4 border-b border-slate-100 dark:border-outline-variant">
+            <div className="relative group cursor-pointer w-24 h-24">
+              <img
+                src={avatarUrl}
+                alt="Avatar"
+                className="w-24 h-24 rounded-full object-cover border-2 border-slate-200 group-hover:opacity-75 transition-opacity"
+              />
+              <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                <span className="material-symbols-outlined text-2xl">photo_camera</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                  disabled={saving}
+                />
+              </label>
+            </div>
+            <div className="text-center">
+              <div className="text-sm font-semibold text-slate-800 dark:text-inverse-on-surface">Ảnh đại diện</div>
+              <div className="text-xs text-slate-400 mt-0.5">Nhấp vào ảnh để thay đổi</div>
+              {form.avatar && form.avatar !== 'default-avatar.png' && (
+                <button
+                  type="button"
+                  onClick={handleDeleteAvatar}
+                  className="mt-2 text-xs font-semibold text-rose-500 hover:text-rose-600 hover:underline transition-colors block mx-auto"
+                >
+                  Xóa ảnh đại diện
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <InputField
               label="Họ và tên"

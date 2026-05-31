@@ -31,10 +31,12 @@ export default function usePostDetail(postId) {
 
   const [relatedPosts, setRelatedPosts] = useState([]);
 
-  const fetchPostDetail = useCallback(async () => {
+  const fetchPostDetail = useCallback(async (showLoading = true) => {
     if (!postId) return;
 
-    setLoading(true);
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -54,7 +56,9 @@ export default function usePostDetail(postId) {
       const message = err.response?.data?.message || 'Không thể tải bài viết.';
       setError(message);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, [postId]);
 
@@ -135,7 +139,7 @@ export default function usePostDetail(postId) {
 
     try {
       await createPostComment(postId, { content, parentComment });
-      await fetchPostDetail();
+      await fetchPostDetail(false);
       return true;
     } catch (err) {
       const message = err.response?.data?.message || 'Không thể gửi bình luận.';
@@ -152,7 +156,7 @@ export default function usePostDetail(postId) {
     setReactingCommentId(commentId);
     try {
       await reactPostComment(commentId, reactionType);
-      await fetchPostDetail();
+      await fetchPostDetail(false);
       return true;
     } catch (err) {
       if (err.response?.status === 401) {

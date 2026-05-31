@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 const Footer = () => {
   return (
@@ -11,13 +11,13 @@ const Footer = () => {
           </div>
 
           <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 font-body-sm text-body-sm text-outline text-center">
-            <a className="hover:text-inverse-on-surface transition-colors" href="#">About Us</a>
-            <a className="hover:text-inverse-on-surface transition-colors" href="#">Terms of Service</a>
-            <a className="hover:text-inverse-on-surface transition-colors" href="#">Privacy Policy</a>
+            <a className="hover:text-inverse-on-surface transition-colors" href="#">Về chúng tôi</a>
+            <a className="hover:text-inverse-on-surface transition-colors" href="#">Điều khoản dịch vụ</a>
+            <a className="hover:text-inverse-on-surface transition-colors" href="#">Chính sách bảo mật</a>
           </nav>
 
           <div className="font-body-sm text-body-sm text-outline text-center md:text-right">
-            © 2026 IT Forum Inc. All rights reserved.
+            © 2026 IT Forum. Bảo lưu mọi quyền.
           </div>
         </div>
       </div>

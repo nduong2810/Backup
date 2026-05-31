@@ -2,6 +2,7 @@ import User from '../model/user.model.js';
 import bcrypt from 'bcryptjs';
 import donationRepository from '../repository/donation.repository.js';
 import { getRankInfo } from './reputation.service.js';
+import { uploadToCloudinary } from '../util/cloudinary.js';
 
 class UserService {
     async getProfile(userId) {
@@ -12,6 +13,9 @@ class UserService {
     }
 
     async updateProfile(userId, updateData) {
+        if (updateData.avatar) {
+            updateData.avatar = await uploadToCloudinary(updateData.avatar);
+        }
         // Cập nhật và lấy bản ghi mới nhất
         return await User.findByIdAndUpdate(
             userId, 

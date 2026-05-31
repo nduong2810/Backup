@@ -41,7 +41,7 @@ const PostDetailRightSidebar = () => {
     <aside className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-stack-lg pb-12">
       <div className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm overflow-hidden">
         <div className="bg-surface-container-low border-b border-outline-variant px-4 py-3">
-          <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Hot Network Questions</h2>
+          <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Câu hỏi nổi bật</h2>
         </div>
         <div className="p-4 flex flex-col gap-3">
           {loading && <p className="text-secondary font-body-sm text-body-sm">Đang tải...</p>}
@@ -62,10 +62,10 @@ const PostDetailRightSidebar = () => {
           })}
         </div>
       </div>
-
+ 
       <div className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm overflow-hidden">
         <div className="bg-surface-container-low border-b border-outline-variant px-4 py-3">
-          <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Popular Tags</h2>
+          <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Thẻ phổ biến</h2>
         </div>
         <div className="p-4 flex flex-col gap-3">
           {loading && <p className="text-secondary font-body-sm text-body-sm">Đang tải...</p>}

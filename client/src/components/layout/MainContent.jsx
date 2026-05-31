@@ -67,13 +67,13 @@ const QuestionCard = ({
         <article className="flex flex-col sm:flex-row gap-stack-md py-stack-md border-b border-outline-variant hover:bg-surface-container-low transition-colors px-3">
             <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:w-24 flex-shrink-0 text-right">
                 <div className="font-body-sm text-body-sm text-on-surface flex items-center sm:justify-end gap-1">
-                    <span className="font-semibold">{upvoteCount - downvoteCount}</span> votes
+                    <span className="font-semibold">{upvoteCount - downvoteCount}</span> bình chọn
                 </div>
                 <div className={`font-body-sm text-body-sm px-2 py-0.5 rounded-DEFAULT flex items-center sm:justify-end gap-1 ${answerCount > 0 ? 'text-[#2e7d32] border border-[#2e7d32] bg-[#e8f5e9]' : 'text-secondary'}`}>
-                    <span className="font-semibold">{answerCount}</span> answers
+                    <span className="font-semibold">{answerCount}</span> câu trả lời
                 </div>
                 <div className="font-body-sm text-body-sm text-secondary flex items-center sm:justify-end gap-1">
-                    <span className="font-semibold">{question.views || 0}</span> views
+                    <span className="font-semibold">{question.views || 0}</span> lượt xem
                 </div>
             </div>
 
@@ -150,7 +150,9 @@ const QuestionCard = ({
                         <img
                             alt="Author Avatar"
                             className="w-6 h-6 rounded-DEFAULT object-cover"
-                            src={question.author?.avatar || 'https://i.pravatar.cc/150'}
+                            src={question.author?.avatar && question.author.avatar !== 'default-avatar.png'
+                                ? question.author.avatar
+                                : `https://ui-avatars.com/api/?name=${encodeURIComponent(question.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
                         />
                         <a className="font-body-sm text-body-sm text-primary-container hover:text-primary-container/80" href="#">
                             {question.author?.fullName || question.author?.username || 'Ẩn danh'}
@@ -196,11 +198,17 @@ const TrendingCard = ({ post, rank, onTagClick }) => {
                 </div>
             </div>
             <div className="flex items-center justify-between text-xs text-secondary">
-                <span>Hôm nay <span className="font-semibold text-on-surface">{post.viewsToday ?? 0}</span> views</span>
+                <span>Hôm nay <span className="font-semibold text-on-surface">{post.viewsToday ?? 0}</span> lượt xem</span>
                 <span>Tổng <span className="font-semibold text-on-surface">{post.views ?? 0}</span></span>
             </div>
             <div className="flex items-center gap-2 text-xs text-secondary">
-                <img alt="Author Avatar" className="w-6 h-6 rounded-DEFAULT object-cover" src={post.author?.avatar || 'https://i.pravatar.cc/150'} />
+                <img
+                    alt="Author Avatar"
+                    className="w-6 h-6 rounded-DEFAULT object-cover"
+                    src={post.author?.avatar && post.author.avatar !== 'default-avatar.png'
+                        ? post.author.avatar
+                        : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
+                />
                 <span className="text-on-surface">{post.author?.fullName || post.author?.username || 'Ẩn danh'}</span>
             </div>
         </article>
@@ -231,11 +239,17 @@ const TopUpvotedCard = ({ post, rank, onTagClick }) => {
                 </div>
             </div>
             <div className="flex items-center justify-between text-xs text-secondary">
-                <span>Hôm nay <span className="font-semibold text-on-surface">{upvotesToday}</span> upvotes</span>
+                <span>Hôm nay <span className="font-semibold text-on-surface">{upvotesToday}</span> lượt upvote</span>
                 <span>Tổng <span className="font-semibold text-on-surface">{upvotes}</span></span>
             </div>
             <div className="flex items-center gap-2 text-xs text-secondary">
-                <img alt="Author Avatar" className="w-6 h-6 rounded-DEFAULT object-cover" src={post.author?.avatar || 'https://i.pravatar.cc/150'} />
+                <img
+                    alt="Author Avatar"
+                    className="w-6 h-6 rounded-DEFAULT object-cover"
+                    src={post.author?.avatar && post.author.avatar !== 'default-avatar.png'
+                        ? post.author.avatar
+                        : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
+                />
                 <span className="text-on-surface">{post.author?.fullName || post.author?.username || 'Ẩn danh'}</span>
             </div>
         </article>
@@ -445,7 +459,7 @@ const MainContent = () => {
             <section className="mb-stack-lg">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <div>
-                        <h2 className="font-headline-xl text-headline-xl text-on-surface tracking-wide">Trending Today</h2>
+                        <h2 className="font-headline-xl text-headline-xl text-on-surface tracking-wide">Thịnh hành hôm nay</h2>
                         <p className="font-body-sm text-body-sm text-secondary">Top 10 bài viết có lượt xem cao nhất hôm nay</p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -468,7 +482,7 @@ const MainContent = () => {
             <section className="mb-stack-lg">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <div>
-                        <h2 className="font-headline-xl text-headline-xl text-on-surface tracking-wide">Top Upvoted</h2>
+                        <h2 className="font-headline-xl text-headline-xl text-on-surface tracking-wide">Bình chọn cao nhất</h2>
                         <p className="font-body-sm text-body-sm text-secondary">Top 10 bài viết có nhiều upvote nhất hôm nay</p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -490,8 +504,8 @@ const MainContent = () => {
 
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-stack-lg gap-4 border-b border-outline-variant pb-4">
                 <div>
-                    <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">Newest Questions</h1>
-                    <p className="font-body-md text-body-md text-secondary">{pagination.total?.toLocaleString('vi-VN') || 0} questions</p>
+                    <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">Câu hỏi mới nhất</h1>
+                    <p className="font-body-md text-body-md text-secondary">{pagination.total?.toLocaleString('vi-VN') || 0} câu hỏi</p>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
