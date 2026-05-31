@@ -2,24 +2,22 @@ import { body, param } from 'express-validator';
 
 const donationAmountValues = [20000, 50000, 100000];
 
-const normalizeMongoId = (value) => {
+const normalizeMongoId = (value, seen = new WeakSet()) => {
   if (!value) return value;
   if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number') return String(value);
+
   if (typeof value === 'object') {
-    if (value._id) {
-      if (typeof value._id === 'string') return value._id.trim();
-      if (typeof value._id.toString === 'function') return value._id.toString();
-    }
-    if (value.id) {
-      if (typeof value.id === 'string') return value.id.trim();
-      if (typeof value.id.toString === 'function') return value.id.toString();
-    }
-    if (typeof value.toString === 'function') {
-      const stringValue = value.toString();
-      if (stringValue && stringValue !== '[object Object]') return stringValue;
-    }
+    if (seen.has(value)) return '';
+    seen.add(value);
+
+    if (typeof value.toHexString === 'function') return value.toHexString();
+    if (value.$oid) return normalizeMongoId(value.$oid, seen);
+    if (value._id && value._id !== value) return normalizeMongoId(value._id, seen);
+    if (typeof value.id === 'string') return value.id.trim();
   }
-  return value;
+
+  return '';
 };
 
 export const createDonationValidation = [
