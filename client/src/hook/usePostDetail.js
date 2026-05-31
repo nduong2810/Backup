@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getPostDetail, votePost, getRelatedPosts } from '../services/postService';
+import { getPostDetail, votePost, getRelatedPosts, createPostComment } from '../services/postService';
 
 export default function usePostDetail(postId) {
   // === State: Bài viết ===
@@ -14,6 +14,10 @@ export default function usePostDetail(postId) {
   const [downvoteCount, setDownvoteCount] = useState(0);
   const [userVote, setUserVote] = useState(null); // null | 'upvote' | 'downvote'
   const [voteLoading, setVoteLoading] = useState(false);
+
+  // === State: Bình luận ===
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [commentError, setCommentError] = useState('');
 
   // === State: Bài viết liên quan ===
   const [relatedPosts, setRelatedPosts] = useState([]);
@@ -82,6 +86,25 @@ export default function usePostDetail(postId) {
     }
   }, [postId, voteLoading, userVote]);
 
+  const submitComment = useCallback(async ({ content, parentComment = null }) => {
+    if (submittingComment) return false;
+
+    setSubmittingComment(true);
+    setCommentError('');
+
+    try {
+      await createPostComment(postId, { content, parentComment });
+      await fetchPostDetail();
+      return true;
+    } catch (err) {
+      const message = err.response?.data?.message || 'Không thể gửi bình luận.';
+      setCommentError(message);
+      return false;
+    } finally {
+      setSubmittingComment(false);
+    }
+  }, [postId, submittingComment, fetchPostDetail]);
+
   // === Effects ===
   useEffect(() => {
     fetchPostDetail();
@@ -108,6 +131,11 @@ export default function usePostDetail(postId) {
     userVote,
     handleVote,
     voteLoading,
+
+    // Bình luận
+    submitComment,
+    submittingComment,
+    commentError,
 
     // Bài viết liên quan
     relatedPosts,
