@@ -15,6 +15,9 @@ export default function CommentSection({
   onSubmitComment,
   submittingComment = false,
   commentError = '',
+  currentUserId = '',
+  onReactComment,
+  reactingCommentId = '',
 }) {
   const [content, setContent] = useState('');
 
@@ -78,6 +81,11 @@ export default function CommentSection({
               comment={comment}
               postAuthorId={postAuthorId}
               onDonate={onDonate}
+              currentUserId={currentUserId}
+              isAuthenticated={isAuthenticated}
+              onLoginRequired={onLoginRequired}
+              onReactComment={onReactComment}
+              reactingCommentId={reactingCommentId}
             />
           ))}
         </div>
