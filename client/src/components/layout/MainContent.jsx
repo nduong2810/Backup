@@ -1,9 +1,10 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
-import { getTopUpvotedPosts, getTrendingTodayPosts } from '../../services/postService';
+import { getTopUpvotedPosts, getTrendingTodayPosts, votePost } from '../../services/postService';
 import SaveIconButton from '../ui/SaveIconButton';
 import { fetchCollectionsThunk, savePostToCollectionThunk, toggleSaveThunk } from '../../store/slices/savedSlice';
+import { updatePostVoteInList } from '../../store/slices/postSlice';
 
 const PER_PAGE_OPTIONS = [15, 30, 50];
 
@@ -35,15 +36,19 @@ const getPlainText = (value) => {
 // ==========================================
 // COMPONENT CON: Đại diện cho 1 câu hỏi
 // ==========================================
-const QuestionCard = ({ question, isSaved, onToggleSave }) => {
+const QuestionCard = ({ question, isSaved, onToggleSave, onVotePost, votingPostId }) => {
     const answerCount = question.answerCount ?? 0;
+    const upvoteCount = question.upvoteCount ?? question.upvotes ?? 0;
+    const downvoteCount = question.downvoteCount ?? question.downvotes ?? 0;
+    const userVote = question.userVote ?? null;
+    const isVoting = votingPostId === question._id;
 
     return (
         <article className="flex flex-col sm:flex-row gap-stack-md py-stack-md border-b border-outline-variant hover:bg-surface-container-low transition-colors px-3">
             {/* Cột thông số */}
             <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:w-24 flex-shrink-0 text-right">
                 <div className="font-body-sm text-body-sm text-on-surface flex items-center sm:justify-end gap-1">
-                    <span className="font-semibold">{question.upvotes || 0}</span> votes
+                    <span className="font-semibold">{upvoteCount}</span> votes
                 </div>
                 <div className={`font-body-sm text-body-sm px-2 py-0.5 rounded-DEFAULT flex items-center sm:justify-end gap-1 ${answerCount > 0 ? 'text-[#2e7d32] border border-[#2e7d32] bg-[#e8f5e9]' : 'text-secondary'}`}>
                     <span className="font-semibold">{answerCount}</span> answers
@@ -71,6 +76,35 @@ const QuestionCard = ({ question, isSaved, onToggleSave }) => {
                 <p className="font-body-sm text-body-sm text-on-surface-variant mb-2 line-clamp-2">
                     {getPlainText(question.content) || 'Chua co noi dung.'}
                 </p>
+
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => onVotePost?.(question._id, 'upvote')}
+                        disabled={isVoting}
+                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                            userVote === 'upvote'
+                                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                                : 'border-outline-variant bg-surface-container-lowest text-secondary hover:bg-blue-50 hover:text-blue-700'
+                        }`}
+                    >
+                        <span className="material-symbols-outlined text-[16px]">thumb_up</span>
+                        Like {upvoteCount}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onVotePost?.(question._id, 'downvote')}
+                        disabled={isVoting}
+                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                            userVote === 'downvote'
+                                ? 'border-rose-300 bg-rose-50 text-rose-700'
+                                : 'border-outline-variant bg-surface-container-lowest text-secondary hover:bg-rose-50 hover:text-rose-700'
+                        }`}
+                    >
+                        <span className="material-symbols-outlined text-[16px]">thumb_down</span>
+                        Dislike {downvoteCount}
+                    </button>
+                </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
                     {/* Danh sách Tags */}
@@ -263,6 +297,7 @@ const MainContent = () => {
     const [topUpvotedError, setTopUpvotedError] = useState('');
     const [topUpvotedPage, setTopUpvotedPage] = useState(0);
     const topUpvotedInitialLoadRef = useRef(true);
+    const [votingPostId, setVotingPostId] = useState('');
     const [pageSize, setPageSize] = useState(() => {
         if (typeof window === 'undefined') return 4;
         return getTrendingPageSize(window.innerWidth);
@@ -291,6 +326,32 @@ const MainContent = () => {
         setSaveModalOpen(true);
         dispatch(fetchCollectionsThunk());
     };
+
+    const handleVotePost = async (postId, voteType) => {
+        if (!isAuthenticated) {
+            navigate('/auth/login');
+            return;
+        }
+
+        if (!postId || votingPostId) return;
+
+        setVotingPostId(postId);
+        try {
+            const response = await votePost(postId, voteType);
+            const data = response?.data?.data || {};
+            dispatch(updatePostVoteInList({
+                postId,
+                upvoteCount: data.upvoteCount ?? 0,
+                downvoteCount: data.downvoteCount ?? 0,
+                userVote: data.userVote ?? null,
+            }));
+        } catch (voteError) {
+            alert(voteError?.response?.data?.message || 'Không thể vote bài viết.');
+        } finally {
+            setVotingPostId('');
+        }
+    };
+
     const handleConfirmSaveToCollection = async () => {
         if (!savePostId) return;
         await dispatch(savePostToCollectionThunk({
@@ -623,6 +684,8 @@ const MainContent = () => {
                             question={q}
                             isSaved={savedIdSet.has(q._id)}
                             onToggleSave={handleToggleSave}
+                            onVotePost={handleVotePost}
+                            votingPostId={votingPostId}
                         />
                     ))
                 )}
@@ -755,4 +818,3 @@ const MainContent = () => {
 };
 
 export default MainContent;
-
