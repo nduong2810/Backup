@@ -21,6 +21,22 @@ export const voteValidation = [
         .withMessage('Loại vote không hợp lệ (chỉ chấp nhận: upvote, downvote)')
 ];
 
+export const createCommentValidation = [
+    param('id')
+        .isMongoId()
+        .withMessage('ID bài viết không hợp lệ'),
+    body('content')
+        .trim()
+        .notEmpty()
+        .withMessage('Nội dung bình luận không được để trống')
+        .isLength({ max: 2000 })
+        .withMessage('Nội dung bình luận tối đa 2000 ký tự'),
+    body('parentComment')
+        .optional({ nullable: true, checkFalsy: true })
+        .isMongoId()
+        .withMessage('ID bình luận cha không hợp lệ'),
+];
+
 // Validate tag parameter cho bài viết liên quan
 export const relatedPostsValidation = [
     param('tag')
