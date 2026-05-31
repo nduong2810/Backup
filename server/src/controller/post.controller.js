@@ -1,4 +1,5 @@
 import postService from '../service/post.service.js';
+import commentRepository from '../repository/comment.repository.js';
 import { validationResult } from 'express-validator';
 
 // ====================================================================
@@ -62,10 +63,8 @@ class PostController {
             const isWithinDedupWindow = now - lastSeenAt < VIEW_DEDUP_WINDOW_MS;
             const incrementView = !isWithinDedupWindow;
 
-            // Đặt mốc ngay trước khi gọi service để chặn request song song.
             recentViewMap.set(viewerKey, now);
 
-            // Dọn key cũ để tránh map phình theo thời gian.
             if (recentViewMap.size > 5000) {
                 for (const [key, ts] of recentViewMap.entries()) {
                     if (now - ts > VIEW_DEDUP_WINDOW_MS * 3) recentViewMap.delete(key);
@@ -109,6 +108,69 @@ class PostController {
         }
     }
 
+    async reactComment(req, res) {
+        const validationError = this.checkValidationErrors(req, res);
+        if (validationError) return validationError;
+
+        try {
+            const { commentId } = req.params;
+            const { reactionType } = req.body;
+            const userId = req.user.userId;
+
+            const comment = await commentRepository.findById(commentId);
+            if (!comment) {
+                return res.status(404).json({ success: false, message: 'Bình luận không tồn tại' });
+            }
+
+            const likes = Array.isArray(comment.likes) ? comment.likes.map((id) => id.toString()) : [];
+            const dislikes = Array.isArray(comment.dislikes) ? comment.dislikes.map((id) => id.toString()) : [];
+            const hasLiked = likes.includes(userId);
+            const hasDisliked = dislikes.includes(userId);
+
+            let update = {};
+            let userReaction = null;
+
+            if (reactionType === 'like') {
+                if (hasLiked) {
+                    update = { $pull: { likes: userId } };
+                } else {
+                    update = { $addToSet: { likes: userId }, $pull: { dislikes: userId } };
+                    userReaction = 'like';
+                }
+            }
+
+            if (reactionType === 'dislike') {
+                if (hasDisliked) {
+                    update = { $pull: { dislikes: userId } };
+                } else {
+                    update = { $addToSet: { dislikes: userId }, $pull: { likes: userId } };
+                    userReaction = 'dislike';
+                }
+            }
+
+            const updatedComment = await commentRepository.updateReaction(commentId, update);
+            const likeCount = Array.isArray(updatedComment.likes) ? updatedComment.likes.length : 0;
+            const dislikeCount = Array.isArray(updatedComment.dislikes) ? updatedComment.dislikes.length : 0;
+
+            return res.status(200).json({
+                success: true,
+                message: 'Cập nhật phản ứng bình luận thành công',
+                data: {
+                    commentId: updatedComment._id,
+                    likeCount,
+                    dislikeCount,
+                    userReaction,
+                },
+            });
+        } catch (error) {
+            const status = error.status || 500;
+            return res.status(status).json({
+                success: false,
+                message: error.message || 'Không thể cập nhật phản ứng bình luận',
+            });
+        }
+    }
+
     // ==================== API 2: POST /posts/:id/vote ====================
     // Xử lý Upvote / Downvote (cần đăng nhập)
     async votePost(req, res) {
@@ -117,8 +179,8 @@ class PostController {
 
         try {
             const { id } = req.params;
-            const userId = req.user.userId;  // Từ authenticateToken middleware
-            const { voteType } = req.body;   // 'upvote' hoặc 'downvote'
+            const userId = req.user.userId;
+            const { voteType } = req.body;
 
             const result = await postService.toggleVote(id, userId, voteType);
 
@@ -144,7 +206,7 @@ class PostController {
 
         try {
             const { tag } = req.params;
-            const { excludePostId } = req.query;  // Optional: loại bỏ bài hiện tại
+            const { excludePostId } = req.query;
 
             const relatedPosts = await postService.getRelatedPosts(tag, excludePostId);
 
