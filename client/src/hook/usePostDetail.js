@@ -1,28 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getPostDetail, votePost, getRelatedPosts, createPostComment } from '../services/postService';
+import { getPostDetail, votePost, getRelatedPosts, createPostComment, reactPostComment } from '../services/postService';
 
 export default function usePostDetail(postId) {
-  // === State: Bài viết ===
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [commentCount, setCommentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // === State: Vote ===
   const [upvoteCount, setUpvoteCount] = useState(0);
   const [downvoteCount, setDownvoteCount] = useState(0);
-  const [userVote, setUserVote] = useState(null); // null | 'upvote' | 'downvote'
+  const [userVote, setUserVote] = useState(null);
   const [voteLoading, setVoteLoading] = useState(false);
 
-  // === State: Bình luận ===
   const [submittingComment, setSubmittingComment] = useState(false);
   const [commentError, setCommentError] = useState('');
+  const [reactingCommentId, setReactingCommentId] = useState('');
 
-  // === State: Bài viết liên quan ===
   const [relatedPosts, setRelatedPosts] = useState([]);
 
-  // === Fetch chi tiết bài viết ===
   const fetchPostDetail = useCallback(async () => {
     if (!postId) return;
 
@@ -47,22 +43,18 @@ export default function usePostDetail(postId) {
     }
   }, [postId]);
 
-  // === Fetch bài viết liên quan ===
   const fetchRelatedPosts = useCallback(async () => {
     if (!post || !post.tags || post.tags.length === 0) return;
 
     try {
-      // Lấy bài liên quan theo tag đầu tiên
       const firstTag = post.tags[0];
       const response = await getRelatedPosts(firstTag, postId);
       setRelatedPosts(response.data.data || []);
     } catch {
-      // Không hiển thị lỗi nếu related posts fail — không quan trọng
       setRelatedPosts([]);
     }
   }, [post, postId]);
 
-  // === Xử lý Vote (Axios — không reload trang) ===
   const handleVote = useCallback(async (voteType) => {
     if (voteLoading) return;
 
@@ -72,12 +64,10 @@ export default function usePostDetail(postId) {
       const response = await votePost(postId, effectiveVoteType);
       const { upvoteCount: up, downvoteCount: down, userVote: vote } = response.data.data;
 
-      // Cập nhật state local ngay lập tức (không reload)
       setUpvoteCount(up);
       setDownvoteCount(down);
       setUserVote(vote);
     } catch (err) {
-      // Nếu chưa đăng nhập → thông báo
       if (err.response?.status === 401) {
         alert('Bạn cần đăng nhập để vote bài viết.');
       }
@@ -105,7 +95,26 @@ export default function usePostDetail(postId) {
     }
   }, [postId, submittingComment, fetchPostDetail]);
 
-  // === Effects ===
+  const reactComment = useCallback(async (commentId, reactionType) => {
+    if (reactingCommentId) return false;
+
+    setReactingCommentId(commentId);
+    try {
+      await reactPostComment(commentId, reactionType);
+      await fetchPostDetail();
+      return true;
+    } catch (err) {
+      if (err.response?.status === 401) {
+        alert('Bạn cần đăng nhập để like/dislike bình luận.');
+      } else {
+        alert(err.response?.data?.message || 'Không thể cập nhật like/dislike bình luận.');
+      }
+      return false;
+    } finally {
+      setReactingCommentId('');
+    }
+  }, [reactingCommentId, fetchPostDetail]);
+
   useEffect(() => {
     fetchPostDetail();
   }, [fetchPostDetail]);
@@ -114,33 +123,23 @@ export default function usePostDetail(postId) {
     fetchRelatedPosts();
   }, [fetchRelatedPosts]);
 
-  // === Trả về cho Component ===
   return {
-    // Dữ liệu bài viết
     post,
     comments,
     commentCount,
-
-    // Trạng thái
     loading,
     error,
-
-    // Vote
     upvoteCount,
     downvoteCount,
     userVote,
     handleVote,
     voteLoading,
-
-    // Bình luận
     submitComment,
     submittingComment,
     commentError,
-
-    // Bài viết liên quan
+    reactComment,
+    reactingCommentId,
     relatedPosts,
-
-    // Actions
     refreshPost: fetchPostDetail,
   };
 }
