@@ -1,19 +1,29 @@
 import jwt from 'jsonwebtoken';
 import env from '../config/environment.js';
 
+const getRequestToken = (req) => {
+    const cookieToken = req.cookies?.token || req.cookies?.accessToken;
+    if (cookieToken) return cookieToken;
+
+    const authHeader = req.headers?.authorization || '';
+    if (authHeader.startsWith('Bearer ')) {
+        return authHeader.slice(7).trim();
+    }
+
+    return '';
+};
+
 // ====================================================================
 // LỚP 3 - AUTHENTICATION (XÁC THỰC)
-// Lấy Token từ HttpOnly Cookie để chống tấn công XSS 
+// Lấy Token từ HttpOnly Cookie, fallback Authorization Bearer
 // ====================================================================
 export const authenticateToken = (req, res, next) => {
-    // Lấy token từ Cookie
-    const token = req.cookies?.token || req.cookies?.accessToken;
+    const token = getRequestToken(req);
 
     if (!token) {
         return res.status(401).json({ message: 'Yêu cầu cần có access token' });
     }
 
-    // Sử dụng Secret Key từ file cấu hình environment
     const secret = env.ACCESS_TOKEN_SECRET || env.JWT_SECRET;
 
     jwt.verify(token, secret, (err, decoded) => {
@@ -36,7 +46,6 @@ export const authenticateToken = (req, res, next) => {
 // ====================================================================
 export const authorizeRole = (role) => {
     return (req, res, next) => {
-        // Nguyên tắc phân quyền tối thiểu: Đúng role hoặc là Admin
         if (req.user.role !== role && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Bạn không có quyền thực hiện hành động này' });
         }
@@ -49,7 +58,7 @@ export const authorizeRole = (role) => {
 // Decode token nếu có, bỏ qua nếu không có/không hợp lệ (cho public API)
 // ====================================================================
 export const optionalAuthenticateToken = (req, res, next) => {
-    const token = req.cookies?.token || req.cookies?.accessToken;
+    const token = getRequestToken(req);
     if (!token) return next();
 
     const secret = env.ACCESS_TOKEN_SECRET || env.JWT_SECRET;
