@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import qs from 'qs';
+import mongoose from 'mongoose';
 import donationRepository from '../repository/donation.repository.js';
 import userRepository from '../repository/user.repository.js';
 import postRepository from '../repository/post.repository.js';
@@ -16,20 +17,27 @@ const buildSnapshot = (doc) => ({
   major: doc?.major || '',
 });
 
-const normalizeId = (value) => {
+const normalizeId = (value, seen = new WeakSet()) => {
   if (!value) return '';
   if (typeof value === 'string') return value.trim();
   if (typeof value === 'number') return String(value);
 
+  if (value instanceof mongoose.Types.ObjectId || typeof value.toHexString === 'function') {
+    return value.toHexString();
+  }
+
   if (typeof value === 'object') {
-    if (value.$oid) return normalizeId(value.$oid);
-    if (value._id) return normalizeId(value._id);
-    if (value.id) return normalizeId(value.id);
-    if (value.authorId) return normalizeId(value.authorId);
-    if (value.userId) return normalizeId(value.userId);
-    if (value.author) return normalizeId(value.author);
-    if (value.user) return normalizeId(value.user);
-    if (value.createdBy) return normalizeId(value.createdBy);
+    if (seen.has(value)) return '';
+    seen.add(value);
+
+    if (value.$oid) return normalizeId(value.$oid, seen);
+    if (value._id) return normalizeId(value._id, seen);
+    if (typeof value.id === 'string') return value.id.trim();
+    if (value.authorId) return normalizeId(value.authorId, seen);
+    if (value.userId) return normalizeId(value.userId, seen);
+    if (value.createdBy) return normalizeId(value.createdBy, seen);
+    if (value.author && value.author !== value) return normalizeId(value.author, seen);
+    if (value.user && value.user !== value) return normalizeId(value.user, seen);
 
     if (typeof value.toString === 'function') {
       const text = value.toString();
