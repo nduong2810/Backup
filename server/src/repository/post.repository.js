@@ -167,6 +167,8 @@ class PostRepository {
                         status: 1,
                         images: 1,
                         viewCount: 1,
+                        upvotes: 1,
+                        downvotes: 1,
                         upvoteCount: 1,
                         downvoteCount: 1,
                         answerCount: 1,
@@ -318,19 +320,11 @@ class PostRepository {
                 {
                     $project: {
                         _id: 0,
-                        tag: '$_id',
+                        name: '$_id',
                         count: 1,
                     },
                 },
             ]);
-        }
-
-        async setDeletedStatus(postId) {
-            return await Post.findByIdAndUpdate(
-                postId,
-                { $set: { status: 'deleted' } },
-                { new: true }
-            );
         }
 }
 
