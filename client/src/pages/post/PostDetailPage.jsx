@@ -48,26 +48,19 @@ const postStatusLabelMap = {
   deleted: 'Đã xóa',
 };
 
-const normalizeId = (value, seen = new WeakSet()) => {
+const normalizeId = (value) => {
   if (!value) return '';
   if (typeof value === 'string') return value.trim();
   if (typeof value === 'number') return String(value);
-
+  if (typeof value?.toHexString === 'function') return value.toHexString();
   if (typeof value === 'object') {
-    if (seen.has(value)) return '';
-    seen.add(value);
-
-    if (typeof value.toHexString === 'function') return value.toHexString();
-    if (value.$oid) return normalizeId(value.$oid, seen);
-    if (value._id && value._id !== value) return normalizeId(value._id, seen);
+    if (typeof value._id === 'string') return value._id.trim();
+    if (typeof value._id?.toHexString === 'function') return value._id.toHexString();
     if (typeof value.id === 'string') return value.id.trim();
-    if (value.authorId && value.authorId !== value) return normalizeId(value.authorId, seen);
-    if (value.userId && value.userId !== value) return normalizeId(value.userId, seen);
-    if (value.createdBy && value.createdBy !== value) return normalizeId(value.createdBy, seen);
-    if (value.author && value.author !== value) return normalizeId(value.author, seen);
-    if (value.user && value.user !== value) return normalizeId(value.user, seen);
+    if (typeof value.authorId === 'string') return value.authorId.trim();
+    if (typeof value.userId === 'string') return value.userId.trim();
+    if (typeof value.createdBy === 'string') return value.createdBy.trim();
   }
-
   return '';
 };
 
@@ -213,7 +206,6 @@ export default function PostDetailPage() {
       return;
     }
 
-    const answerId = !isPostDonation ? normalizeId(comment?._id || comment?.id) : '';
     const answerContent = !isPostDonation ? (comment?.content || comment?.body || '') : '';
 
     const checkoutPayload = {
@@ -224,7 +216,7 @@ export default function PostDetailPage() {
       authorId: targetAuthorId || postAuthorId || '',
       authorName: targetAuthorCandidate?.fullName || targetAuthorCandidate?.email || 'tác giả',
       authorAvatar: targetAuthorCandidate?.avatar || '',
-      answerId,
+      answerId: '',
       answerContent,
     };
 
