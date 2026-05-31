@@ -104,6 +104,8 @@ export default function PostDetailPage() {
     submitComment,
     submittingComment,
     commentError,
+    reactComment,
+    reactingCommentId,
     relatedPosts,
   } = usePostDetail(id);
 
@@ -358,6 +360,9 @@ export default function PostDetailPage() {
         onSubmitComment={submitComment}
         submittingComment={submittingComment}
         commentError={commentError}
+        currentUserId={user?._id || user?.id || ''}
+        onReactComment={reactComment}
+        reactingCommentId={reactingCommentId}
       />
 
       <RelatedPosts posts={relatedPosts} />
