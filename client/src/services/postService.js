@@ -10,6 +10,7 @@ export const fetchPostsApi = (filters = {}) => {
 export const getPostDetail = (postId) => apiClient.get(`/posts/${postId}`);
 export const votePost = (postId, voteType) => apiClient.post(`/posts/${postId}/vote`, { voteType });
 export const createPostComment = (postId, payload) => apiClient.post(`/posts/${postId}/comments`, payload);
+export const reactPostComment = (commentId, reactionType) => apiClient.post(`/posts/comments/${commentId}/react`, { reactionType });
 export const getRelatedPosts = (tag, excludePostId) => apiClient.get(`/posts/related/${tag}`, { params: { excludePostId } });
 export const getPostDetailSidebarData = () => apiClient.get('/posts/sidebar');
 export const getTrendingTodayPosts = (limit = 10) => apiClient.get('/posts/trending-today', { params: { limit } });
