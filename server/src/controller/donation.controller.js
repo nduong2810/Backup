@@ -2,6 +2,24 @@ import { validationResult } from 'express-validator';
 import donationService from '../service/donation.service.js';
 import donationRepository from '../repository/donation.repository.js';
 
+const toSafeDonation = (donation) => {
+  if (!donation) return null;
+  return {
+    _id: String(donation._id || ''),
+    orderId: donation.orderId || '',
+    requestId: donation.requestId || '',
+    amount: donation.amount,
+    paymentMethod: donation.paymentMethod,
+    status: donation.status,
+    postSnapshot: donation.postSnapshot || null,
+    answerSnapshot: donation.answerSnapshot || null,
+    donorSnapshot: donation.donorSnapshot || null,
+    authorSnapshot: donation.authorSnapshot || null,
+    createdAt: donation.createdAt,
+    updatedAt: donation.updatedAt,
+  };
+};
+
 class DonationController {
   checkValidationErrors(req, res) {
     const errors = validationResult(req);
@@ -21,11 +39,12 @@ class DonationController {
         success: true,
         message: result.message,
         data: {
-          donation: result.donation,
+          donation: toSafeDonation(result.donation),
           paymentUrl: result.paymentUrl,
         },
       });
     } catch (error) {
+      console.error('[DonationController] createCheckout failed:', error);
       return res.status(error.status || 500).json({
         success: false,
         message: error.message || 'Không thể tạo giao dịch ủng hộ',
@@ -58,7 +77,7 @@ class DonationController {
       return res.status(200).json({
         success: true,
         message: 'Xác nhận thanh toán thành công',
-        data: donation,
+        data: toSafeDonation(donation),
       });
     } catch (error) {
       return res.status(error.status || 500).json({
