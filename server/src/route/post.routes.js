@@ -2,7 +2,13 @@ import express from 'express';
 import postController from '../controller/post.controller.js';
 import { authenticateToken, optionalAuthenticateToken } from '../middleware/auth.middleware.js';
 import { voteLimiter } from '../middleware/rateLimit.middleware.js';
-import { postIdValidation, voteValidation, relatedPostsValidation, createCommentValidation } from '../validation/post.validation.js';
+import {
+  postIdValidation,
+  voteValidation,
+  relatedPostsValidation,
+  createCommentValidation,
+  commentReactionValidation,
+} from '../validation/post.validation.js';
 
 const router = express.Router();
 
@@ -36,6 +42,13 @@ router.post('/:id/comments',
   authenticateToken,
   createCommentValidation,
   postController.createComment.bind(postController)
+);
+
+// POST /api/posts/comments/:commentId/react — Like/Dislike bình luận
+router.post('/comments/:commentId/react',
+  authenticateToken,
+  commentReactionValidation,
+  postController.reactComment.bind(postController)
 );
 
 // POST /api/posts/:id/vote — Upvote/Downvote (Cần đăng nhập)
