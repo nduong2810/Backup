@@ -61,3 +61,22 @@ export const relatedPostsValidation = [
         .isLength({ max: 50 })
         .withMessage('Tag tối đa 50 ký tự')
 ];
+
+export const createPostValidation = [
+    body('title')
+        .trim()
+        .notEmpty()
+        .withMessage('Tiêu đề không được để trống')
+        .isLength({ max: 200 })
+        .withMessage('Tiêu đề tối đa 200 ký tự'),
+    body('content')
+        .trim()
+        .notEmpty()
+        .withMessage('Nội dung không được để trống'),
+    body('postType')
+        .optional()
+        .isIn(['question', 'advice'])
+        .withMessage('Loại bài viết không hợp lệ'),
+    body('tags')
+        .optional()
+];

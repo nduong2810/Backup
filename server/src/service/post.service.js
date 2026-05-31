@@ -1,6 +1,7 @@
 import postRepository from '../repository/post.repository.js';
 import commentRepository from '../repository/comment.repository.js';
 import reputationService from './reputation.service.js';
+import { uploadToCloudinary } from '../util/cloudinary.js';
 
 const mapStatusFilter = (status) => {
     const normalized = status.toLowerCase();
@@ -125,9 +126,10 @@ class PostService {
         };
     }
 
-    async createComment(postId, userId, payload) {
+    async createComment(postId, userId, payload, files = {}) {
         const content = String(payload.content || '').trim();
         const parentComment = payload.parentComment || null;
+
         if (!content) throw { status: 400, message: 'Nội dung bình luận không được để trống' };
         if (content.length > 2000) throw { status: 400, message: 'Nội dung bình luận tối đa 2000 ký tự' };
 
@@ -141,7 +143,189 @@ class PostService {
             if (String(parent.post?._id || parent.post) !== String(postId)) throw { status: 400, message: 'Bình luận cha không thuộc bài viết này' };
         }
 
-        return await commentRepository.create({ content, author: userId, post: postId, parentComment });
+        let totalMediaSize = 0;
+
+        // Calculate size of images
+        if (files.images && files.images.length > 0) {
+            for (const file of files.images) {
+                totalMediaSize += file.size / (1024 * 1024);
+            }
+        } else if (payload.images && Array.isArray(payload.images)) {
+            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+            for (const img of base64Images) {
+                const body = img.split(',')[1] || img;
+                totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+            }
+        }
+
+        // Calculate size of videos
+        if (files.videos && files.videos.length > 0) {
+            for (const file of files.videos) {
+                totalMediaSize += file.size / (1024 * 1024);
+            }
+        } else if (payload.videos && Array.isArray(payload.videos)) {
+            const base64Videos = payload.videos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
+            for (const vid of base64Videos) {
+                const body = vid.split(',')[1] || vid;
+                totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+            }
+        } else if (payload.video && typeof payload.video === 'string' && payload.video.startsWith('data:')) {
+            const body = payload.video.split(',')[1] || payload.video;
+            totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+        }
+
+        // Validate size limit early
+        if (totalMediaSize > 50) {
+            throw { status: 400, message: `Tổng dung lượng của tất cả hình ảnh và video đính kèm vượt quá giới hạn cho phép 50MB (Hiện tại: ${totalMediaSize.toFixed(2)}MB).` };
+        }
+
+        let imageUrls = [];
+        let videoUrls = [];
+
+        // Upload images
+        if (files.images && files.images.length > 0) {
+            imageUrls = await Promise.all(
+                files.images.map(img => uploadToCloudinary(img.buffer, img.mimetype))
+            );
+        } else if (payload.images && Array.isArray(payload.images)) {
+            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+            imageUrls = await Promise.all(
+                base64Images.map(img => uploadToCloudinary(img))
+            );
+        }
+
+        // Upload videos
+        if (files.videos && files.videos.length > 0) {
+            for (const vid of files.videos) {
+                try {
+                    const url = await uploadToCloudinary(vid.buffer, vid.mimetype);
+                    videoUrls.push(url);
+                } catch (uploadErr) {
+                    console.error('[PostService] Comment Video upload failed:', uploadErr.message || uploadErr);
+                    throw { status: 500, message: 'Upload video bình luận thất bại.' };
+                }
+            }
+        } else if (payload.videos && Array.isArray(payload.videos)) {
+            const base64Videos = payload.videos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
+            for (const vid of base64Videos) {
+                const url = await uploadToCloudinary(vid);
+                videoUrls.push(url);
+            }
+        } else if (payload.video && typeof payload.video === 'string' && payload.video.startsWith('data:')) {
+            const url = await uploadToCloudinary(payload.video);
+            videoUrls.push(url);
+        }
+
+        return await commentRepository.create({
+            content,
+            author: userId,
+            post: postId,
+            parentComment,
+            images: imageUrls,
+            videos: videoUrls
+        });
+    }
+
+    async createPost(userId, payload, files = {}) {
+        const title = String(payload.title || '').trim();
+        const content = String(payload.content || '').trim();
+        const postType = payload.postType || 'question';
+        const tags = Array.isArray(payload.tags)
+            ? payload.tags.map(t => String(t).trim().toLowerCase()).filter(Boolean)
+            : [];
+
+        if (!title) throw { status: 400, message: 'Tiêu đề không được để trống' };
+        if (title.length > 200) throw { status: 400, message: 'Tiêu đề tối đa 200 ký tự' };
+        if (!content) throw { status: 400, message: 'Nội dung không được để trống' };
+        if (!['question', 'advice'].includes(postType)) {
+            throw { status: 400, message: 'Loại bài viết không hợp lệ' };
+        }
+
+        let totalMediaSize = 0;
+
+        // Calculate size of images
+        if (files.images && files.images.length > 0) {
+            for (const file of files.images) {
+                totalMediaSize += file.size / (1024 * 1024);
+            }
+        } else if (payload.images && Array.isArray(payload.images)) {
+            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+            for (const img of base64Images) {
+                const body = img.split(',')[1] || img;
+                totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+            }
+        }
+
+        // Calculate size of videos
+        if (files.videos && files.videos.length > 0) {
+            for (const file of files.videos) {
+                totalMediaSize += file.size / (1024 * 1024);
+            }
+        } else if (payload.videos && Array.isArray(payload.videos)) {
+            const base64Videos = payload.videos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
+            for (const vid of base64Videos) {
+                const body = vid.split(',')[1] || vid;
+                totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+            }
+        } else if (payload.video && typeof payload.video === 'string' && payload.video.startsWith('data:')) {
+            const body = payload.video.split(',')[1] || payload.video;
+            totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+        }
+
+        // Validate size limit early
+        if (totalMediaSize > 50) {
+            throw { status: 400, message: `Tổng dung lượng của tất cả hình ảnh và video đính kèm vượt quá giới hạn cho phép 50MB (Hiện tại: ${totalMediaSize.toFixed(2)}MB).` };
+        }
+
+        let imageUrls = [];
+        let videoUrls = [];
+
+        // Upload images
+        if (files.images && files.images.length > 0) {
+            imageUrls = await Promise.all(
+                files.images.map(img => uploadToCloudinary(img.buffer, img.mimetype))
+            );
+        } else if (payload.images && Array.isArray(payload.images)) {
+            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+            imageUrls = await Promise.all(
+                base64Images.map(img => uploadToCloudinary(img))
+            );
+        }
+
+        // Upload videos
+        if (files.videos && files.videos.length > 0) {
+            for (const vid of files.videos) {
+                try {
+                    const url = await uploadToCloudinary(vid.buffer, vid.mimetype);
+                    videoUrls.push(url);
+                } catch (uploadErr) {
+                    console.error('[PostService] Video upload failed:', uploadErr.message || uploadErr);
+                    throw { status: 500, message: 'Upload video thất bại. Vui lòng thử lại hoặc chọn video nhỏ hơn.' };
+                }
+            }
+        } else if (payload.videos && Array.isArray(payload.videos)) {
+            const base64Videos = payload.videos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
+            for (const vid of base64Videos) {
+                const url = await uploadToCloudinary(vid);
+                videoUrls.push(url);
+            }
+        } else if (payload.video && typeof payload.video === 'string' && payload.video.startsWith('data:')) {
+            const url = await uploadToCloudinary(payload.video);
+            videoUrls.push(url);
+        }
+
+        const post = await postRepository.create({
+            title,
+            content,
+            postType,
+            tags,
+            images: imageUrls,
+            videos: videoUrls,
+            author: userId,
+            status: 'active'
+        });
+
+        return await postRepository.findById(post._id);
     }
 
     async toggleVote(postId, userId, voteType) {

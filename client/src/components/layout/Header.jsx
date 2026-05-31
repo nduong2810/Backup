@@ -3,14 +3,24 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/loginSlice';
 import SearchBar from '../common/SearchBar';
+import CreatePostModal from '../post/CreatePostModal';
 
 const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.login);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const menuRef = useRef(null);
   const isAdmin = user?.role === 'admin';
+
+  const handleCreatePostClick = () => {
+    if (!user) {
+      navigate('/auth/login');
+      return;
+    }
+    setCreateModalOpen(true);
+  };
 
   const handleLogout = () => {
     dispatch(logout());
@@ -47,13 +57,19 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
             showButton={false}
             inputClassName="bg-surface-container-lowest border-outline-variant rounded-DEFAULT pl-10 pr-4 py-2 font-body-sm text-body-sm focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 text-on-surface placeholder:text-outline shadow-none"
           />
-          <button className="bg-primary hover:bg-primary/90 text-white font-body-md text-body-md font-semibold px-5 py-2.5 rounded-DEFAULT transition-colors shrink-0">
+          <button
+            onClick={handleCreatePostClick}
+            className="bg-primary hover:bg-primary/90 text-white font-body-md text-body-md font-semibold px-5 py-2.5 rounded-DEFAULT transition-colors shrink-0"
+          >
             Tạo bài viết
           </button>
         </div>
 
         <div className="flex items-center gap-4 justify-end">
-          <button className="bg-primary hover:bg-primary/90 text-white font-body-sm text-body-sm font-semibold px-4 py-2 rounded-DEFAULT transition-colors shrink-0 lg:hidden">
+          <button
+            onClick={handleCreatePostClick}
+            className="bg-primary hover:bg-primary/90 text-white font-body-sm text-body-sm font-semibold px-4 py-2 rounded-DEFAULT transition-colors shrink-0 lg:hidden"
+          >
             Tạo bài viết
           </button>
 
@@ -148,6 +164,7 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
           )}
         </div>
       </div>
+      <CreatePostModal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} />
     </header>
   );
 };

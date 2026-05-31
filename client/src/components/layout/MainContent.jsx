@@ -62,24 +62,39 @@ const QuestionCard = ({
     const userReaction = question.userReaction ?? null;
     const isVoting = votingPostId === question._id;
     const isReacting = reactingPostId === question._id;
+    const isAdvice = question.postType === 'advice';
 
     return (
-        <article className="flex flex-col sm:flex-row gap-stack-md py-stack-md border-b border-outline-variant hover:bg-surface-container-low transition-colors px-3">
-            <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:w-24 flex-shrink-0 text-right">
-                <div className="font-body-sm text-body-sm text-on-surface flex items-center sm:justify-end gap-1">
-                    <span className="font-semibold">{upvoteCount - downvoteCount}</span> bình chọn
-                </div>
-                <div className={`font-body-sm text-body-sm px-2 py-0.5 rounded-DEFAULT flex items-center sm:justify-end gap-1 ${answerCount > 0 ? 'text-[#2e7d32] border border-[#2e7d32] bg-[#e8f5e9]' : 'text-secondary'}`}>
-                    <span className="font-semibold">{answerCount}</span> câu trả lời
-                </div>
-                <div className="font-body-sm text-body-sm text-secondary flex items-center sm:justify-end gap-1">
+        <article className="flex flex-col sm:flex-row gap-stack-md sm:gap-6 py-stack-md border-b border-outline-variant hover:bg-surface-container-low transition-colors px-3">
+            <div className="flex sm:flex-col items-center justify-center gap-2 sm:w-28 flex-shrink-0 text-center">
+                {isAdvice ? (
+                    <div className={`w-full text-center py-1 px-2 rounded-lg font-body-sm text-body-sm transition-colors duration-200 ${answerCount > 0 ? 'text-[#2e7d32] border border-[#2e7d32] bg-[#e8f5e9]' : 'text-secondary border border-outline-variant bg-surface-container-lowest'}`}>
+                        <span className="font-semibold">{answerCount}</span> bình luận
+                    </div>
+                ) : (
+                    <div className={`w-full text-center py-1 px-2 rounded-lg font-body-sm text-body-sm transition-colors duration-200 ${answerCount > 0 ? 'text-[#0066cc] border border-[#0066cc] bg-[#e3f2fd]' : 'text-secondary border border-outline-variant bg-surface-container-lowest'}`}>
+                        <span className="font-semibold">{answerCount}</span> câu trả lời
+                    </div>
+                )}
+                <div className="font-body-sm text-body-sm text-secondary mt-0.5">
                     <span className="font-semibold">{question.views || 0}</span> lượt xem
                 </div>
             </div>
 
             <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-5 pr-1">
-                    <h3 className="font-headline-md text-headline-md mb-1 flex-1 min-w-0">
+                    <h3 className="font-headline-md text-headline-md mb-1 flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                        {isAdvice ? (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <span className="material-symbols-outlined text-[11px] leading-none">tips_and_updates</span>
+                                Lời khuyên
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                <span className="material-symbols-outlined text-[11px] leading-none">help_center</span>
+                                Câu hỏi
+                            </span>
+                        )}
                         <Link className="text-primary-container hover:text-primary-container/80 transition-colors break-words" to={`/posts/${question._id}`}>
                             {question.title}
                         </Link>
@@ -96,54 +111,65 @@ const QuestionCard = ({
                     {getPlainText(question.content) || 'Chua co noi dung.'}
                 </p>
 
-                <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
-                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-                        {question.tags && question.tags.map((tag, index) => (
-                            <span key={index} className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 cursor-pointer">
-                                {tag}
-                            </span>
-                        ))}
+                <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            {question.tags && question.tags.map((tag, index) => (
+                                <span key={index} className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 cursor-pointer">
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
 
-                        <SmallPostActionButton
-                            active={userVote === 'upvote'}
-                            disabled={isVoting}
-                            onClick={() => onVotePost?.(question._id, 'upvote')}
-                            icon="arrow_upward"
-                            label="Upvote"
-                            count={upvoteCount}
-                            activeClass="border-primary/30 bg-primary-fixed text-primary"
-                            hoverClass="hover:bg-primary-fixed/30 hover:text-primary"
-                        />
-                        <SmallPostActionButton
-                            active={userVote === 'downvote'}
-                            disabled={isVoting}
-                            onClick={() => onVotePost?.(question._id, 'downvote')}
-                            icon="arrow_downward"
-                            label="Downvote"
-                            count={downvoteCount}
-                            activeClass="border-error/30 bg-error-container text-error"
-                            hoverClass="hover:bg-error-container/30 hover:text-error"
-                        />
-                        <SmallPostActionButton
-                            active={userReaction === 'like'}
-                            disabled={isReacting}
-                            onClick={() => onReactPost?.(question._id, 'like')}
-                            icon="thumb_up"
-                            label="Like"
-                            count={likeCount}
-                            activeClass="border-blue-300 bg-blue-50 text-blue-700"
-                            hoverClass="hover:bg-blue-50 hover:text-blue-700"
-                        />
-                        <SmallPostActionButton
-                            active={userReaction === 'dislike'}
-                            disabled={isReacting}
-                            onClick={() => onReactPost?.(question._id, 'dislike')}
-                            icon="thumb_down"
-                            label="Dislike"
-                            count={dislikeCount}
-                            activeClass="border-rose-300 bg-rose-50 text-rose-700"
-                            hoverClass="hover:bg-rose-50 hover:text-rose-700"
-                        />
+                        <div className="flex items-center gap-1.5">
+                            {!isAdvice ? (
+                                <>
+                                    <SmallPostActionButton
+                                        active={userVote === 'upvote'}
+                                        disabled={isVoting}
+                                        onClick={() => onVotePost?.(question._id, 'upvote')}
+                                        icon="arrow_upward"
+                                        label="Upvote"
+                                        count={upvoteCount}
+                                        activeClass="border-primary/30 bg-primary-fixed text-primary"
+                                        hoverClass="hover:bg-primary-fixed/30 hover:text-primary"
+                                    />
+                                    <SmallPostActionButton
+                                        active={userVote === 'downvote'}
+                                        disabled={isVoting}
+                                        onClick={() => onVotePost?.(question._id, 'downvote')}
+                                        icon="arrow_downward"
+                                        label="Downvote"
+                                        count={downvoteCount}
+                                        activeClass="border-error/30 bg-error-container text-error"
+                                        hoverClass="hover:bg-error-container/30 hover:text-error"
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <SmallPostActionButton
+                                        active={userReaction === 'like'}
+                                        disabled={isReacting}
+                                        onClick={() => onReactPost?.(question._id, 'like')}
+                                        icon="thumb_up"
+                                        label="Like"
+                                        count={likeCount}
+                                        activeClass="border-blue-300 bg-blue-50 text-blue-700"
+                                        hoverClass="hover:bg-blue-50 hover:text-blue-700"
+                                    />
+                                    <SmallPostActionButton
+                                        active={userReaction === 'dislike'}
+                                        disabled={isReacting}
+                                        onClick={() => onReactPost?.(question._id, 'dislike')}
+                                        icon="thumb_down"
+                                        label="Dislike"
+                                        count={dislikeCount}
+                                        activeClass="border-rose-300 bg-rose-50 text-rose-700"
+                                        hoverClass="hover:bg-rose-50 hover:text-rose-700"
+                                    />
+                                </>
+                            )}
+                        </div>
                     </div>
 
                     <div className="ml-auto flex items-center gap-2">

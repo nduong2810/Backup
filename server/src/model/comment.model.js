@@ -28,6 +28,14 @@ const commentSchema = new mongoose.Schema({
         ref: 'Comment',
         default: null
     },
+    // Ảnh đính kèm trong comment
+    images: [{
+        type: String
+    }],
+    // Video đính kèm trong comment
+    videos: [{
+        type: String
+    }],
     likes: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

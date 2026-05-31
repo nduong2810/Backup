@@ -131,14 +131,14 @@ export default function usePostDetail(postId) {
     }
   }, [postId, reactionLoading]);
 
-  const submitComment = useCallback(async ({ content, parentComment = null }) => {
+  const submitComment = useCallback(async (payload) => {
     if (submittingComment) return false;
 
     setSubmittingComment(true);
     setCommentError('');
 
     try {
-      await createPostComment(postId, { content, parentComment });
+      await createPostComment(postId, payload);
       await fetchPostDetail(false);
       return true;
     } catch (err) {

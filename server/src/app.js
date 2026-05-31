@@ -14,10 +14,10 @@ const app = express()
 // --- Global Middlewares ---
 app.use(cors(corsOptions))         // CORS
 
-// Cho phép upload bill COD dạng base64 trong JSON body.
-// Mặc định express.json() chỉ nhận khoảng 100KB nên ảnh bill dễ bị PayloadTooLargeError.
-app.use(express.json({ limit: '20mb' }))
-app.use(express.urlencoded({ extended: true, limit: '20mb' }))
+// Cho phép upload media dạng base64 trong JSON body.
+// Hỗ trợ upload đồng thời nhiều ảnh + video nên cần limit lớn.
+app.use(express.json({ limit: '100mb' }))
+app.use(express.urlencoded({ extended: true, limit: '100mb' }))
 
 app.use(cookieParser())            // Parse cookies
 
