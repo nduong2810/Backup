@@ -84,6 +84,7 @@ class AuthController {
             res.status(200).json({
                 message: 'Đăng nhập thành công',
                 user,
+                accessToken: token,
                 redirectUrl,
             });
         } catch (error) {
@@ -183,20 +184,6 @@ class AuthController {
                 success: true,
                 message: "Cập nhật thông tin thành công",
                 user: updatedUser
-            });
-        } catch (error) {
-            res.status(400).json({ success: false, message: error.message });
-        }
-    }
-
-    async getAdminProfile(req, res) {
-        try {
-            const admin = await authService.getUserProfile(req.user.userId);
-            res.status(200).json({
-                success: true,
-                message: "Admin Profile",
-                user: admin,
-                adminPanel: true
             });
         } catch (error) {
             res.status(500).json({ success: false, message: error.message });
