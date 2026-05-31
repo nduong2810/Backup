@@ -7,6 +7,7 @@ import commentRepository from '../repository/comment.repository.js';
 import Post from '../model/post.model.js';
 import sendEmail from '../util/email.util.js';
 import env from '../config/environment.js';
+import reputationService from './reputation.service.js';
 
 const SUPPORTED_AMOUNTS = new Set([20000, 50000, 100000]);
 
@@ -340,6 +341,10 @@ class DonationService {
         },
       });
 
+      // Trao reputation +20 cho tác giả khi donation hoàn thành
+      const authorId = updatedDonation.author?._id?.toString() || updatedDonation.author?.toString();
+      if (authorId) await reputationService.award(authorId, 'donate_received');
+
       await safeNotify(
         updatedDonation.author?.email,
         'Bạn vừa nhận được một lượt ủng hộ',
@@ -374,6 +379,10 @@ class DonationService {
       approvedAt: new Date(),
       completedAt: new Date(),
     });
+
+    // Trao reputation +20 cho tác giả khi COD được admin duyệt
+    const authorId = updatedDonation.author?._id?.toString() || updatedDonation.author?.toString();
+    if (authorId) await reputationService.award(authorId, 'donate_received');
 
     await safeNotify(
       updatedDonation.author?.email,

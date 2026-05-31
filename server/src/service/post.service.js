@@ -1,5 +1,6 @@
 import postRepository from '../repository/post.repository.js';
 import commentRepository from '../repository/comment.repository.js';
+import reputationService from './reputation.service.js';
 
 const mapStatusFilter = (status) => {
     const normalized = status.toLowerCase();
@@ -167,31 +168,49 @@ class PostService {
             }
         };
 
+        const authorId = post.author?._id?.toString() || post.author?.toString();
+        const isSelfVote = authorId && authorId === userId;
+
         if (voteType === 'upvote') {
             if (hasUpvoted) {
                 await postRepository.removeUpvote(postId, userId);
                 applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', -1, post.dailyUpvoteDate, post.dailyUpvoteCount);
+                // Rút upvote → trừ điểm tác giả
+                if (!isSelfVote) await reputationService.award(authorId, 'post_upvote_removed');
             } else {
                 if (hasDownvoted) {
                     await postRepository.removeDownvote(postId, userId);
                     applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', -1, post.dailyDownvoteDate, post.dailyDownvoteCount);
+                    // Rút downvote → hoàn điểm tác giả và voter
+                    if (!isSelfVote) await reputationService.award(authorId, 'post_downvote_removed');
+                    await reputationService.award(userId, 'downvote_given_removed');
                 }
                 await postRepository.addUpvote(postId, userId);
                 userVote = 'upvote';
                 applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', 1, post.dailyUpvoteDate, post.dailyUpvoteCount);
+                // Upvote mới → cộng điểm tác giả
+                if (!isSelfVote) await reputationService.award(authorId, 'post_upvoted');
             }
         } else if (voteType === 'downvote') {
             if (hasDownvoted) {
                 await postRepository.removeDownvote(postId, userId);
                 applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', -1, post.dailyDownvoteDate, post.dailyDownvoteCount);
+                // Rút downvote → hoàn điểm tác giả và voter
+                if (!isSelfVote) await reputationService.award(authorId, 'post_downvote_removed');
+                await reputationService.award(userId, 'downvote_given_removed');
             } else {
                 if (hasUpvoted) {
                     await postRepository.removeUpvote(postId, userId);
                     applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', -1, post.dailyUpvoteDate, post.dailyUpvoteCount);
+                    // Rút upvote (do chuyển sang downvote) → trừ điểm tác giả
+                    if (!isSelfVote) await reputationService.award(authorId, 'post_upvote_removed');
                 }
                 await postRepository.addDownvote(postId, userId);
                 userVote = 'downvote';
                 applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', 1, post.dailyDownvoteDate, post.dailyDownvoteCount);
+                // Downvote mới → trừ điểm tác giả + trừ điểm voter
+                if (!isSelfVote) await reputationService.award(authorId, 'post_downvoted');
+                await reputationService.award(userId, 'downvote_given');
             }
         }
 

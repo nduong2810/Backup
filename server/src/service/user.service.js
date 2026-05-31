@@ -1,10 +1,14 @@
 import User from '../model/user.model.js';
 import bcrypt from 'bcryptjs';
 import donationRepository from '../repository/donation.repository.js';
+import { getRankInfo } from './reputation.service.js';
 
 class UserService {
     async getProfile(userId) {
-        return await User.findById(userId).select('-password'); // Ẩn mật khẩu
+        const user = await User.findById(userId).select('-password');
+        if (!user) return null;
+        const rep = user.reputation || 1;
+        return { ...user.toObject(), reputationInfo: { reputation: rep, ...getRankInfo(rep) } };
     }
 
     async updateProfile(userId, updateData) {
@@ -38,8 +42,9 @@ class UserService {
 
         if (!user) throw { status: 404, message: 'Tác giả không tồn tại' };
 
+        const rep = user.reputation || 1;
         return {
-            user,
+            user: { ...user.toObject(), reputationInfo: { reputation: rep, ...getRankInfo(rep) } },
             donationSummary: {
                 totalAmount: summary.totalAmount || 0,
                 donationCount: summary.donationCount || 0,

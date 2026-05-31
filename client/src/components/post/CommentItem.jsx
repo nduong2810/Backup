@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import ReputationBadge from '../ui/ReputationBadge';
 
 function timeAgo(dateString) {
   const now = new Date();
@@ -61,7 +62,7 @@ export default function CommentItem({
       />
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1 font-body-sm text-body-sm">
+        <div className="flex items-center gap-2 mb-1 font-body-sm text-body-sm flex-wrap">
           {isAuthor && (
             <span className="font-label-mono text-label-mono font-semibold uppercase px-1.5 py-0.5 rounded border border-primary text-primary bg-primary-fixed">
               Tác giả
@@ -70,6 +71,9 @@ export default function CommentItem({
           <Link to={comment.author?._id ? `/users/${comment.author._id}` : '#'} className="font-semibold text-primary-container hover:underline">
             {comment.author?.fullName}
           </Link>
+          {comment.author?.reputation !== undefined && (
+            <ReputationBadge reputation={comment.author.reputation} size="sm" />
+          )}
           <span className="text-outline text-xs">· {timeAgo(comment.createdAt)}</span>
         </div>
 

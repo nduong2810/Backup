@@ -110,6 +110,10 @@ export default function PostDetailPage() {
     relatedPosts,
   } = usePostDetail(id);
 
+  const minReportReputation = 15;
+  const userReputation = user?.reputationInfo?.reputation ?? user?.reputation ?? 1;
+  const isReportLockedByRep = isAuthenticated && userReputation < minReportReputation;
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20">
@@ -144,6 +148,10 @@ export default function PostDetailPage() {
     event.preventDefault();
     if (!user?._id) {
       alert('Bạn cần đăng nhập để gửi cờ báo cáo.');
+      return;
+    }
+    if (isReportLockedByRep) {
+      alert(`Bạn cần tối thiểu ${minReportReputation} điểm reputation để gửi cờ báo cáo.`);
       return;
     }
     if (!flagType) return;
@@ -334,6 +342,7 @@ export default function PostDetailPage() {
           <select
             value={flagType}
             onChange={(e) => { dispatch(clearReportCreateMessages()); setFlagType(e.target.value); }}
+            disabled={isReportLockedByRep}
             className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
           >
             <option value="">Chọn loại cờ...</option>
@@ -345,12 +354,20 @@ export default function PostDetailPage() {
             onChange={(e) => setDetails(e.target.value)}
             rows={3}
             placeholder="Mô tả thêm (đặc biệt hữu ích khi chọn 'Cần moderator xem thủ công')"
+            disabled={isReportLockedByRep}
             className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
           />
 
-          <button type="submit" disabled={creating || !flagType} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60">
+          <button type="submit" disabled={creating || !flagType || isReportLockedByRep} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60">
             {creating ? 'Đang gửi...' : 'Gửi cờ báo cáo'}
           </button>
+
+          {isReportLockedByRep && (
+            <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+              <span className="mt-0.5 text-rose-700">!</span>
+              <p className="leading-5">Bạn cần tối thiểu {minReportReputation} điểm reputation để gửi cờ báo cáo.</p>
+            </div>
+          )}
 
           {createSuccessMessage && <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><span className="mt-0.5 text-emerald-700">✓</span><p className="leading-5">{createSuccessMessage}</p></div>}
           {createErrorMessage && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"><span className="mt-0.5 text-rose-700">!</span><p className="leading-5">{createErrorMessage}</p></div>}

@@ -7,7 +7,7 @@ import Post from '../model/post.model.js';
 class PostRepository {
     async findById(postId) {
         return await Post.findById(postId)
-            .populate('author', '_id fullName avatar major email');
+            .populate('author', '_id fullName avatar major email reputation');
     }
 
     async incrementViewCount(postId, options = {}) {
@@ -146,7 +146,7 @@ class PostRepository {
                     dislikeCount: 1,
                     answerCount: 1,
                     createdAt: 1,
-                    author: { _id: 1, fullName: 1, avatar: 1, email: 1 },
+                    author: { _id: 1, fullName: 1, avatar: 1, email: 1, reputation: 1 },
                 },
             },
         ];

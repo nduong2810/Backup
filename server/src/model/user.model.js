@@ -17,6 +17,12 @@ const userSchema = new mongoose.Schema({
     otp: { type: String, default: null },
     otpExpiry: { type: Date, default: null },
 
+    // Hệ thống Reputation
+    reputation: { type: Number, default: 1, min: 1 },
+    // Theo dõi daily cap: số điểm kiếm được trong ngày (từ upvote)
+    reputationDailyEarned: { type: Number, default: 0 },
+    reputationDailyDate: { type: Date, default: null },
+
     // Dành cho chức năng Quên mật khẩu
     resetOTP: { type: String, default: null },
     resetOTPExpiry: { type: Date, default: null },

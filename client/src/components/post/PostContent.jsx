@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import SaveIconButton from '../ui/SaveIconButton';
+import ReputationBadge from '../ui/ReputationBadge';
 
 function timeAgo(dateString) {
   const now = new Date();
@@ -74,6 +75,9 @@ export default function PostContent({
             />
             <span className="font-medium text-primary-container hover:underline">{post.author?.fullName}</span>
           </Link>
+          {post.author?.reputation !== undefined && (
+            <ReputationBadge reputation={post.author.reputation} size="sm" />
+          )}
           {post.author?.major && (
             <span className="text-outline">· {post.author.major}</span>
           )}

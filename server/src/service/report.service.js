@@ -1,7 +1,10 @@
-﻿import reportRepository from '../repository/report.repository.js';
+import reportRepository from '../repository/report.repository.js';
 import postRepository from '../repository/post.repository.js';
+import userRepository from '../repository/user.repository.js';
+import reputationService from './reputation.service.js';
 
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+const MIN_REPUTATION_TO_REPORT = 15;
 
 const FLAG_LABELS = {
   spam: 'Xóa vì spam quảng cáo hàng loạt',
@@ -31,7 +34,6 @@ const ADMIN_TRANSITION_MAP = {
   received: ['in_review'],
   in_review: ['action_taken', 'closed'],
 };
-// TODO(reputation): Khi có module reputation, chặn flag nếu user chưa đạt ngưỡng quyền.
 
 const normalizeFlag = (ticket) => {
   if (!ticket) return ticket;
@@ -48,13 +50,27 @@ const normalizeFlag = (ticket) => {
   obj.flagTypeLabel = FLAG_LABELS[obj.flagType] || obj.flagType;
   obj.statusLabel = STATUS_LABELS[obj.status] || obj.status;
   obj.retractable = OPEN_STATUSES.includes(obj.status);
-  obj.reputationGateNote = 'TODO: Áp dụng giới hạn quyền flag theo reputation khi hệ thống reputation hoàn thành.';
 
   return obj;
 };
 
 class ReportService {
   async createReportTicket(postId, reporterId, flagType, details = '') {
+    const reporter = await userRepository.findById(reporterId);
+    if (!reporter) {
+      throw { status: 404, message: 'Không tìm thấy người dùng.' };
+    }
+
+    if (reporter.role !== 'admin') {
+      const reputation = reporter.reputation || 1;
+      if (reputation < MIN_REPUTATION_TO_REPORT) {
+        throw {
+          status: 403,
+          message: `Bạn cần tối thiểu ${MIN_REPUTATION_TO_REPORT} điểm uy tín để gửi cờ báo cáo.`,
+        };
+      }
+    }
+
     const post = await postRepository.findById(postId);
     if (!post || post.status === 'deleted') {
       throw { status: 404, message: 'Bài viết không tồn tại hoặc đã bị xóa.' };
@@ -88,6 +104,10 @@ class ReportService {
           postId,
           `Tự động xử lý: bài viết bị xóa khi đủ ${AUTO_DELETE_THRESHOLD} cờ ${FLAG_LABELS[flagType]}.`,
         );
+        // Trừ reputation tác giả khi bài bị xóa do report
+        const deletedPost = await postRepository.findById(postId);
+        const authorId = deletedPost?.author?._id?.toString() || deletedPost?.author?.toString();
+        if (authorId) await reputationService.award(authorId, 'post_deleted_by_report');
       }
     }
 
