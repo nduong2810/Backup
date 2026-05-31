@@ -12,8 +12,8 @@ const AMOUNTS = [
 ];
 
 const METHODS = [
-  { value: 'vnpay', label: 'Ví điện tử VNPAY Sandbox', caption: 'Tạo link thanh toán thật trong môi trường sandbox' },
-  { value: 'cod', label: 'Chuyển khoản ngân hàng / COD', caption: 'Tải ảnh bill lên và chờ admin duyệt' },
+  { value: 'vnpay', label: 'Ví điện tử VNPAY Sandbox' },
+  { value: 'cod', label: 'Chuyển khoản ngân hàng / COD' },
 ];
 
 const normalizeId = (value) => {
@@ -112,7 +112,7 @@ export default function DonateCheckoutPage() {
     }
 
     if (paymentMethod === 'cod' && !billImage) {
-      setMessage('Bạn cần tải ảnh bill chuyển khoản lên trước khi tạo giao dịch chờ duyệt.');
+      setMessage('Bạn cần tải ảnh bill chuyển khoản lên trước khi tạo giao dịch.');
       return;
     }
 
@@ -233,7 +233,6 @@ export default function DonateCheckoutPage() {
                     />
                     <div>
                       <div className="font-semibold text-slate-900">{item.label}</div>
-                      <div className="mt-1 text-sm text-slate-600">{item.caption}</div>
                     </div>
                   </label>
                 ))}
@@ -269,7 +268,7 @@ export default function DonateCheckoutPage() {
             </section>
 
             <AppButton type="submit" disabled={loading} fullWidth>
-              {loading ? 'Đang tạo thanh toán...' : paymentMethod === 'cod' ? 'Tạo giao dịch chờ duyệt' : `Thanh toán ${selectedAmount.label} bằng VNPAY`}
+              {loading ? 'Đang xử lý...' : paymentMethod === 'cod' ? 'Gửi giao dịch' : `Thanh toán ${selectedAmount.label} bằng VNPAY`}
             </AppButton>
           </form>
         </AppCard>
@@ -294,13 +293,6 @@ export default function DonateCheckoutPage() {
                 <div className="mt-1 font-semibold text-slate-900">{authorName}</div>
               </div>
             </div>
-          </AppCard>
-
-          <AppCard title="Luồng xử lý" subtitle="Hai cách thanh toán theo đề bài">
-            <ol className="space-y-3 text-sm text-slate-700">
-              <li className="rounded-2xl bg-slate-50 p-4">COD: user tải ảnh bill, giao dịch ở trạng thái chờ duyệt, admin duyệt rồi tác giả mới nhận được ghi nhận.</li>
-              <li className="rounded-2xl bg-slate-50 p-4">VNPAY sandbox: tạo link thanh toán thực tế, sau khi trả về trang kết quả hệ thống tự xác nhận giao dịch.</li>
-            </ol>
           </AppCard>
         </div>
       </div>
