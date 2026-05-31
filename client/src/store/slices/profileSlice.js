@@ -1,4 +1,4 @@
-﻿import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { getMyProfile, updateMyProfile } from '../../services/userService';
 
 const initialState = {
@@ -9,6 +9,7 @@ const initialState = {
     major: '',
     bio: '',
   },
+  reputationInfo: null,
   loading: false,
   saving: false,
   successMessage: '',
@@ -88,6 +89,7 @@ const profileSlice = createSlice({
         state.form.phone = action.payload.phone || '';
         state.form.major = action.payload.major || '';
         state.form.bio = action.payload.bio || '';
+        state.reputationInfo = action.payload.reputationInfo || null;
       })
       .addCase(fetchProfileThunk.rejected, (state, action) => {
         state.loading = false;
