@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getPostDetail, votePost, getRelatedPosts, createPostComment, reactPostComment } from '../services/postService';
+import {
+  getPostDetail,
+  votePost,
+  reactPost,
+  getRelatedPosts,
+  createPostComment,
+  reactPostComment,
+} from '../services/postService';
 
 export default function usePostDetail(postId) {
   const [post, setPost] = useState(null);
@@ -12,6 +19,11 @@ export default function usePostDetail(postId) {
   const [downvoteCount, setDownvoteCount] = useState(0);
   const [userVote, setUserVote] = useState(null);
   const [voteLoading, setVoteLoading] = useState(false);
+
+  const [likeCount, setLikeCount] = useState(0);
+  const [dislikeCount, setDislikeCount] = useState(0);
+  const [userReaction, setUserReaction] = useState(null);
+  const [reactionLoading, setReactionLoading] = useState(false);
 
   const [submittingComment, setSubmittingComment] = useState(false);
   const [commentError, setCommentError] = useState('');
@@ -35,6 +47,9 @@ export default function usePostDetail(postId) {
       setUpvoteCount(postData.upvoteCount || 0);
       setDownvoteCount(postData.downvoteCount || 0);
       setUserVote(postData.userVote || null);
+      setLikeCount(postData.likeCount || postData.likes?.length || 0);
+      setDislikeCount(postData.dislikeCount || postData.dislikes?.length || 0);
+      setUserReaction(postData.userReaction || null);
     } catch (err) {
       const message = err.response?.data?.message || 'Không thể tải bài viết.';
       setError(message);
@@ -70,11 +85,47 @@ export default function usePostDetail(postId) {
     } catch (err) {
       if (err.response?.status === 401) {
         alert('Bạn cần đăng nhập để vote bài viết.');
+      } else {
+        alert(err.response?.data?.message || 'Không thể vote bài viết.');
       }
     } finally {
       setVoteLoading(false);
     }
   }, [postId, voteLoading, userVote]);
+
+  const handlePostReaction = useCallback(async (reactionType) => {
+    if (reactionLoading) return;
+
+    setReactionLoading(true);
+    try {
+      const response = await reactPost(postId, reactionType);
+      const {
+        likeCount: likes,
+        dislikeCount: dislikes,
+        userReaction: reaction,
+      } = response.data.data;
+
+      setLikeCount(likes);
+      setDislikeCount(dislikes);
+      setUserReaction(reaction);
+      setPost((currentPost) => currentPost
+        ? {
+            ...currentPost,
+            likeCount: likes,
+            dislikeCount: dislikes,
+            userReaction: reaction,
+          }
+        : currentPost);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        alert('Bạn cần đăng nhập để like/dislike bài viết.');
+      } else {
+        alert(err.response?.data?.message || 'Không thể like/dislike bài viết.');
+      }
+    } finally {
+      setReactionLoading(false);
+    }
+  }, [postId, reactionLoading]);
 
   const submitComment = useCallback(async ({ content, parentComment = null }) => {
     if (submittingComment) return false;
@@ -134,6 +185,11 @@ export default function usePostDetail(postId) {
     userVote,
     handleVote,
     voteLoading,
+    likeCount,
+    dislikeCount,
+    userReaction,
+    handlePostReaction,
+    reactionLoading,
     submitComment,
     submittingComment,
     commentError,
