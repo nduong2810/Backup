@@ -9,11 +9,16 @@ import sendEmail from '../util/email.util.js';
 import env from '../config/environment.js';
 
 const SUPPORTED_AMOUNTS = new Set([20000, 50000, 100000]);
+<<<<<<< HEAD
 const isMongoId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || '').trim());
+=======
+const isMongoId = (value) => mongoose.Types.ObjectId.isValid(String(value || '').trim());
+>>>>>>> d996220 (Remove recursive donation checkout normalization)
 
 const normalizeId = (value) => {
   if (!value) return '';
   if (typeof value === 'number') return String(value);
+<<<<<<< HEAD
   if (typeof value === 'string') return isMongoId(value) ? value.trim() : '';
   if (value instanceof mongoose.Types.ObjectId) return value.toHexString();
   if (typeof value?.toHexString === 'function') return value.toHexString();
@@ -22,6 +27,15 @@ const normalizeId = (value) => {
     if (value._id instanceof mongoose.Types.ObjectId) return value._id.toHexString();
     if (typeof value.id === 'string' && isMongoId(value.id)) return value.id.trim();
     if (typeof value.$oid === 'string' && isMongoId(value.$oid)) return value.$oid.trim();
+=======
+  if (value instanceof mongoose.Types.ObjectId) return value.toHexString();
+  if (typeof value?.toHexString === 'function') return value.toHexString();
+  if (typeof value === 'object') {
+    if (typeof value._id === 'string') return value._id.trim();
+    if (value._id instanceof mongoose.Types.ObjectId) return value._id.toHexString();
+    if (typeof value.id === 'string') return value.id.trim();
+    if (value.$oid) return String(value.$oid).trim();
+>>>>>>> d996220 (Remove recursive donation checkout normalization)
   }
   return '';
 };
@@ -38,6 +52,7 @@ const buildSnapshot = (doc = {}) => ({
   avatar: pickText(doc.avatar),
   major: pickText(doc.major),
 });
+<<<<<<< HEAD
 
 const normalizeEmail = (value = {}) => {
   if (typeof value === 'string') return value.includes('@') ? value.trim().toLowerCase() : '';
@@ -54,6 +69,13 @@ const normalizeUsername = (value = {}) => {
   return pickText(value.username, value.userName, value.slug);
 };
 
+=======
+
+const normalizeEmail = (value = {}) => pickText(value.email, value.authorEmail, value.userEmail).toLowerCase();
+const normalizeFullName = (value = {}) => pickText(value.fullName, value.name, value.displayName);
+const normalizeUsername = (value = {}) => pickText(value.username, value.userName, value.slug);
+
+>>>>>>> d996220 (Remove recursive donation checkout normalization)
 const buildLegacyEmail = (candidate = {}) => {
   const username = normalizeUsername(candidate) || normalizeFullName(candidate) || 'legacy-author';
   const safeUsername = username
@@ -126,7 +148,11 @@ class DonationService {
     for (const candidate of candidates) {
       const fullName = normalizeFullName(candidate);
       const username = normalizeUsername(candidate);
+<<<<<<< HEAD
       const avatar = typeof candidate === 'object' ? pickText(candidate.avatar) : '';
+=======
+      const avatar = pickText(candidate.avatar);
+>>>>>>> d996220 (Remove recursive donation checkout normalization)
       if (!fullName && !username) continue;
 
       const legacyEmail = normalizeEmail(candidate) || buildLegacyEmail(candidate);
@@ -142,7 +168,11 @@ class DonationService {
           role: 'user',
           isActive: true,
           avatar: avatar || 'default-avatar.png',
+<<<<<<< HEAD
           major: typeof candidate === 'object' ? pickText(candidate.major) : '',
+=======
+          major: pickText(candidate.major),
+>>>>>>> d996220 (Remove recursive donation checkout normalization)
           bio: 'Tài khoản tác giả tự động tạo từ dữ liệu bài viết cũ.',
         });
       } catch (error) {
@@ -177,7 +207,11 @@ class DonationService {
 
     const [donor, currentPost] = await Promise.all([
       userRepository.findById(donorId),
+<<<<<<< HEAD
       Post.findById(postId).select('author title status').lean(),
+=======
+      Post.findById(postId).populate('author', '_id fullName avatar major email username').lean(),
+>>>>>>> d996220 (Remove recursive donation checkout normalization)
     ]);
 
     if (!donor) throw { status: 404, message: 'Người donate không tồn tại' };
@@ -188,7 +222,15 @@ class DonationService {
     let authorCandidate = currentPost.author;
 
     if (answerId) {
+<<<<<<< HEAD
       answer = await Comment.findById(answerId).select('content author post').lean();
+=======
+      answer = await Comment.findById(answerId)
+        .populate('author', '_id fullName avatar major email username')
+        .select('content author post')
+        .lean();
+
+>>>>>>> d996220 (Remove recursive donation checkout normalization)
       if (!answer) throw { status: 404, message: 'Câu trả lời không tồn tại' };
       if (normalizeId(answer.post) !== normalizeId(currentPost._id)) {
         throw { status: 400, message: 'Câu trả lời không thuộc bài viết này' };
@@ -197,7 +239,13 @@ class DonationService {
     }
 
     const author = await this.resolveAuthor(authorId, authorCandidate, currentPost.author, answer?.author);
+<<<<<<< HEAD
     if (!author) throw { status: 400, message: 'Không xác định được tác giả để ủng hộ.' };
+=======
+    if (!author) {
+      throw { status: 400, message: 'Không xác định được tác giả để ủng hộ.' };
+    }
+>>>>>>> d996220 (Remove recursive donation checkout normalization)
 
     const basePayload = {
       donor: donor._id,
