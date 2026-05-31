@@ -1,4 +1,4 @@
-﻿import { Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import SaveIconButton from '../ui/SaveIconButton';
 
 function timeAgo(dateString) {
@@ -17,18 +17,18 @@ function timeAgo(dateString) {
   return `${months} tháng trước`;
 }
 
-const SmallReactionButton = ({ active, disabled, onClick, icon, label, count, activeClass, hoverClass }) => (
+const SmallActionButton = ({ active, disabled, onClick, icon, label, count, activeClass, hoverClass }) => (
   <button
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className={`inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+    className={`inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-semibold leading-none transition disabled:cursor-not-allowed disabled:opacity-60 ${
       active
         ? activeClass
         : `border-outline-variant bg-surface-container-lowest text-secondary ${hoverClass}`
     }`}
   >
-    <span className="material-symbols-outlined text-[15px]">{icon}</span>
+    <span className="material-symbols-outlined text-[14px] leading-none">{icon}</span>
     <span>{label}</span>
     <span>{count}</span>
   </button>
@@ -39,6 +39,11 @@ export default function PostContent({
   commentCount,
   isSaved,
   onToggleSave,
+  upvoteCount = 0,
+  downvoteCount = 0,
+  userVote = null,
+  voteLoading = false,
+  onVote,
   likeCount = 0,
   dislikeCount = 0,
   userReaction = null,
@@ -96,8 +101,8 @@ export default function PostContent({
           <span>{commentCount} bình luận</span>
         </div>
 
-        <div className="basis-full flex flex-wrap items-center justify-between gap-2 pt-1">
-          <div className="flex flex-wrap gap-2">
+        <div className="basis-full flex flex-wrap items-center gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-2">
             {post.tags && post.tags.length > 0 && post.tags.map((tag) => (
               <span
                 key={tag}
@@ -108,8 +113,28 @@ export default function PostContent({
             ))}
           </div>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <SmallReactionButton
+          <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
+            <SmallActionButton
+              active={userVote === 'upvote'}
+              disabled={voteLoading}
+              onClick={() => onVote?.('upvote')}
+              icon="arrow_upward"
+              label="Upvote"
+              count={upvoteCount}
+              activeClass="border-primary/30 bg-primary-fixed text-primary"
+              hoverClass="hover:bg-primary-fixed/30 hover:text-primary"
+            />
+            <SmallActionButton
+              active={userVote === 'downvote'}
+              disabled={voteLoading}
+              onClick={() => onVote?.('downvote')}
+              icon="arrow_downward"
+              label="Downvote"
+              count={downvoteCount}
+              activeClass="border-error/30 bg-error-container text-error"
+              hoverClass="hover:bg-error-container/30 hover:text-error"
+            />
+            <SmallActionButton
               active={userReaction === 'like'}
               disabled={reactionLoading}
               onClick={() => onPostReaction?.('like')}
@@ -119,7 +144,7 @@ export default function PostContent({
               activeClass="border-blue-300 bg-blue-50 text-blue-700"
               hoverClass="hover:bg-blue-50 hover:text-blue-700"
             />
-            <SmallReactionButton
+            <SmallActionButton
               active={userReaction === 'dislike'}
               disabled={reactionLoading}
               onClick={() => onPostReaction?.('dislike')}
