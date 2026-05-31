@@ -19,9 +19,9 @@ class PostController {
     checkValidationErrors(req, res) {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            return res.status(400).json({ 
-                success: false, 
-                errors: errors.array() 
+            return res.status(400).json({
+                success: false,
+                errors: errors.array()
             });
         }
         return null;
@@ -81,9 +81,30 @@ class PostController {
             });
         } catch (error) {
             const status = error.status || 500;
-            res.status(status).json({ 
-                success: false, 
-                message: error.message 
+            res.status(status).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    async createComment(req, res) {
+        const validationError = this.checkValidationErrors(req, res);
+        if (validationError) return validationError;
+
+        try {
+            const comment = await postService.createComment(req.params.id, req.user.userId, req.body);
+
+            return res.status(201).json({
+                success: true,
+                message: 'Thêm bình luận thành công',
+                data: comment,
+            });
+        } catch (error) {
+            const status = error.status || 500;
+            return res.status(status).json({
+                success: false,
+                message: error.message || 'Không thể thêm bình luận',
             });
         }
     }
@@ -108,9 +129,9 @@ class PostController {
             });
         } catch (error) {
             const status = error.status || 500;
-            res.status(status).json({ 
-                success: false, 
-                message: error.message 
+            res.status(status).json({
+                success: false,
+                message: error.message
             });
         }
     }
@@ -134,9 +155,9 @@ class PostController {
             });
         } catch (error) {
             const status = error.status || 500;
-            res.status(status).json({ 
-                success: false, 
-                message: error.message 
+            res.status(status).json({
+                success: false,
+                message: error.message
             });
         }
     }
