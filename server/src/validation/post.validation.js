@@ -4,14 +4,12 @@ import { param, body, query } from 'express-validator';
 // POST VALIDATION - Lớp 1: Input Validation cho Post APIs
 // ====================================================================
 
-// Validate postId phải là MongoDB ObjectId hợp lệ
 export const postIdValidation = [
     param('id')
         .isMongoId()
         .withMessage('ID bài viết không hợp lệ')
 ];
 
-// Validate vote request
 export const voteValidation = [
     param('id')
         .isMongoId()
@@ -19,6 +17,15 @@ export const voteValidation = [
     body('voteType')
         .isIn(['upvote', 'downvote'])
         .withMessage('Loại vote không hợp lệ (chỉ chấp nhận: upvote, downvote)')
+];
+
+export const postReactionValidation = [
+    param('id')
+        .isMongoId()
+        .withMessage('ID bài viết không hợp lệ'),
+    body('reactionType')
+        .isIn(['like', 'dislike'])
+        .withMessage('Loại phản ứng không hợp lệ'),
 ];
 
 export const createCommentValidation = [
@@ -46,7 +53,6 @@ export const commentReactionValidation = [
         .withMessage('Loại phản ứng không hợp lệ'),
 ];
 
-// Validate tag parameter cho bài viết liên quan
 export const relatedPostsValidation = [
     param('tag')
         .notEmpty()
