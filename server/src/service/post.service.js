@@ -40,7 +40,6 @@ class PostService {
             limit = 15,
         } = query;
 
-        // Mặc định ẩn bài đã xóa khỏi danh sách public.
         const filter = { status: { $ne: 'deleted' } };
 
         if (keyword.trim()) {
@@ -121,18 +120,15 @@ class PostService {
 
     // ==================== API 1: LẤY CHI TIẾT BÀI VIẾT ====================
     async getPostDetail(postId, userId = null, incrementView = true) {
-        // 1. Tìm bài viết theo ID
         const post = await postRepository.findById(postId);
         if (!post) {
             throw { status: 404, message: 'Bài viết không tồn tại' };
         }
 
-        // 2. Kiểm tra bài viết đã bị xóa chưa
         if (post.status === 'deleted') {
             throw { status: 410, message: 'Bài viết đã bị xóa' };
         }
 
-        // 3. Tăng lượt xem (+1)
         if (incrementView) {
             const todayStart = getTodayStart();
             const sameDay = post.dailyViewDate && post.dailyViewDate.getTime() === todayStart.getTime();
@@ -142,14 +138,10 @@ class PostService {
             });
         }
 
-        // 4. Lấy danh sách comments + tổng số comment
         const comments = await commentRepository.findByPostId(postId);
         const commentCount = await commentRepository.countByPostId(postId);
-
-        // 5. Xây dựng cây comment (nested replies)
         const commentTree = this._buildCommentTree(comments);
 
-        // 6. Trả về dữ liệu đầy đủ
         let userVote = null;
         if (userId) {
             const upvotes = Array.isArray(post.upvotes) ? post.upvotes : [];
@@ -171,9 +163,48 @@ class PostService {
         };
     }
 
+    async createComment(postId, userId, payload) {
+        const content = String(payload.content || '').trim();
+        const parentComment = payload.parentComment || null;
+
+        if (!content) {
+            throw { status: 400, message: 'Nội dung bình luận không được để trống' };
+        }
+
+        if (content.length > 2000) {
+            throw { status: 400, message: 'Nội dung bình luận tối đa 2000 ký tự' };
+        }
+
+        const post = await postRepository.findById(postId);
+        if (!post) {
+            throw { status: 404, message: 'Bài viết không tồn tại' };
+        }
+
+        if (post.status !== 'active') {
+            throw { status: 400, message: 'Không thể bình luận trên bài viết này' };
+        }
+
+        if (parentComment) {
+            const parent = await commentRepository.findById(parentComment);
+            if (!parent) {
+                throw { status: 404, message: 'Bình luận cha không tồn tại' };
+            }
+
+            if (String(parent.post?._id || parent.post) !== String(postId)) {
+                throw { status: 400, message: 'Bình luận cha không thuộc bài viết này' };
+            }
+        }
+
+        return await commentRepository.create({
+            content,
+            author: userId,
+            post: postId,
+            parentComment,
+        });
+    }
+
     // ==================== API 2: XỬ LÝ VOTE ====================
     async toggleVote(postId, userId, voteType) {
-        // 1. Kiểm tra bài viết tồn tại
         const post = await postRepository.findById(postId);
         if (!post) {
             throw { status: 404, message: 'Bài viết không tồn tại' };
@@ -183,7 +214,6 @@ class PostService {
             throw { status: 400, message: 'Không thể vote bài viết này' };
         }
 
-        // 2. Kiểm tra trạng thái vote hiện tại của user
         const hasUpvoted = post.upvotes.some(id => id.toString() === userId);
         const hasDownvoted = post.downvotes.some(id => id.toString() === userId);
 
