@@ -70,15 +70,13 @@ class AuthController {
             const { email, password } = req.body;
             const { user, token } = await authService.login(email, password);
 
-            // Set JWT vào HttpOnly cookie (bảo mật chống XSS)
             res.cookie('token', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
-                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
+                maxAge: 7 * 24 * 60 * 60 * 1000,
             });
 
-            // Trả URL redirect theo role
             const redirectUrl = user.role === 'admin' ? '/admin/profile' : '/';
 
             res.status(200).json({
@@ -95,7 +93,6 @@ class AuthController {
 
     async logout(req, res) {
         try {
-            // Xóa cookie chứa token bảo mật
             res.clearCookie('token', {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
@@ -155,7 +152,6 @@ class AuthController {
 
     async getProfile(req, res) {
         try {
-            // Lấy dữ liệu từ Service dựa trên userId đã xác thực ở Lớp 3
             const user = await authService.getUserProfile(req.user.userId);
             
             res.status(200).json({
@@ -167,17 +163,31 @@ class AuthController {
         }
     }
 
+    async getAdminProfile(req, res) {
+        try {
+            const user = await authService.getUserProfile(req.user.userId);
+
+            if (!user) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản admin' });
+            }
+
+            res.status(200).json({
+                success: true,
+                user,
+            });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
     async updateProfile(req, res) {
-        // Lớp 1: Kiểm tra Input Validation
         const validationError = this.checkValidationErrors(req, res);
         if (validationError) return validationError;
 
         try {
-            // userId được lấy từ authenticateToken middleware
             const userId = req.user.userId; 
             const updateData = req.body;
 
-            // Gọi Business Logic xử lý cập nhật
             const updatedUser = await authService.updateUserProfile(userId, updateData);
 
             res.status(200).json({
