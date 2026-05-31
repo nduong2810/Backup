@@ -27,6 +27,14 @@ class CommentRepository {
             .populate('post', 'title author');
     }
 
+    async updateReaction(commentId, update) {
+        return await Comment.findByIdAndUpdate(
+            commentId,
+            update,
+            { new: true }
+        ).populate('author', 'fullName avatar major email');
+    }
+
     // Đếm tổng số comment của 1 bài viết
     async countByPostId(postId) {
         return await Comment.countDocuments({ post: postId });
