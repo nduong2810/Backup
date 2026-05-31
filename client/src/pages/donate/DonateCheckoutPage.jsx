@@ -16,17 +16,21 @@ const METHODS = [
   { value: 'cod', label: 'Chuyển khoản ngân hàng / COD' },
 ];
 
-const normalizeId = (value) => {
+const normalizeId = (value, seen = new WeakSet()) => {
   if (!value) return '';
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number') return String(value);
+
   if (typeof value === 'object') {
-    if (typeof value._id === 'string') return value._id;
-    if (value._id && typeof value._id.toString === 'function') return value._id.toString();
-    if (typeof value.toString === 'function') {
-      const stringValue = value.toString();
-      if (stringValue && stringValue !== '[object Object]') return stringValue;
-    }
+    if (seen.has(value)) return '';
+    seen.add(value);
+
+    if (typeof value.toHexString === 'function') return value.toHexString();
+    if (value.$oid) return normalizeId(value.$oid, seen);
+    if (value._id && value._id !== value) return normalizeId(value._id, seen);
+    if (typeof value.id === 'string') return value.id.trim();
   }
+
   return '';
 };
 
