@@ -48,20 +48,26 @@ const postStatusLabelMap = {
   deleted: 'Đã xóa',
 };
 
-const normalizeId = (value) => {
+const normalizeId = (value, seen = new WeakSet()) => {
   if (!value) return '';
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return value.trim();
   if (typeof value === 'number') return String(value);
+
   if (typeof value === 'object') {
-    if (value.$oid) return normalizeId(value.$oid);
-    if (value._id) return normalizeId(value._id);
-    if (value.id) return normalizeId(value.id);
-    if (value.authorId) return normalizeId(value.authorId);
-    if (value.userId) return normalizeId(value.userId);
-    if (value.author) return normalizeId(value.author);
-    if (value.user) return normalizeId(value.user);
-    if (value.createdBy) return normalizeId(value.createdBy);
+    if (seen.has(value)) return '';
+    seen.add(value);
+
+    if (typeof value.toHexString === 'function') return value.toHexString();
+    if (value.$oid) return normalizeId(value.$oid, seen);
+    if (value._id && value._id !== value) return normalizeId(value._id, seen);
+    if (typeof value.id === 'string') return value.id.trim();
+    if (value.authorId && value.authorId !== value) return normalizeId(value.authorId, seen);
+    if (value.userId && value.userId !== value) return normalizeId(value.userId, seen);
+    if (value.createdBy && value.createdBy !== value) return normalizeId(value.createdBy, seen);
+    if (value.author && value.author !== value) return normalizeId(value.author, seen);
+    if (value.user && value.user !== value) return normalizeId(value.user, seen);
   }
+
   return '';
 };
 
@@ -286,7 +292,7 @@ export default function PostDetailPage() {
         <ImageSlider images={post.images} />
       </div>
 
-      {/* <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
+      <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-amber-950">Ủng hộ tác giả khi thấy câu trả lời hữu ích</h3>
@@ -300,7 +306,7 @@ export default function PostDetailPage() {
             Ủng hộ tác giả của bài viết
           </button>
         </div>
-      </section> */}
+      </section>
 
       <CommentSection
         comments={comments}
