@@ -40,6 +40,16 @@ const pickValidId = (...values) => {
   return '';
 };
 
+const normalizeAuthorName = (value) => {
+  const text = String(value || '').trim();
+  if (!text) return '';
+
+  const lowered = text.toLowerCase();
+  if (lowered === 'tác giả' || lowered === 'tac gia' || lowered === 'author') return '';
+
+  return text;
+};
+
 export default function DonateCheckoutPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -75,9 +85,9 @@ export default function DonateCheckoutPage() {
         sessionContext.authorId,
         queryParams.get('authorId'),
       );
-  const authorName = getTextValue(location.state?.authorName, sessionContext.authorName, queryParams.get('authorName'))
-    || getTextValue(location.state?.postAuthorName, sessionContext.postAuthorName, queryParams.get('postAuthorName'))
-    || 'tác giả';
+  const rawAuthorName = getTextValue(location.state?.authorName, sessionContext.authorName, queryParams.get('authorName'))
+    || getTextValue(location.state?.postAuthorName, sessionContext.postAuthorName, queryParams.get('postAuthorName'));
+  const authorName = normalizeAuthorName(rawAuthorName) || 'Ẩn danh';
   const answerId = answerIdValue;
   const answerContent = getTextValue(location.state?.answerContent, sessionContext.answerContent, queryParams.get('answerContent'));
   const postTitle = getTextValue(location.state?.postTitle, sessionContext.postTitle, queryParams.get('postTitle')) || 'Bài viết';
