@@ -35,6 +35,23 @@ const postSlice = createSlice({
   initialState,
   reducers: {
     resetPostState: () => initialState,
+    updatePostVoteInList: (state, action) => {
+      const { postId, upvoteCount, downvoteCount, userVote } = action.payload || {};
+      if (!postId) return;
+
+      state.list = state.list.map((post) => {
+        if (String(post._id) !== String(postId)) return post;
+
+        return {
+          ...post,
+          upvotes: upvoteCount ?? post.upvotes ?? 0,
+          downvotes: downvoteCount ?? post.downvotes ?? 0,
+          upvoteCount: upvoteCount ?? post.upvoteCount ?? 0,
+          downvoteCount: downvoteCount ?? post.downvoteCount ?? 0,
+          userVote: userVote ?? null,
+        };
+      });
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -56,5 +73,5 @@ const postSlice = createSlice({
   },
 });
 
-export const { resetPostState } = postSlice.actions;
+export const { resetPostState, updatePostVoteInList } = postSlice.actions;
 export default postSlice.reducer;
