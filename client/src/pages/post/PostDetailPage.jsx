@@ -32,7 +32,7 @@ const flagOptions = [
 
 const flagTypeLabelMap = {
   spam: 'Spam quảng cáo hàng loạt',
-  rude_abusive: 'Công kích/xúc phạm',
+  rude_abusive: 'Công kích/Xúc phạm',
   off_topic: 'Lạc chủ đề cộng đồng',
   needs_detail: 'Cần thêm chi tiết/làm rõ',
   needs_focus: 'Cần tập trung vào một vấn đề cụ thể',
@@ -101,6 +101,9 @@ export default function PostDetailPage() {
     userVote,
     handleVote,
     voteLoading,
+    submitComment,
+    submittingComment,
+    commentError,
     relatedPosts,
   } = usePostDetail(id);
 
@@ -219,11 +222,6 @@ export default function PostDetailPage() {
     const postAuthorId = normalizeId(postAuthorCandidate);
     const targetAuthorId = normalizeId(targetAuthorCandidate);
 
-    /*
-      Quan trọng:
-      Không chặn donate khi thiếu authorId nữa.
-      Chỉ cần có postId, backend sẽ tự suy ra tác giả từ post.author.
-    */
     if (!realPostId) {
       alert('Thiếu dữ liệu bài viết. Vui lòng tải lại trang rồi thử lại.');
       return;
@@ -240,15 +238,11 @@ export default function PostDetailPage() {
     const checkoutPayload = {
       postId: realPostId,
       postTitle: post?.title || 'Bài viết',
-
-      // Có thì gửi, không có thì để rỗng cho backend tự suy ra
       postAuthorId: postAuthorId || '',
       postAuthorName: postAuthorCandidate?.fullName || postAuthorCandidate?.email || '',
-
       authorId: targetAuthorId || postAuthorId || '',
       authorName: targetAuthorCandidate?.fullName || targetAuthorCandidate?.email || 'tác giả',
       authorAvatar: targetAuthorCandidate?.avatar || '',
-
       answerId,
       answerContent,
     };
@@ -359,6 +353,11 @@ export default function PostDetailPage() {
         commentCount={commentCount}
         postAuthorId={post.author?._id}
         onDonate={handleStartDonate}
+        isAuthenticated={isAuthenticated}
+        onLoginRequired={() => navigate('/auth/login')}
+        onSubmitComment={submitComment}
+        submittingComment={submittingComment}
+        commentError={commentError}
       />
 
       <RelatedPosts posts={relatedPosts} />
@@ -530,4 +529,3 @@ export default function PostDetailPage() {
     </div>
   );
 }
-
