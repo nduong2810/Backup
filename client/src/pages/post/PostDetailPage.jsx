@@ -286,7 +286,7 @@ export default function PostDetailPage() {
         <ImageSlider images={post.images} />
       </div>
 
-      <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
+      {/* <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-amber-950">Ủng hộ tác giả khi thấy câu trả lời hữu ích</h3>
@@ -300,7 +300,7 @@ export default function PostDetailPage() {
             Ủng hộ tác giả của bài viết
           </button>
         </div>
-      </section>
+      </section> */}
 
       <CommentSection
         comments={comments}
