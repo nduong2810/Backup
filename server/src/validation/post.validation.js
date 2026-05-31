@@ -37,6 +37,15 @@ export const createCommentValidation = [
         .withMessage('ID bình luận cha không hợp lệ'),
 ];
 
+export const commentReactionValidation = [
+    param('commentId')
+        .isMongoId()
+        .withMessage('ID bình luận không hợp lệ'),
+    body('reactionType')
+        .isIn(['like', 'dislike'])
+        .withMessage('Loại phản ứng không hợp lệ'),
+];
+
 // Validate tag parameter cho bài viết liên quan
 export const relatedPostsValidation = [
     param('tag')
