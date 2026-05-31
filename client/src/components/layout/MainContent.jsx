@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { getTopUpvotedPosts, getTrendingTodayPosts, votePost, reactPost } from '../../services/postService';
@@ -28,6 +28,21 @@ const getPlainText = (value) => {
     if (!value) return '';
     return String(value).replace(/<[^>]+>/g, '').trim();
 };
+
+const SmallPostActionButton = ({ active, disabled, onClick, icon, label, count, activeClass, hoverClass }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className={`inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-semibold leading-none transition disabled:cursor-not-allowed disabled:opacity-60 ${
+            active ? activeClass : `border-outline-variant bg-surface-container-lowest text-secondary ${hoverClass}`
+        }`}
+    >
+        <span className="material-symbols-outlined text-[14px] leading-none">{icon}</span>
+        <span>{label}</span>
+        <span>{count}</span>
+    </button>
+);
 
 const QuestionCard = ({
     question,
@@ -76,74 +91,62 @@ const QuestionCard = ({
                         title={isSaved ? 'Bo luu bai viet' : 'Luu bai viet'}
                     />
                 </div>
+
                 <p className="font-body-sm text-body-sm text-on-surface-variant mb-2 line-clamp-2">
                     {getPlainText(question.content) || 'Chua co noi dung.'}
                 </p>
 
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => onVotePost?.(question._id, 'upvote')}
-                        disabled={isVoting}
-                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                            userVote === 'upvote'
-                                ? 'border-primary/30 bg-primary-fixed text-primary'
-                                : 'border-outline-variant bg-surface-container-lowest text-secondary hover:bg-primary-fixed/30 hover:text-primary'
-                        }`}
-                    >
-                        <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
-                        Upvote {upvoteCount}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onVotePost?.(question._id, 'downvote')}
-                        disabled={isVoting}
-                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                            userVote === 'downvote'
-                                ? 'border-error/30 bg-error-container text-error'
-                                : 'border-outline-variant bg-surface-container-lowest text-secondary hover:bg-error-container/30 hover:text-error'
-                        }`}
-                    >
-                        <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
-                        Downvote {downvoteCount}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onReactPost?.(question._id, 'like')}
-                        disabled={isReacting}
-                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                            userReaction === 'like'
-                                ? 'border-blue-300 bg-blue-50 text-blue-700'
-                                : 'border-outline-variant bg-surface-container-lowest text-secondary hover:bg-blue-50 hover:text-blue-700'
-                        }`}
-                    >
-                        <span className="material-symbols-outlined text-[16px]">thumb_up</span>
-                        Like {likeCount}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onReactPost?.(question._id, 'dislike')}
-                        disabled={isReacting}
-                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                            userReaction === 'dislike'
-                                ? 'border-rose-300 bg-rose-50 text-rose-700'
-                                : 'border-outline-variant bg-surface-container-lowest text-secondary hover:bg-rose-50 hover:text-rose-700'
-                        }`}
-                    >
-                        <span className="material-symbols-outlined text-[16px]">thumb_down</span>
-                        Dislike {dislikeCount}
-                    </button>
-                </div>
-
                 <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                         {question.tags && question.tags.map((tag, index) => (
                             <span key={index} className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 cursor-pointer">
                                 {tag}
                             </span>
                         ))}
+
+                        <SmallPostActionButton
+                            active={userVote === 'upvote'}
+                            disabled={isVoting}
+                            onClick={() => onVotePost?.(question._id, 'upvote')}
+                            icon="arrow_upward"
+                            label="Upvote"
+                            count={upvoteCount}
+                            activeClass="border-primary/30 bg-primary-fixed text-primary"
+                            hoverClass="hover:bg-primary-fixed/30 hover:text-primary"
+                        />
+                        <SmallPostActionButton
+                            active={userVote === 'downvote'}
+                            disabled={isVoting}
+                            onClick={() => onVotePost?.(question._id, 'downvote')}
+                            icon="arrow_downward"
+                            label="Downvote"
+                            count={downvoteCount}
+                            activeClass="border-error/30 bg-error-container text-error"
+                            hoverClass="hover:bg-error-container/30 hover:text-error"
+                        />
+                        <SmallPostActionButton
+                            active={userReaction === 'like'}
+                            disabled={isReacting}
+                            onClick={() => onReactPost?.(question._id, 'like')}
+                            icon="thumb_up"
+                            label="Like"
+                            count={likeCount}
+                            activeClass="border-blue-300 bg-blue-50 text-blue-700"
+                            hoverClass="hover:bg-blue-50 hover:text-blue-700"
+                        />
+                        <SmallPostActionButton
+                            active={userReaction === 'dislike'}
+                            disabled={isReacting}
+                            onClick={() => onReactPost?.(question._id, 'dislike')}
+                            icon="thumb_down"
+                            label="Dislike"
+                            count={dislikeCount}
+                            activeClass="border-rose-300 bg-rose-50 text-rose-700"
+                            hoverClass="hover:bg-rose-50 hover:text-rose-700"
+                        />
                     </div>
-                    <div className="flex items-center gap-2 ml-auto">
+
+                    <div className="ml-auto flex items-center gap-2">
                         <img
                             alt="Author Avatar"
                             className="w-6 h-6 rounded-DEFAULT object-cover"
