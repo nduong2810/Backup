@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getPostDetailSidebarData } from '../../services/postService';
 
+const getItemId = (item, index) => item?._id || item?.id || item?.slug || item?.title || `hot-question-${index}`;
+const getTagName = (item) => item?.tag || item?.name || item?._id || '';
+
 const PostDetailRightSidebar = () => {
   const [hotQuestions, setHotQuestions] = useState([]);
   const [popularTags, setPopularTags] = useState([]);
@@ -45,15 +48,18 @@ const PostDetailRightSidebar = () => {
           {!loading && hotQuestions.length === 0 && (
             <p className="text-secondary font-body-sm text-body-sm">Chưa có dữ liệu.</p>
           )}
-          {hotQuestions.map((item) => (
-            <Link
-              key={item.id}
-              to={`/posts/${item.id}`}
-              className="font-body-sm text-body-sm text-primary hover:underline leading-5"
-            >
-              {item.title}
-            </Link>
-          ))}
+          {hotQuestions.map((item, index) => {
+            const itemId = getItemId(item, index);
+            return (
+              <Link
+                key={`hot-${itemId}-${index}`}
+                to={`/posts/${item?._id || item?.id || itemId}`}
+                className="font-body-sm text-body-sm text-primary hover:underline leading-5"
+              >
+                {item?.title || 'Không có tiêu đề'}
+              </Link>
+            );
+          })}
         </div>
       </div>
 
@@ -66,18 +72,22 @@ const PostDetailRightSidebar = () => {
           {!loading && popularTags.length === 0 && (
             <p className="text-secondary font-body-sm text-body-sm">Chưa có dữ liệu.</p>
           )}
-          {popularTags.map((item) => (
-            <div key={item.tag} className="flex items-center justify-between">
-              <Link
-                to={`/home?tags=${encodeURIComponent(item.tag)}`}
-                className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80"
-                title={`Lọc bài viết theo tag: ${item.tag}`}
-              >
-                {item.tag}
-              </Link>
-              <span className="font-body-sm text-body-sm text-secondary">x {item.count}</span>
-            </div>
-          ))}
+          {popularTags.map((item, index) => {
+            const tag = getTagName(item);
+            if (!tag) return null;
+            return (
+              <div key={`tag-${tag}-${index}`} className="flex items-center justify-between">
+                <Link
+                  to={`/home?tags=${encodeURIComponent(tag)}`}
+                  className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80"
+                  title={`Lọc bài viết theo tag: ${tag}`}
+                >
+                  {tag}
+                </Link>
+                <span className="font-body-sm text-body-sm text-secondary">x {item?.count || 0}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </aside>
