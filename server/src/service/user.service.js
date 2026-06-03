@@ -1,12 +1,21 @@
 import User from '../model/user.model.js';
 import bcrypt from 'bcryptjs';
+import donationRepository from '../repository/donation.repository.js';
+import { getRankInfo } from './reputation.service.js';
+import { uploadToCloudinary } from '../util/cloudinary.js';
 
 class UserService {
     async getProfile(userId) {
-        return await User.findById(userId).select('-password'); // Ẩn mật khẩu
+        const user = await User.findById(userId).select('-password');
+        if (!user) return null;
+        const rep = user.reputation || 1;
+        return { ...user.toObject(), reputationInfo: { reputation: rep, ...getRankInfo(rep) } };
     }
 
     async updateProfile(userId, updateData) {
+        if (updateData.avatar) {
+            updateData.avatar = await uploadToCloudinary(updateData.avatar);
+        }
         // Cập nhật và lấy bản ghi mới nhất
         return await User.findByIdAndUpdate(
             userId, 
@@ -26,6 +35,26 @@ class UserService {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(newPassword, salt);
         await user.save();
+    }
+
+    async getPublicAuthorProfile(userId) {
+        const [user, donations, summary] = await Promise.all([
+            User.findById(userId).select('-password'),
+            donationRepository.findReceivedByAuthor(userId, 20),
+            donationRepository.getReceivedSummary(userId),
+        ]);
+
+        if (!user) throw { status: 404, message: 'Tác giả không tồn tại' };
+
+        const rep = user.reputation || 1;
+        return {
+            user: { ...user.toObject(), reputationInfo: { reputation: rep, ...getRankInfo(rep) } },
+            donationSummary: {
+                totalAmount: summary.totalAmount || 0,
+                donationCount: summary.donationCount || 0,
+            },
+            donations,
+        };
     }
 }
 

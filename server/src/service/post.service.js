@@ -1,10 +1,7 @@
 import postRepository from '../repository/post.repository.js';
 import commentRepository from '../repository/comment.repository.js';
-
-// ====================================================================
-// POST SERVICE - Tầng Business Logic cho bài viết
-// Xử lý nghiệp vụ: xem chi tiết, vote, bài viết liên quan, lọc danh sách
-// ====================================================================
+import reputationService from './reputation.service.js';
+import { uploadToCloudinary } from '../util/cloudinary.js';
 
 const mapStatusFilter = (status) => {
     const normalized = status.toLowerCase();
@@ -25,22 +22,29 @@ const getTodayStart = () => {
     return new Date(vnStartUtcMs);
 };
 
+const includesUserId = (items = [], userId = '') => {
+    if (!userId || !Array.isArray(items)) return false;
+    return items.some((id) => String(id) === String(userId));
+};
+
+const getUserVote = (post, userId) => {
+    if (!userId || !post) return null;
+    if (includesUserId(post.upvotes, userId)) return 'upvote';
+    if (includesUserId(post.downvotes, userId)) return 'downvote';
+    return null;
+};
+
+const getUserReaction = (post, userId) => {
+    if (!userId || !post) return null;
+    if (includesUserId(post.likes, userId)) return 'like';
+    if (includesUserId(post.dislikes, userId)) return 'dislike';
+    return null;
+};
+
 class PostService {
-
-    // ==================== API 0: LẤY DANH SÁCH BÀI VIẾT ====================
-    async getPosts(query) {
-        const {
-            keyword = '',
-            tags = '',
-            status = 'All',
-            sortBy = 'Newest',
-            minViews = '',
-            minUpvotes = '',
-            page = 1,
-            limit = 15,
-        } = query;
-
-        const filter = {};
+    async getPosts(query, userId = null) {
+        const { keyword = '', tags = '', status = 'All', sortBy = 'Newest', minViews = '', minUpvotes = '', page = 1, limit = 15 } = query;
+        const filter = { status: { $ne: 'deleted' } };
 
         if (keyword.trim()) {
             const regex = new RegExp(keyword.trim(), 'i');
@@ -48,33 +52,17 @@ class PostService {
         }
 
         if (tags.trim()) {
-            const tagArray = tags
-                .split(',')
-                .map((t) => t.trim().toLowerCase())
-                .filter(Boolean);
-            if (tagArray.length > 0) {
-                filter.tags = { $in: tagArray };
-            }
+            const tagArray = tags.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
+            if (tagArray.length > 0) filter.tags = { $in: tagArray };
         }
 
-        if (status && status !== 'All') {
-            filter.status = mapStatusFilter(status);
-        }
-
-        if (minViews !== '' && !isNaN(Number(minViews))) {
-            filter.viewCount = { ...filter.viewCount, $gte: Number(minViews) };
-        }
+        if (status && status !== 'All') filter.status = mapStatusFilter(status);
+        if (minViews !== '' && !isNaN(Number(minViews))) filter.viewCount = { ...filter.viewCount, $gte: Number(minViews) };
 
         if (minUpvotes !== '' && !isNaN(Number(minUpvotes))) {
             filter.$expr = {
                 $gte: [
-                    {
-                        $cond: [
-                            { $isArray: '$upvotes' },
-                            { $size: { $ifNull: ['$upvotes', []] } },
-                            { $ifNull: ['$upvotes', 0] },
-                        ],
-                    },
+                    { $cond: [{ $isArray: '$upvotes' }, { $size: { $ifNull: ['$upvotes', []] } }, { $ifNull: ['$upvotes', 0] }] },
                     Number(minUpvotes),
                 ],
             };
@@ -89,102 +77,264 @@ class PostService {
             postRepository.countPosts(filter),
         ]);
 
-        const normalizedPosts = posts.map((post) => {
-            const statusValue = post.status === 'closed'
-                ? 'resolved'
-                : post.status === 'active'
-                    ? 'unresolved'
-                    : post.status;
-
-            return {
-                ...post,
-                status: statusValue,
-                views: post.viewCount ?? 0,
-                upvotes: post.upvoteCount ?? 0,
-                downvotes: post.downvoteCount ?? 0,
-                answerCount: post.answerCount ?? 0,
-            };
-        });
+        const normalizedPosts = posts.map((post) => ({
+            ...post,
+            status: post.status === 'closed' ? 'resolved' : post.status === 'active' ? 'unresolved' : post.status,
+            views: post.viewCount ?? 0,
+            upvotes: post.upvoteCount ?? 0,
+            downvotes: post.downvoteCount ?? 0,
+            upvoteCount: post.upvoteCount ?? 0,
+            downvoteCount: post.downvoteCount ?? 0,
+            likes: post.likeCount ?? 0,
+            dislikes: post.dislikeCount ?? 0,
+            likeCount: post.likeCount ?? 0,
+            dislikeCount: post.dislikeCount ?? 0,
+            userVote: getUserVote(post, userId),
+            userReaction: getUserReaction(post, userId),
+            answerCount: post.answerCount ?? 0,
+        }));
 
         return {
             data: normalizedPosts,
-            pagination: {
-                total,
-                page: pageNum,
-                limit: limitNum,
-                totalPages: Math.ceil(total / limitNum),
-            },
+            pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) },
         };
     }
 
-    // ==================== API 1: LẤY CHI TIẾT BÀI VIẾT ====================
     async getPostDetail(postId, userId = null, incrementView = true) {
-        // 1. Tìm bài viết theo ID
         const post = await postRepository.findById(postId);
-        if (!post) {
-            throw { status: 404, message: 'Bài viết không tồn tại' };
-        }
+        if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
+        if (post.status === 'deleted') throw { status: 410, message: 'Bài viết đã bị xóa' };
 
-        // 2. Kiểm tra bài viết đã bị xóa chưa
-        if (post.status === 'deleted') {
-            throw { status: 410, message: 'Bài viết đã bị xóa' };
-        }
-
-        // 3. Tăng lượt xem (+1)
         if (incrementView) {
             const todayStart = getTodayStart();
             const sameDay = post.dailyViewDate && post.dailyViewDate.getTime() === todayStart.getTime();
-            await postRepository.incrementViewCount(postId, {
-                resetDaily: !sameDay,
-                todayStart,
-            });
+            await postRepository.incrementViewCount(postId, { resetDaily: !sameDay, todayStart });
         }
 
-        // 4. Lấy danh sách comments + tổng số comment
         const comments = await commentRepository.findByPostId(postId);
         const commentCount = await commentRepository.countByPostId(postId);
-
-        // 5. Xây dựng cây comment (nested replies)
-        const commentTree = this._buildCommentTree(comments);
-
-        // 6. Trả về dữ liệu đầy đủ
-        let userVote = null;
-        if (userId) {
-            const upvotes = Array.isArray(post.upvotes) ? post.upvotes : [];
-            const downvotes = Array.isArray(post.downvotes) ? post.downvotes : [];
-            const hasUpvoted = upvotes.some(id => id.toString() === userId);
-            const hasDownvoted = downvotes.some(id => id.toString() === userId);
-            if (hasUpvoted) userVote = 'upvote';
-            else if (hasDownvoted) userVote = 'downvote';
-        }
 
         return {
             post: {
                 ...post.toObject(),
                 viewCount: post.viewCount + (incrementView ? 1 : 0),
-                userVote,
+                userVote: getUserVote(post, userId),
+                userReaction: getUserReaction(post, userId),
             },
-            comments: commentTree,
+            comments: this._buildCommentTree(comments),
             commentCount,
         };
     }
 
-    // ==================== API 2: XỬ LÝ VOTE ====================
-    async toggleVote(postId, userId, voteType) {
-        // 1. Kiểm tra bài viết tồn tại
+    async createComment(postId, userId, payload, files = {}) {
+        const content = String(payload.content || '').trim();
+        const parentComment = payload.parentComment || null;
+
+        if (!content) throw { status: 400, message: 'Nội dung bình luận không được để trống' };
+        if (content.length > 2000) throw { status: 400, message: 'Nội dung bình luận tối đa 2000 ký tự' };
+
         const post = await postRepository.findById(postId);
-        if (!post) {
-            throw { status: 404, message: 'Bài viết không tồn tại' };
+        if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
+        if (post.status !== 'active') throw { status: 400, message: 'Không thể bình luận trên bài viết này' };
+
+        if (parentComment) {
+            const parent = await commentRepository.findById(parentComment);
+            if (!parent) throw { status: 404, message: 'Bình luận cha không tồn tại' };
+            if (String(parent.post?._id || parent.post) !== String(postId)) throw { status: 400, message: 'Bình luận cha không thuộc bài viết này' };
         }
 
-        if (post.status !== 'active') {
-            throw { status: 400, message: 'Không thể vote bài viết này' };
+        let totalMediaSize = 0;
+
+        // Calculate size of images
+        if (files.images && files.images.length > 0) {
+            for (const file of files.images) {
+                totalMediaSize += file.size / (1024 * 1024);
+            }
+        } else if (payload.images && Array.isArray(payload.images)) {
+            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+            for (const img of base64Images) {
+                const body = img.split(',')[1] || img;
+                totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+            }
         }
 
-        // 2. Kiểm tra trạng thái vote hiện tại của user
-        const hasUpvoted = post.upvotes.some(id => id.toString() === userId);
-        const hasDownvoted = post.downvotes.some(id => id.toString() === userId);
+        // Calculate size of videos
+        if (files.videos && files.videos.length > 0) {
+            for (const file of files.videos) {
+                totalMediaSize += file.size / (1024 * 1024);
+            }
+        } else if (payload.videos && Array.isArray(payload.videos)) {
+            const base64Videos = payload.videos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
+            for (const vid of base64Videos) {
+                const body = vid.split(',')[1] || vid;
+                totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+            }
+        } else if (payload.video && typeof payload.video === 'string' && payload.video.startsWith('data:')) {
+            const body = payload.video.split(',')[1] || payload.video;
+            totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+        }
 
+        // Validate size limit early
+        if (totalMediaSize > 50) {
+            throw { status: 400, message: `Tổng dung lượng của tất cả hình ảnh và video đính kèm vượt quá giới hạn cho phép 50MB (Hiện tại: ${totalMediaSize.toFixed(2)}MB).` };
+        }
+
+        let imageUrls = [];
+        let videoUrls = [];
+
+        // Upload images
+        if (files.images && files.images.length > 0) {
+            imageUrls = await Promise.all(
+                files.images.map(img => uploadToCloudinary(img.buffer, img.mimetype))
+            );
+        } else if (payload.images && Array.isArray(payload.images)) {
+            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+            imageUrls = await Promise.all(
+                base64Images.map(img => uploadToCloudinary(img))
+            );
+        }
+
+        // Upload videos
+        if (files.videos && files.videos.length > 0) {
+            for (const vid of files.videos) {
+                try {
+                    const url = await uploadToCloudinary(vid.buffer, vid.mimetype);
+                    videoUrls.push(url);
+                } catch (uploadErr) {
+                    console.error('[PostService] Comment Video upload failed:', uploadErr.message || uploadErr);
+                    throw { status: 500, message: 'Upload video bình luận thất bại.' };
+                }
+            }
+        } else if (payload.videos && Array.isArray(payload.videos)) {
+            const base64Videos = payload.videos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
+            for (const vid of base64Videos) {
+                const url = await uploadToCloudinary(vid);
+                videoUrls.push(url);
+            }
+        } else if (payload.video && typeof payload.video === 'string' && payload.video.startsWith('data:')) {
+            const url = await uploadToCloudinary(payload.video);
+            videoUrls.push(url);
+        }
+
+        return await commentRepository.create({
+            content,
+            author: userId,
+            post: postId,
+            parentComment,
+            images: imageUrls,
+            videos: videoUrls
+        });
+    }
+
+    async createPost(userId, payload, files = {}) {
+        const title = String(payload.title || '').trim();
+        const content = String(payload.content || '').trim();
+        const postType = payload.postType || 'question';
+        const tags = Array.isArray(payload.tags)
+            ? payload.tags.map(t => String(t).trim().toLowerCase()).filter(Boolean)
+            : [];
+
+        if (!title) throw { status: 400, message: 'Tiêu đề không được để trống' };
+        if (title.length > 200) throw { status: 400, message: 'Tiêu đề tối đa 200 ký tự' };
+        if (!content) throw { status: 400, message: 'Nội dung không được để trống' };
+        if (!['question', 'advice'].includes(postType)) {
+            throw { status: 400, message: 'Loại bài viết không hợp lệ' };
+        }
+
+        let totalMediaSize = 0;
+
+        // Calculate size of images
+        if (files.images && files.images.length > 0) {
+            for (const file of files.images) {
+                totalMediaSize += file.size / (1024 * 1024);
+            }
+        } else if (payload.images && Array.isArray(payload.images)) {
+            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+            for (const img of base64Images) {
+                const body = img.split(',')[1] || img;
+                totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+            }
+        }
+
+        // Calculate size of videos
+        if (files.videos && files.videos.length > 0) {
+            for (const file of files.videos) {
+                totalMediaSize += file.size / (1024 * 1024);
+            }
+        } else if (payload.videos && Array.isArray(payload.videos)) {
+            const base64Videos = payload.videos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
+            for (const vid of base64Videos) {
+                const body = vid.split(',')[1] || vid;
+                totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+            }
+        } else if (payload.video && typeof payload.video === 'string' && payload.video.startsWith('data:')) {
+            const body = payload.video.split(',')[1] || payload.video;
+            totalMediaSize += (body.length * 0.75) / (1024 * 1024);
+        }
+
+        // Validate size limit early
+        if (totalMediaSize > 50) {
+            throw { status: 400, message: `Tổng dung lượng của tất cả hình ảnh và video đính kèm vượt quá giới hạn cho phép 50MB (Hiện tại: ${totalMediaSize.toFixed(2)}MB).` };
+        }
+
+        let imageUrls = [];
+        let videoUrls = [];
+
+        // Upload images
+        if (files.images && files.images.length > 0) {
+            imageUrls = await Promise.all(
+                files.images.map(img => uploadToCloudinary(img.buffer, img.mimetype))
+            );
+        } else if (payload.images && Array.isArray(payload.images)) {
+            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+            imageUrls = await Promise.all(
+                base64Images.map(img => uploadToCloudinary(img))
+            );
+        }
+
+        // Upload videos
+        if (files.videos && files.videos.length > 0) {
+            for (const vid of files.videos) {
+                try {
+                    const url = await uploadToCloudinary(vid.buffer, vid.mimetype);
+                    videoUrls.push(url);
+                } catch (uploadErr) {
+                    console.error('[PostService] Video upload failed:', uploadErr.message || uploadErr);
+                    throw { status: 500, message: 'Upload video thất bại. Vui lòng thử lại hoặc chọn video nhỏ hơn.' };
+                }
+            }
+        } else if (payload.videos && Array.isArray(payload.videos)) {
+            const base64Videos = payload.videos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
+            for (const vid of base64Videos) {
+                const url = await uploadToCloudinary(vid);
+                videoUrls.push(url);
+            }
+        } else if (payload.video && typeof payload.video === 'string' && payload.video.startsWith('data:')) {
+            const url = await uploadToCloudinary(payload.video);
+            videoUrls.push(url);
+        }
+
+        const post = await postRepository.create({
+            title,
+            content,
+            postType,
+            tags,
+            images: imageUrls,
+            videos: videoUrls,
+            author: userId,
+            status: 'active'
+        });
+
+        return await postRepository.findById(post._id);
+    }
+
+    async toggleVote(postId, userId, voteType) {
+        const post = await postRepository.findById(postId);
+        if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
+        if (post.status !== 'active') throw { status: 400, message: 'Không thể vote bài viết này' };
+
+        const hasUpvoted = includesUserId(post.upvotes, userId);
+        const hasDownvoted = includesUserId(post.downvotes, userId);
         let userVote = null;
         const todayStart = getTodayStart();
         const dailyUpdates = {};
@@ -202,64 +352,94 @@ class PostService {
             }
         };
 
+        const authorId = post.author?._id?.toString() || post.author?.toString();
+        const isSelfVote = authorId && authorId === userId;
+
         if (voteType === 'upvote') {
             if (hasUpvoted) {
                 await postRepository.removeUpvote(postId, userId);
-                userVote = null;
                 applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', -1, post.dailyUpvoteDate, post.dailyUpvoteCount);
+                // Rút upvote → trừ điểm tác giả
+                if (!isSelfVote) await reputationService.award(authorId, 'post_upvote_removed');
             } else {
                 if (hasDownvoted) {
                     await postRepository.removeDownvote(postId, userId);
-                    userVote = null;
                     applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', -1, post.dailyDownvoteDate, post.dailyDownvoteCount);
-                } else {
-                    await postRepository.addUpvote(postId, userId);
-                    userVote = 'upvote';
-                    applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', 1, post.dailyUpvoteDate, post.dailyUpvoteCount);
+                    // Rút downvote → hoàn điểm tác giả và voter
+                    if (!isSelfVote) await reputationService.award(authorId, 'post_downvote_removed');
+                    await reputationService.award(userId, 'downvote_given_removed');
                 }
+                await postRepository.addUpvote(postId, userId);
+                userVote = 'upvote';
+                applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', 1, post.dailyUpvoteDate, post.dailyUpvoteCount);
+                // Upvote mới → cộng điểm tác giả
+                if (!isSelfVote) await reputationService.award(authorId, 'post_upvoted');
             }
         } else if (voteType === 'downvote') {
             if (hasDownvoted) {
                 await postRepository.removeDownvote(postId, userId);
-                userVote = null;
                 applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', -1, post.dailyDownvoteDate, post.dailyDownvoteCount);
+                // Rút downvote → hoàn điểm tác giả và voter
+                if (!isSelfVote) await reputationService.award(authorId, 'post_downvote_removed');
+                await reputationService.award(userId, 'downvote_given_removed');
             } else {
                 if (hasUpvoted) {
                     await postRepository.removeUpvote(postId, userId);
-                    userVote = null;
                     applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', -1, post.dailyUpvoteDate, post.dailyUpvoteCount);
-                } else {
-                    await postRepository.addDownvote(postId, userId);
-                    userVote = 'downvote';
-                    applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', 1, post.dailyDownvoteDate, post.dailyDownvoteCount);
+                    // Rút upvote (do chuyển sang downvote) → trừ điểm tác giả
+                    if (!isSelfVote) await reputationService.award(authorId, 'post_upvote_removed');
                 }
+                await postRepository.addDownvote(postId, userId);
+                userVote = 'downvote';
+                applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', 1, post.dailyDownvoteDate, post.dailyDownvoteCount);
+                // Downvote mới → trừ điểm tác giả + trừ điểm voter
+                if (!isSelfVote) await reputationService.award(authorId, 'post_downvoted');
+                await reputationService.award(userId, 'downvote_given');
             }
         }
 
-        if (Object.keys(dailyUpdates).length > 0) {
-            await postRepository.updateDailyVoteStats(postId, dailyUpdates);
+        if (Object.keys(dailyUpdates).length > 0) await postRepository.updateDailyVoteStats(postId, dailyUpdates);
+        const updatedPost = await postRepository.findById(postId);
+        return { postId: updatedPost._id, upvoteCount: updatedPost.upvotes.length, downvoteCount: updatedPost.downvotes.length, userVote };
+    }
+
+    async toggleReaction(postId, userId, reactionType) {
+        const post = await postRepository.findById(postId);
+        if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
+        if (post.status !== 'active') throw { status: 400, message: 'Không thể like/dislike bài viết này' };
+
+        const hasLiked = includesUserId(post.likes, userId);
+        const hasDisliked = includesUserId(post.dislikes, userId);
+        let userReaction = null;
+
+        if (reactionType === 'like') {
+            if (hasLiked) {
+                await postRepository.removeLike(postId, userId);
+            } else {
+                await postRepository.addLike(postId, userId);
+                userReaction = 'like';
+            }
+        } else if (reactionType === 'dislike') {
+            if (hasDisliked) {
+                await postRepository.removeDislike(postId, userId);
+            } else {
+                await postRepository.addDislike(postId, userId);
+                userReaction = 'dislike';
+            }
         }
 
         const updatedPost = await postRepository.findById(postId);
-
         return {
-            upvoteCount: updatedPost.upvotes.length,
-            downvoteCount: updatedPost.downvotes.length,
-            userVote,
+            postId: updatedPost._id,
+            likeCount: Array.isArray(updatedPost.likes) ? updatedPost.likes.length : 0,
+            dislikeCount: Array.isArray(updatedPost.dislikes) ? updatedPost.dislikes.length : 0,
+            userReaction,
         };
     }
 
-    // ==================== API 3: BÀI VIẾT LIÊN QUAN ====================
     async getRelatedPosts(tag, excludePostId) {
-        if (!tag || tag.trim() === '') {
-            throw { status: 400, message: 'Tag không được để trống' };
-        }
-
-        return await postRepository.findRelatedByTag(
-            tag.toLowerCase().trim(),
-            excludePostId,
-            5
-        );
+        if (!tag || tag.trim() === '') throw { status: 400, message: 'Tag không được để trống' };
+        return await postRepository.findRelatedByTag(tag.toLowerCase().trim(), excludePostId, 5);
     }
 
     async getPostDetailSidebarData() {
@@ -267,65 +447,40 @@ class PostService {
             postRepository.findHotNetworkQuestions(10),
             postRepository.findPopularTags(5),
         ]);
-
-        return {
-            hotQuestions: hotQuestions.map((item) => ({
-                id: item._id,
-                title: item.title,
-            })),
-            popularTags,
-        };
+        return { hotQuestions: hotQuestions.map((item) => ({ id: item._id, title: item.title })), popularTags };
     }
 
     async getTrendingToday(query = {}) {
         const limitNum = Math.min(20, Math.max(1, parseInt(query.limit, 10) || 10));
         const todayStart = getTodayStart();
         const posts = await postRepository.findTrendingToday(todayStart, limitNum);
-
-        return posts.map((post) => ({
-            ...post,
-            viewsToday: post.dailyViewCount ?? 0,
-            views: post.viewCount ?? 0,
-        }));
+        return posts.map((post) => ({ ...post, viewsToday: post.dailyViewCount ?? 0, views: post.viewCount ?? 0 }));
     }
 
     async getTopUpvoted(query = {}) {
         const limitNum = Math.min(20, Math.max(1, parseInt(query.limit, 10) || 10));
         const todayStart = getTodayStart();
         const posts = await postRepository.findTopUpvoted(todayStart, limitNum);
-
-        return posts.map((post) => ({
-            ...post,
-            upvotesToday: post.dailyUpvoteCount ?? 0,
-            upvoteCount: post.upvoteCount ?? 0,
-            downvoteCount: post.downvoteCount ?? 0,
-            views: post.viewCount ?? 0,
-        }));
+        return posts.map((post) => ({ ...post, upvotesToday: post.dailyUpvoteCount ?? 0, upvoteCount: post.upvoteCount ?? 0, downvoteCount: post.downvoteCount ?? 0, views: post.viewCount ?? 0 }));
     }
 
-    // ==================== HELPER: Xây dựng cây comment ====================
     _buildCommentTree(comments) {
         const commentMap = {};
         const rootComments = [];
-
         comments.forEach(comment => {
             const commentObj = comment.toObject();
             commentObj.replies = [];
             commentMap[commentObj._id.toString()] = commentObj;
         });
-
         comments.forEach(comment => {
             const commentObj = commentMap[comment._id.toString()];
             if (comment.parentComment) {
                 const parentId = comment.parentComment.toString();
-                if (commentMap[parentId]) {
-                    commentMap[parentId].replies.push(commentObj);
-                }
+                if (commentMap[parentId]) commentMap[parentId].replies.push(commentObj);
             } else {
                 rootComments.push(commentObj);
             }
         });
-
         return rootComments;
     }
 }

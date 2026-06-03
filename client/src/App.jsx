@@ -8,11 +8,18 @@ import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import VerifyResetOTP from './components/auth/VerifyResetOTP';
 import AdminProfilePage from './pages/admin/AdminProfilePage';
+import AdminFlagsPage from './pages/admin/AdminFlagsPage';
+import AdminDonationsPage from './pages/admin/AdminDonationsPage';
 import ProfilePage from './pages/profile/ProfilePage';
+import AuthorProfilePage from './pages/profile/AuthorProfilePage';
+import SavedPostsPage from './pages/profile/SavedPostsPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import PostDetailPage from './pages/post/PostDetailPage';
+import DonateCheckoutPage from './pages/donate/DonateCheckoutPage';
+import DonateResultPage from './pages/donate/DonateResultPage';
 import TagsPage from './pages/tags/TagsPage';
+import ReportHistoryPage from './pages/report/ReportHistoryPage';
 import './App.css';
 
 function Shell({ children }) {
@@ -37,6 +44,9 @@ function App() {
         <Route index element={<MainContent />} />
         <Route path="home" element={<MainContent />} />
         <Route path="tags" element={<TagsPage />} />
+        <Route path="reports/history" element={<ReportHistoryPage />} />
+        <Route path="donate/checkout" element={<DonateCheckoutPage />} />
+        <Route path="donate/result" element={<DonateResultPage />} />
       </Route>
 
       {/* Auth */}
@@ -56,7 +66,11 @@ function App() {
       {/* User / Admin */}
       <Route element={<ProfileShellLayout />}>
         <Route path="/user/profile" element={<ProfilePage />} />
+        <Route path="/user/saves" element={<SavedPostsPage />} />
+        <Route path="/users/:id" element={<AuthorProfilePage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
+        <Route path="/admin/flags" element={<AdminFlagsPage />} />
+        <Route path="/admin/donations" element={<AdminDonationsPage />} />
       </Route>
 
       {/* Post Detail */}

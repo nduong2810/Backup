@@ -1,28 +1,42 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getPostDetail, votePost, getRelatedPosts } from '../services/postService';
+import {
+  getPostDetail,
+  votePost,
+  reactPost,
+  getRelatedPosts,
+  createPostComment,
+  reactPostComment,
+} from '../services/postService';
 
 export default function usePostDetail(postId) {
-  // === State: Bài viết ===
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [commentCount, setCommentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // === State: Vote ===
   const [upvoteCount, setUpvoteCount] = useState(0);
   const [downvoteCount, setDownvoteCount] = useState(0);
-  const [userVote, setUserVote] = useState(null); // null | 'upvote' | 'downvote'
+  const [userVote, setUserVote] = useState(null);
   const [voteLoading, setVoteLoading] = useState(false);
 
-  // === State: Bài viết liên quan ===
+  const [likeCount, setLikeCount] = useState(0);
+  const [dislikeCount, setDislikeCount] = useState(0);
+  const [userReaction, setUserReaction] = useState(null);
+  const [reactionLoading, setReactionLoading] = useState(false);
+
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [commentError, setCommentError] = useState('');
+  const [reactingCommentId, setReactingCommentId] = useState('');
+
   const [relatedPosts, setRelatedPosts] = useState([]);
 
-  // === Fetch chi tiết bài viết ===
-  const fetchPostDetail = useCallback(async () => {
+  const fetchPostDetail = useCallback(async (showLoading = true) => {
     if (!postId) return;
 
-    setLoading(true);
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -35,30 +49,31 @@ export default function usePostDetail(postId) {
       setUpvoteCount(postData.upvoteCount || 0);
       setDownvoteCount(postData.downvoteCount || 0);
       setUserVote(postData.userVote || null);
+      setLikeCount(postData.likeCount || postData.likes?.length || 0);
+      setDislikeCount(postData.dislikeCount || postData.dislikes?.length || 0);
+      setUserReaction(postData.userReaction || null);
     } catch (err) {
       const message = err.response?.data?.message || 'Không thể tải bài viết.';
       setError(message);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, [postId]);
 
-  // === Fetch bài viết liên quan ===
   const fetchRelatedPosts = useCallback(async () => {
     if (!post || !post.tags || post.tags.length === 0) return;
 
     try {
-      // Lấy bài liên quan theo tag đầu tiên
       const firstTag = post.tags[0];
       const response = await getRelatedPosts(firstTag, postId);
       setRelatedPosts(response.data.data || []);
     } catch {
-      // Không hiển thị lỗi nếu related posts fail — không quan trọng
       setRelatedPosts([]);
     }
   }, [post, postId]);
 
-  // === Xử lý Vote (Axios — không reload trang) ===
   const handleVote = useCallback(async (voteType) => {
     if (voteLoading) return;
 
@@ -68,21 +83,93 @@ export default function usePostDetail(postId) {
       const response = await votePost(postId, effectiveVoteType);
       const { upvoteCount: up, downvoteCount: down, userVote: vote } = response.data.data;
 
-      // Cập nhật state local ngay lập tức (không reload)
       setUpvoteCount(up);
       setDownvoteCount(down);
       setUserVote(vote);
     } catch (err) {
-      // Nếu chưa đăng nhập → thông báo
       if (err.response?.status === 401) {
         alert('Bạn cần đăng nhập để vote bài viết.');
+      } else {
+        alert(err.response?.data?.message || 'Không thể vote bài viết.');
       }
     } finally {
       setVoteLoading(false);
     }
   }, [postId, voteLoading, userVote]);
 
-  // === Effects ===
+  const handlePostReaction = useCallback(async (reactionType) => {
+    if (reactionLoading) return;
+
+    setReactionLoading(true);
+    try {
+      const response = await reactPost(postId, reactionType);
+      const {
+        likeCount: likes,
+        dislikeCount: dislikes,
+        userReaction: reaction,
+      } = response.data.data;
+
+      setLikeCount(likes);
+      setDislikeCount(dislikes);
+      setUserReaction(reaction);
+      setPost((currentPost) => currentPost
+        ? {
+            ...currentPost,
+            likeCount: likes,
+            dislikeCount: dislikes,
+            userReaction: reaction,
+          }
+        : currentPost);
+    } catch (err) {
+      if (err.response?.status === 401) {
+        alert('Bạn cần đăng nhập để like/dislike bài viết.');
+      } else {
+        alert(err.response?.data?.message || 'Không thể like/dislike bài viết.');
+      }
+    } finally {
+      setReactionLoading(false);
+    }
+  }, [postId, reactionLoading]);
+
+  const submitComment = useCallback(async (payload) => {
+    if (submittingComment) return false;
+
+    setSubmittingComment(true);
+    setCommentError('');
+
+    try {
+      await createPostComment(postId, payload);
+      await fetchPostDetail(false);
+      return true;
+    } catch (err) {
+      const message = err.response?.data?.message || 'Không thể gửi bình luận.';
+      setCommentError(message);
+      return false;
+    } finally {
+      setSubmittingComment(false);
+    }
+  }, [postId, submittingComment, fetchPostDetail]);
+
+  const reactComment = useCallback(async (commentId, reactionType) => {
+    if (reactingCommentId) return false;
+
+    setReactingCommentId(commentId);
+    try {
+      await reactPostComment(commentId, reactionType);
+      await fetchPostDetail(false);
+      return true;
+    } catch (err) {
+      if (err.response?.status === 401) {
+        alert('Bạn cần đăng nhập để like/dislike bình luận.');
+      } else {
+        alert(err.response?.data?.message || 'Không thể cập nhật like/dislike bình luận.');
+      }
+      return false;
+    } finally {
+      setReactingCommentId('');
+    }
+  }, [reactingCommentId, fetchPostDetail]);
+
   useEffect(() => {
     fetchPostDetail();
   }, [fetchPostDetail]);
@@ -91,28 +178,28 @@ export default function usePostDetail(postId) {
     fetchRelatedPosts();
   }, [fetchRelatedPosts]);
 
-  // === Trả về cho Component ===
   return {
-    // Dữ liệu bài viết
     post,
     comments,
     commentCount,
-
-    // Trạng thái
     loading,
     error,
-
-    // Vote
     upvoteCount,
     downvoteCount,
     userVote,
     handleVote,
     voteLoading,
-
-    // Bài viết liên quan
+    likeCount,
+    dislikeCount,
+    userReaction,
+    handlePostReaction,
+    reactionLoading,
+    submitComment,
+    submittingComment,
+    commentError,
+    reactComment,
+    reactingCommentId,
     relatedPosts,
-
-    // Actions
     refreshPost: fetchPostDetail,
   };
 }

@@ -7,9 +7,14 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true, // Không tự đổi port — phải luôn là 5173
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'partner-jokester-hunger.ngrok-free.dev',
+    ],
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:5000',
         changeOrigin: true,
       },
     },

@@ -4,16 +4,16 @@ import { useDispatch, useSelector } from 'react-redux';
 import FilterSidebar from '../common/FilterSidebar';
 import { fetchTagsThunk } from '../../store/slices/tagSlice';
 
+const DEFAULT_TAG_COLLECTION = {
+    items: [],
+    loading: false,
+    error: null,
+    pagination: { total: 0, page: 1, limit: 0, totalPages: 0 },
+};
+
 const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
     const dispatch = useDispatch();
-    const tagCollection = useSelector((state) =>
-        state.tags?.collections?.sidebarTags || {
-            items: [],
-            loading: false,
-            error: null,
-            pagination: { total: 0, page: 1, limit: 0, totalPages: 0 },
-        }
-    );
+    const tagCollection = useSelector((state) => state.tags?.collections?.sidebarTags || DEFAULT_TAG_COLLECTION);
     const tags = tagCollection.items || [];
     const loadingTags = tagCollection.loading;
 
@@ -28,16 +28,16 @@ const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
             {/* Announcements Card */}
             <div className="bg-[#fdf7e2] border border-[#e6c172] rounded-DEFAULT overflow-hidden shadow-sm">
                 <div className="bg-[#fbf3d5] border-b border-[#e6c172] px-4 py-2 font-headline-md text-[15px] font-bold text-[#4c3b12]">
-                    Featured on Meta
+                    Thông tin nổi bật
                 </div>
                 <div className="p-4 flex flex-col gap-3">
                     <div className="flex gap-2">
                         <span className="material-symbols-outlined text-[#39739d] text-[18px] shrink-0">chat_bubble</span>
-                        <a className="font-body-sm text-body-sm text-on-surface hover:text-primary-container transition-colors" href="#">Improving the new user onboarding experience: We need your feedback</a>
+                        <a className="font-body-sm text-body-sm text-on-surface hover:text-primary-container transition-colors" href="#">Cải thiện trải nghiệm tham gia của người dùng mới: Chúng tôi cần phản hồi của bạn</a>
                     </div>
                     <div className="flex gap-2">
                         <span className="material-symbols-outlined text-[#39739d] text-[18px] shrink-0">campaign</span>
-                        <a className="font-body-sm text-body-sm text-on-surface hover:text-primary-container transition-colors" href="#">Update to our API rate limits starting next month</a>
+                        <a className="font-body-sm text-body-sm text-on-surface hover:text-primary-container transition-colors" href="#">Cập nhật giới hạn băng thông API bắt đầu từ tháng tới</a>
                     </div>
                 </div>
             </div>
@@ -60,7 +60,7 @@ const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
             {/* Popular Tags Card */}
             <div className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm overflow-hidden">
                 <div className="bg-surface-container-low border-b border-outline-variant px-4 py-3">
-                    <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Tags</h2>
+                    <h2 className="font-headline-md text-[16px] font-bold text-on-surface">Thẻ phổ biến</h2>
                 </div>
                 <div className="p-4 flex flex-col gap-3">
                     {loadingTags && (

@@ -19,6 +19,16 @@ const env = {
 
   // Client
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+
+  // Donation payment gateway (sandbox)
+  VNPAY_TMN_CODE: process.env.VNPAY_TMN_CODE || '',
+  VNPAY_HASH_SECRET: process.env.VNPAY_HASH_SECRET || '',
+  VNPAY_URL: process.env.VNPAY_URL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
+  VNPAY_RETURN_URL: process.env.VNPAY_RETURN_URL || 'http://localhost:5173/donate/result',
+
+  // Redis (optional)
+  REDIS_URL: process.env.REDIS_URL || '',
+  REDIS_SAVED_TTL: process.env.REDIS_SAVED_TTL || '3600',
 }
 
 export default env

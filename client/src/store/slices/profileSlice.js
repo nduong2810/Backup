@@ -1,5 +1,6 @@
-﻿import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { getMyProfile, updateMyProfile } from '../../services/userService';
+import { updateUser } from './loginSlice';
 
 const initialState = {
   form: {
@@ -8,7 +9,9 @@ const initialState = {
     phone: '',
     major: '',
     bio: '',
+    avatar: '',
   },
+  reputationInfo: null,
   loading: false,
   saving: false,
   successMessage: '',
@@ -44,7 +47,7 @@ export const fetchProfileThunk = createAsyncThunk(
 
 export const updateProfileThunk = createAsyncThunk(
   'profile/update',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { getState, dispatch, rejectWithValue }) => {
     try {
       const { form } = getState().profile;
       const payload = {
@@ -52,8 +55,14 @@ export const updateProfileThunk = createAsyncThunk(
         phone: form.phone,
         major: form.major,
         bio: form.bio,
+        avatar: form.avatar,
       };
       const response = await updateMyProfile(payload);
+      const updatedUser = response.data.user || {};
+      dispatch(updateUser({
+        fullName: updatedUser.fullName,
+        avatar: updatedUser.avatar,
+      }));
       return response.data;
     } catch (error) {
       return rejectWithValue(extractError(error));
@@ -88,6 +97,8 @@ const profileSlice = createSlice({
         state.form.phone = action.payload.phone || '';
         state.form.major = action.payload.major || '';
         state.form.bio = action.payload.bio || '';
+        state.form.avatar = action.payload.avatar || '';
+        state.reputationInfo = action.payload.reputationInfo || null;
       })
       .addCase(fetchProfileThunk.rejected, (state, action) => {
         state.loading = false;
@@ -109,6 +120,7 @@ const profileSlice = createSlice({
         state.form.phone = user.phone || state.form.phone;
         state.form.major = user.major || state.form.major;
         state.form.bio = user.bio || state.form.bio;
+        state.form.avatar = user.avatar || state.form.avatar;
       })
       .addCase(updateProfileThunk.rejected, (state, action) => {
         state.saving = false;

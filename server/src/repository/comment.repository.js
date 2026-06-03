@@ -10,8 +10,29 @@ class CommentRepository {
     // Populate author info + sắp xếp cũ nhất trước (dòng thời gian)
     async findByPostId(postId) {
         return await Comment.find({ post: postId })
-            .populate('author', 'fullName avatar')
+            .populate('author', 'fullName avatar major email reputation')
             .sort({ createdAt: 1 });  // Comment cũ nhất lên trước
+    }
+
+    async findById(commentId) {
+        return await Comment.findById(commentId)
+            .populate('author', 'fullName avatar major email reputation')
+            .populate('post', 'title author');
+    }
+
+    async create(data) {
+        const comment = await Comment.create(data);
+        return await Comment.findById(comment._id)
+            .populate('author', 'fullName avatar major email reputation')
+            .populate('post', 'title author');
+    }
+
+    async updateReaction(commentId, update) {
+        return await Comment.findByIdAndUpdate(
+            commentId,
+            update,
+            { new: true }
+        ).populate('author', 'fullName avatar major email');
     }
 
     // Đếm tổng số comment của 1 bài viết

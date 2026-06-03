@@ -1,8 +1,9 @@
-﻿import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { loginUser } from '../../services/authService';
-import apiClient from '../../lib/apiClient';
 
-// 1. Cập nhật initialState: Kiểm tra localStorage để giữ phiên đăng nhập khi F5
+const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+const storedToken = localStorage.getItem('accessToken');
+
 const initialState = {
   form: {
     email: '',
@@ -11,12 +12,10 @@ const initialState = {
   loading: false,
   successMessage: '',
   errorMessage: '',
-  // Lấy user và token từ bộ nhớ trình duyệt (nếu có)
-  user: JSON.parse(localStorage.getItem('user')) || null,
-  accessToken: localStorage.getItem('accessToken') || null,
+  user: storedUser,
+  accessToken: storedToken || null,
   redirectUrl: '',
-  // Nếu có accessToken trong máy thì đánh dấu là đã đăng nhập
-  isAuthenticated: !!localStorage.getItem('accessToken'),
+  isAuthenticated: !!(storedToken || storedUser),
 };
 
 const extractError = (error) => {
@@ -51,10 +50,6 @@ const loginSlice = createSlice({
       state.successMessage = '';
     },
     resetLoginState: () => initialState,
-
-    // ==========================================
-    // ACTION ĐĂNG XUẤT (LOGOUT) ĐƯỢC THÊM VÀO MỚI
-    // ==========================================
     logout: (state) => {
       state.user = null;
       state.accessToken = null;
@@ -64,10 +59,12 @@ const loginSlice = createSlice({
       state.successMessage = '';
       state.errorMessage = '';
       state.form = { email: '', password: '' };
-
-      // Dọn sạch dấu vết đăng nhập ở LocalStorage
       localStorage.removeItem('user');
       localStorage.removeItem('accessToken');
+    },
+    updateUser: (state, action) => {
+      state.user = { ...state.user, ...action.payload };
+      localStorage.setItem('user', JSON.stringify(state.user));
     },
   },
   extraReducers: (builder) => {
@@ -81,27 +78,30 @@ const loginSlice = createSlice({
           state.loading = false;
           state.successMessage = action.payload.message || 'Đăng nhập thành công.';
 
-          // Lấy user và token từ API (dự phòng trường hợp bọc trong payload.data)
           const loggedUser = action.payload.user || action.payload.data?.user || null;
-          const token = action.payload.accessToken || action.payload.data?.accessToken || null;
+          const token = action.payload.accessToken || action.payload.token || action.payload.data?.accessToken || action.payload.data?.token || null;
 
           state.user = loggedUser;
           state.accessToken = token;
           state.redirectUrl = action.payload.redirectUrl || '/';
-          state.isAuthenticated = true;
+          state.isAuthenticated = !!(token || loggedUser);
 
-          // Lưu thông tin vào LocalStorage để không bị mất khi F5
+          localStorage.removeItem('user');
+          localStorage.removeItem('accessToken');
           if (loggedUser) localStorage.setItem('user', JSON.stringify(loggedUser));
           if (token) localStorage.setItem('accessToken', token);
         })
         .addCase(loginThunk.rejected, (state, action) => {
           state.loading = false;
           state.errorMessage = action.payload || 'Đăng nhập thất bại.';
+          state.user = null;
+          state.accessToken = null;
           state.isAuthenticated = false;
+          localStorage.removeItem('user');
+          localStorage.removeItem('accessToken');
         });
   },
 });
 
-// Export thêm action `logout`
-export const { setLoginField, clearLoginMessages, resetLoginState, logout } = loginSlice.actions;
+export const { setLoginField, clearLoginMessages, resetLoginState, logout, updateUser } = loginSlice.actions;
 export default loginSlice.reducer;

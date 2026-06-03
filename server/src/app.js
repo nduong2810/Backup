@@ -13,8 +13,12 @@ const app = express()
 
 // --- Global Middlewares ---
 app.use(cors(corsOptions))         // CORS
-app.use(express.json())            // Parse JSON body
-app.use(express.urlencoded({ extended: true })) // Parse URL-encoded body
+
+// Cho phép upload media dạng base64 trong JSON body.
+// Hỗ trợ upload đồng thời nhiều ảnh + video nên cần limit lớn.
+app.use(express.json({ limit: '100mb' }))
+app.use(express.urlencoded({ extended: true, limit: '100mb' }))
+
 app.use(cookieParser())            // Parse cookies
 
 // --- API Routes ---

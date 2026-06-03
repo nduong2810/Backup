@@ -1,10 +1,7 @@
-// ====================================================================
-// PostContent — Hiển thị nội dung chính bài viết
-// Bao gồm: author info, meta stats, content, tags
-// Đã tích hợp design tokens từ hệ thống thiết kế chính
-// ====================================================================
+import { Link } from 'react-router-dom';
+import SaveIconButton from '../ui/SaveIconButton';
+import ReputationBadge from '../ui/ReputationBadge';
 
-// Helper: Format thời gian tương đối
 function timeAgo(dateString) {
   const now = new Date();
   const date = new Date(dateString);
@@ -21,38 +18,73 @@ function timeAgo(dateString) {
   return `${months} tháng trước`;
 }
 
-export default function PostContent({ post, commentCount }) {
+const SmallReactionButton = ({ active, disabled, onClick, icon, label, count, activeClass, hoverClass }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className={`inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+      active
+        ? activeClass
+        : `border-outline-variant bg-surface-container-lowest text-secondary ${hoverClass}`
+    }`}
+  >
+    <span className="material-symbols-outlined text-[15px]">{icon}</span>
+    <span>{label}</span>
+    <span>{count}</span>
+  </button>
+);
+
+export default function PostContent({
+  post,
+  commentCount,
+  isSaved,
+  onToggleSave,
+  likeCount = 0,
+  dislikeCount = 0,
+  userReaction = null,
+  reactionLoading = false,
+  onPostReaction,
+}) {
   if (!post) return null;
 
   return (
     <article className="flex-1 min-w-0 flex flex-col gap-4">
-      {/* Title */}
-      <h1 className="-mt-1 font-headline-xl text-headline-xl text-on-surface leading-tight">
-        {post.title}
-      </h1>
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="-mt-1 font-headline-xl text-headline-xl text-on-surface leading-tight">
+          {post.title}
+        </h1>
+        <SaveIconButton
+          saved={isSaved}
+          onClick={onToggleSave}
+          className="mt-1"
+          title={isSaved ? 'Đã lưu' : 'Lưu'}
+        />
+      </div>
 
-      {/* Meta: Author + Stats */}
       <div className="flex flex-wrap items-center gap-4 font-body-sm text-body-sm text-secondary pb-3 border-b border-outline-variant">
-        {/* Author */}
         <div className="flex items-center gap-2">
-          <img
-            src={post.author?.avatar && post.author.avatar !== 'default-avatar.png'
-              ? post.author.avatar
-              : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`
-            }
-            alt={post.author?.fullName}
-            className="w-6 h-6 rounded-full border border-outline-variant"
-          />
-          <span className="font-medium text-primary-container">{post.author?.fullName}</span>
+          <Link to={post.author?._id ? `/users/${post.author._id}` : '#'} className="flex items-center gap-2">
+            <img
+              src={post.author?.avatar && post.author.avatar !== 'default-avatar.png'
+                ? post.author.avatar
+                : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`
+              }
+              alt={post.author?.fullName}
+              className="w-6 h-6 rounded-full border border-outline-variant"
+            />
+            <span className="font-medium text-primary-container hover:underline">{post.author?.fullName}</span>
+          </Link>
+          {post.author?.reputation !== undefined && (
+            <ReputationBadge reputation={post.author.reputation} size="sm" />
+          )}
           {post.author?.major && (
             <span className="text-outline">· {post.author.major}</span>
           )}
         </div>
 
-        {/* Thời gian */}
         <span className="text-outline">· {timeAgo(post.createdAt)}</span>
 
-        {/* Lượt xem */}
         <div className="flex items-center gap-1">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
             <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
@@ -61,18 +93,16 @@ export default function PostContent({ post, commentCount }) {
           <span>{post.viewCount?.toLocaleString()} lượt xem</span>
         </div>
 
-        {/* Lượt bình luận */}
         <div className="flex items-center gap-1">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
           </svg>
-          <span>{commentCount} bình luận</span>
+          <span>{commentCount} {post.postType === 'question' ? 'câu trả lời' : 'bình luận'}</span>
         </div>
 
-        {/* Tags - đặt ngay dưới dòng tên tác giả/meta */}
-        {post.tags && post.tags.length > 0 && (
-          <div className="basis-full flex flex-wrap gap-2 pt-1">
-            {post.tags.map((tag) => (
+        <div className="basis-full flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div className="flex flex-wrap gap-2">
+            {post.tags && post.tags.length > 0 && post.tags.map((tag) => (
               <span
                 key={tag}
                 className="inline-flex items-center px-2.5 py-1 rounded-lg font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] border border-outline-variant hover:bg-secondary-fixed/80 transition-colors cursor-default"
@@ -81,10 +111,34 @@ export default function PostContent({ post, commentCount }) {
               </span>
             ))}
           </div>
-        )}
+
+          {post.postType === 'advice' && (
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <SmallReactionButton
+                active={userReaction === 'like'}
+                disabled={reactionLoading}
+                onClick={() => onPostReaction?.('like')}
+                icon="thumb_up"
+                label="Thích"
+                count={likeCount}
+                activeClass="border-blue-300 bg-blue-50 text-blue-700"
+                hoverClass="hover:bg-blue-50 hover:text-blue-700"
+              />
+              <SmallReactionButton
+                active={userReaction === 'dislike'}
+                disabled={reactionLoading}
+                onClick={() => onPostReaction?.('dislike')}
+                icon="thumb_down"
+                label="Không thích"
+                count={dislikeCount}
+                activeClass="border-rose-300 bg-rose-50 text-rose-700"
+                hoverClass="hover:bg-rose-50 hover:text-rose-700"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Nội dung bài viết */}
       <div className="text-on-surface font-body-md text-body-md leading-relaxed whitespace-pre-wrap">
         {post.content}
       </div>

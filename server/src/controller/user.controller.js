@@ -35,6 +35,19 @@ class UserController {
             res.status(400).json({ message: error.message });
         }
     }
+
+    async getPublicAuthorProfile(req, res) {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+        try {
+            const profile = await userService.getPublicAuthorProfile(req.params.userId);
+            res.status(200).json({ success: true, data: profile });
+        } catch (error) {
+            const status = error.status || 500;
+            res.status(status).json({ success: false, message: error.message });
+        }
+    }
 }
 
 export default new UserController();

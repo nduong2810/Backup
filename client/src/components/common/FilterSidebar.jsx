@@ -2,6 +2,13 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTagsThunk } from '../../store/slices/tagSlice';
 
+const DEFAULT_TAG_COLLECTION = {
+  items: [],
+  loading: false,
+  error: null,
+  pagination: { total: 0, page: 1, limit: 0, totalPages: 0 },
+};
+
 const parseTags = (value) =>
   value
     .split(',')
@@ -14,14 +21,7 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
   const selectedTags = Array.from(new Set(parseTags(filters.tags).map(normalizeTag)));
   const selectedTagSet = new Set(selectedTags);
   const dispatch = useDispatch();
-  const tagCollection = useSelector((state) =>
-    state.tags?.collections?.filterTags || {
-      items: [],
-      loading: false,
-      error: null,
-      pagination: { total: 0, page: 1, limit: 0, totalPages: 0 },
-    }
-  );
+  const tagCollection = useSelector((state) => state.tags?.collections?.filterTags || DEFAULT_TAG_COLLECTION);
   const tagOptions = tagCollection.items || [];
   const loadingTags = tagCollection.loading;
   const tagPagination = tagCollection.pagination || { page: 1, totalPages: 0 };

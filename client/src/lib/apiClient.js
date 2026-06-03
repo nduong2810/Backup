@@ -7,10 +7,29 @@ const normalizedBaseUrl = rawBaseUrl.endsWith('/api')
 
 const apiClient = axios.create({
   baseURL: normalizedBaseUrl,
+  timeout: 300000,
   withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('accessToken');
+
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  // Tự động set Content-Type phù hợp:
+  // - FormData → để axios tự set multipart/form-data (cần boundary)
+  // - Các request khác → application/json
+  if (config.data instanceof FormData) {
+    // Xóa Content-Type để axios/browser tự set với boundary
+    delete config.headers['Content-Type'];
+  } else {
+    config.headers['Content-Type'] = 'application/json';
+  }
+
+  return config;
 });
 
 export default apiClient;
