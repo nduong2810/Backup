@@ -11,6 +11,7 @@ import {
 import { connectSocket, disconnectSocket } from '../../lib/socketClient';
 
 const TOAST_DURATION_MS = 4200;
+const FALLBACK_REFRESH_MS = 12000;
 
 const timeAgo = (dateString) => {
   const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
@@ -37,6 +38,8 @@ export default function NotificationBell() {
   const [toasts, setToasts] = useState([]);
   const wrapperRef = useRef(null);
   const toastTimersRef = useRef({});
+  const knownNotificationIdsRef = useRef(new Set());
+  const socketConnectedRef = useRef(false);
 
   const badgeText = useMemo(() => {
     if (!unreadCount || unreadCount <= 0) return '';
@@ -65,29 +68,68 @@ export default function NotificationBell() {
     }, TOAST_DURATION_MS);
   };
 
+  const syncKnownNotifications = (notifications = []) => {
+    notifications.forEach((notification) => {
+      if (notification?._id) knownNotificationIdsRef.current.add(String(notification._id));
+    });
+  };
+
   useEffect(() => {
     if (!accessToken || !user) return undefined;
 
-    dispatch(fetchNotificationsThunk());
+    dispatch(fetchNotificationsThunk()).unwrap().then((data) => {
+      syncKnownNotifications(data?.notifications || []);
+    }).catch(() => {});
+
     const socket = connectSocket(accessToken);
 
+    const handleConnect = () => {
+      socketConnectedRef.current = true;
+    };
+
+    const handleDisconnect = () => {
+      socketConnectedRef.current = false;
+    };
+
     const handleNewNotification = (payload) => {
-      dispatch(pushRealtimeNotification(payload));
-      if (payload?.notification) {
-        addToast(payload.notification);
+      const notification = payload?.notification;
+      if (notification?._id) {
+        knownNotificationIdsRef.current.add(String(notification._id));
       }
+      dispatch(pushRealtimeNotification(payload));
+      if (notification) addToast(notification);
     };
 
     const handleUnreadCount = (payload) => {
       dispatch(setUnreadCount(payload));
     };
 
+    socket?.on('connect', handleConnect);
+    socket?.on('disconnect', handleDisconnect);
     socket?.on('notification:new', handleNewNotification);
     socket?.on('notification:unread-count', handleUnreadCount);
 
+    const fallbackIntervalId = window.setInterval(async () => {
+      const action = await dispatch(fetchNotificationsThunk());
+      const notifications = action.payload?.notifications || [];
+      const newNotifications = notifications.filter((notification) => {
+        if (!notification?._id || notification.isRead) return false;
+        return !knownNotificationIdsRef.current.has(String(notification._id));
+      });
+
+      syncKnownNotifications(notifications);
+
+      if (!socketConnectedRef.current) {
+        newNotifications.slice(0, 3).forEach(addToast);
+      }
+    }, FALLBACK_REFRESH_MS);
+
     return () => {
+      socket?.off('connect', handleConnect);
+      socket?.off('disconnect', handleDisconnect);
       socket?.off('notification:new', handleNewNotification);
       socket?.off('notification:unread-count', handleUnreadCount);
+      window.clearInterval(fallbackIntervalId);
       Object.values(toastTimersRef.current).forEach((timerId) => window.clearTimeout(timerId));
       toastTimersRef.current = {};
       disconnectSocket();
@@ -119,6 +161,17 @@ export default function NotificationBell() {
 
   return (
     <div ref={wrapperRef} className="relative">
+      <style>{`
+        @keyframes notification-toast-progress {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+        @keyframes notification-toast-enter {
+          from { opacity: 0; transform: translateY(-8px) translateX(8px); }
+          to { opacity: 1; transform: translateY(0) translateX(0); }
+        }
+      `}</style>
+
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -180,24 +233,24 @@ export default function NotificationBell() {
       )}
 
       {toasts.length > 0 && (
-        <div className="fixed right-4 top-20 z-[90] flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-3">
+        <div className="fixed right-5 top-20 z-[90] flex w-[420px] max-w-[calc(100vw-2rem)] flex-col gap-3">
           {toasts.map((toast) => (
             <div
               key={toast._id}
-              className="overflow-hidden rounded-xl border border-emerald-200 bg-white text-left shadow-xl ring-1 ring-black/5"
+              className="overflow-hidden rounded-md border border-emerald-100 bg-white text-left shadow-lg ring-1 ring-black/5"
+              style={{ animation: 'notification-toast-enter 160ms ease-out' }}
             >
-              <div className="flex items-start gap-3 p-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-                  <span className="material-symbols-outlined text-[20px]">notifications_active</span>
+              <div className="flex items-center gap-3 px-5 py-4">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 text-emerald-500">
+                  <span className="material-symbols-outlined text-[18px]">check</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => openNotification(toast)}
                   className="min-w-0 flex-1 text-left"
                 >
-                  <p className="text-sm font-bold text-slate-900">{toast.title}</p>
-                  <p className="mt-1 text-xs text-slate-600 line-clamp-2">{toast.message}</p>
-                  <p className="mt-1 text-[11px] text-slate-400 line-clamp-1">{toast.post?.title || 'Bài viết'}</p>
+                  <p className="text-[15px] font-bold text-slate-800">{toast.title}</p>
+                  <p className="mt-1 text-xs text-slate-500 line-clamp-1">{toast.message}</p>
                 </button>
                 <button
                   type="button"
@@ -205,11 +258,14 @@ export default function NotificationBell() {
                   className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                   aria-label="Tắt thông báo"
                 >
-                  <span className="material-symbols-outlined text-[18px]">close</span>
+                  <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
               </div>
-              <div className="h-1 bg-emerald-100">
-                <div className="h-full bg-emerald-500 animate-[toast-progress_4.2s_linear_forwards]" />
+              <div className="h-[3px] bg-transparent">
+                <div
+                  className="h-full bg-emerald-500"
+                  style={{ animation: `notification-toast-progress ${TOAST_DURATION_MS}ms linear forwards` }}
+                />
               </div>
             </div>
           ))}
