@@ -26,13 +26,24 @@ export default function CommentSection({
   const [imageFiles, setImageFiles] = useState([]);
   const [videoFiles, setVideoFiles] = useState([]);
   const [mediaError, setMediaError] = useState('');
+  const [replyingToId, setReplyingToId] = useState('');
+  const [replyContent, setReplyContent] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
+
+  const resetMainForm = () => {
+    setContent('');
+    setImagePreviews([]);
+    setVideoPreviews([]);
+    setImageFiles([]);
+    setVideoFiles([]);
+    setMediaError('');
+  };
 
   const handleImageChange = (e) => {
     setMediaError('');
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Check combined size
     const currentVideosSize = videoFiles.reduce((acc, v) => acc + v.size, 0);
     const currentImagesSize = imageFiles.reduce((acc, img) => acc + img.size, 0);
     const newFilesSize = files.reduce((acc, f) => acc + f.size, 0);
@@ -56,7 +67,7 @@ export default function CommentSection({
       reader.readAsDataURL(file);
     });
 
-    e.target.value = ''; // Reset input element
+    e.target.value = '';
   };
 
   const handleVideoChange = (e) => {
@@ -64,7 +75,6 @@ export default function CommentSection({
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Check combined size
     const currentVideosSize = videoFiles.reduce((acc, v) => acc + v.size, 0);
     const currentImagesSize = imageFiles.reduce((acc, img) => acc + img.size, 0);
     const newFilesSize = files.reduce((acc, f) => acc + f.size, 0);
@@ -116,7 +126,6 @@ export default function CommentSection({
     const text = content.trim();
     if (!text && imageFiles.length === 0 && videoFiles.length === 0) return;
 
-    // Xây dựng FormData để gửi file binary qua multer
     const formData = new FormData();
     formData.append('content', text || 'Đính kèm tệp tin.');
 
@@ -129,14 +138,37 @@ export default function CommentSection({
     });
 
     const ok = await onSubmitComment?.(formData);
-    if (ok !== false) {
-      setContent('');
-      setImagePreviews([]);
-      setVideoPreviews([]);
-      setImageFiles([]);
-      setVideoFiles([]);
-      setMediaError('');
+    if (ok !== false) resetMainForm();
+  };
+
+  const handleStartReply = (comment) => {
+    setReplyingToId(comment?._id || '');
+    setReplyContent('');
+  };
+
+  const handleCancelReply = () => {
+    setReplyingToId('');
+    setReplyContent('');
+  };
+
+  const handleSubmitReply = async (comment) => {
+    if (!isAuthenticated) {
+      onLoginRequired?.();
+      return;
     }
+
+    const text = replyContent.trim();
+    const parentCommentId = comment?._id || replyingToId;
+    if (!text || !parentCommentId || submittingReply) return;
+
+    setSubmittingReply(true);
+    const formData = new FormData();
+    formData.append('content', text);
+    formData.append('parentComment', parentCommentId);
+
+    const ok = await onSubmitComment?.(formData);
+    if (ok !== false) handleCancelReply();
+    setSubmittingReply(false);
   };
 
   const isQuestion = postType === 'question';
@@ -169,7 +201,6 @@ export default function CommentSection({
           className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100"
         />
 
-        {/* Render Image Previews */}
         {imagePreviews.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {imagePreviews.map((imgBase64, index) => (
@@ -187,7 +218,6 @@ export default function CommentSection({
           </div>
         )}
 
-        {/* Render Videos Previews */}
         {videoPreviews.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {videoPreviews.map((vid, index) => (
@@ -209,32 +239,17 @@ export default function CommentSection({
         )}
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          {/* Media attachment buttons */}
           <div className="flex items-center gap-2">
             <label className="flex h-8 items-center gap-1.5 rounded-full border border-outline-variant px-3 text-[12px] font-semibold text-secondary hover:bg-surface-container-low transition cursor-pointer">
               <span className="material-symbols-outlined text-[16px] leading-none">image</span>
               <span>Thêm ảnh</span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageChange}
-                className="hidden"
-                disabled={submittingComment}
-              />
+              <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" disabled={submittingComment} />
             </label>
 
             <label className="flex h-8 items-center gap-1.5 rounded-full border border-outline-variant px-3 text-[12px] font-semibold text-secondary hover:bg-surface-container-low transition cursor-pointer">
               <span className="material-symbols-outlined text-[16px] leading-none">videocam</span>
               <span>Thêm video</span>
-              <input
-                type="file"
-                accept="video/*"
-                multiple
-                onChange={handleVideoChange}
-                className="hidden"
-                disabled={submittingComment}
-              />
+              <input type="file" accept="video/*" multiple onChange={handleVideoChange} className="hidden" disabled={submittingComment} />
             </label>
           </div>
 
@@ -250,12 +265,8 @@ export default function CommentSection({
           </div>
         </div>
 
-        {mediaError && (
-          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{mediaError}</p>
-        )}
-        {commentError && (
-          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{commentError}</p>
-        )}
+        {mediaError && <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{mediaError}</p>}
+        {commentError && <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{commentError}</p>}
       </form>
 
       {comments && comments.length > 0 ? (
@@ -272,6 +283,13 @@ export default function CommentSection({
               onLoginRequired={onLoginRequired}
               onReactComment={onReactComment}
               reactingCommentId={reactingCommentId}
+              replyingToId={replyingToId}
+              replyContent={replyContent}
+              onStartReply={handleStartReply}
+              onCancelReply={handleCancelReply}
+              onReplyContentChange={setReplyContent}
+              onSubmitReply={handleSubmitReply}
+              submittingReply={submittingReply || submittingComment}
             />
           ))}
         </div>
@@ -280,7 +298,7 @@ export default function CommentSection({
           <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 mx-auto mb-2 text-outline-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
-          <p className="font-body-md text-body-md">{emptyLabel}</p>
+          <p className="text-body-sm font-body-sm">{emptyLabel}</p>
         </div>
       )}
     </section>

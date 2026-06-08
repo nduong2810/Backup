@@ -7,6 +7,7 @@ import {
   createPostComment,
   reactPostComment,
 } from '../services/postService';
+import { connectSocket, getSocket } from '../lib/socketClient';
 
 export default function usePostDetail(postId) {
   const [post, setPost] = useState(null);
@@ -177,6 +178,28 @@ export default function usePostDetail(postId) {
   useEffect(() => {
     fetchRelatedPosts();
   }, [fetchRelatedPosts]);
+
+  useEffect(() => {
+    if (!postId) return undefined;
+
+    const token = localStorage.getItem('accessToken');
+    const socket = token ? connectSocket(token) : getSocket();
+    if (!socket) return undefined;
+
+    const handleNewComment = (payload) => {
+      if (String(payload?.postId) === String(postId)) {
+        fetchPostDetail(false);
+      }
+    };
+
+    socket.emit('post:join', postId);
+    socket.on('comment:new', handleNewComment);
+
+    return () => {
+      socket.off('comment:new', handleNewComment);
+      socket.emit('post:leave', postId);
+    };
+  }, [postId, fetchPostDetail]);
 
   return {
     post,

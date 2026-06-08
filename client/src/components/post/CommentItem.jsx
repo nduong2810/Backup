@@ -28,6 +28,13 @@ export default function CommentItem({
   onLoginRequired,
   onReactComment,
   reactingCommentId = '',
+  replyingToId = '',
+  replyContent = '',
+  onStartReply,
+  onCancelReply,
+  onReplyContentChange,
+  onSubmitReply,
+  submittingReply = false,
 }) {
   const isAuthor = comment.author?._id === postAuthorId;
   const maxDepth = 3;
@@ -38,6 +45,7 @@ export default function CommentItem({
   const likeCount = comment.likeCount ?? likedUserIds.length ?? 0;
   const dislikeCount = comment.dislikeCount ?? dislikedUserIds.length ?? 0;
   const isReacting = reactingCommentId === comment._id;
+  const isReplying = String(replyingToId) === String(comment._id);
 
   const handleReact = (reactionType) => {
     if (!isAuthenticated) {
@@ -46,6 +54,20 @@ export default function CommentItem({
     }
 
     onReactComment?.(comment._id, reactionType);
+  };
+
+  const handleStartReply = () => {
+    if (!isAuthenticated) {
+      onLoginRequired?.();
+      return;
+    }
+
+    onStartReply?.(comment);
+  };
+
+  const handleSubmitReply = (event) => {
+    event.preventDefault();
+    onSubmitReply?.(comment);
   };
 
   return (
@@ -82,7 +104,6 @@ export default function CommentItem({
           {comment.content}
         </p>
 
-        {/* Comment Attached Images */}
         {comment.images && comment.images.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {comment.images.map((imgUrl, idx) => (
@@ -93,7 +114,6 @@ export default function CommentItem({
           </div>
         )}
 
-        {/* Comment Attached Video */}
         {comment.videos && comment.videos.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {comment.videos.map((vidUrl, index) => (
@@ -173,6 +193,15 @@ export default function CommentItem({
             </>
           )}
 
+          <button
+            type="button"
+            onClick={handleStartReply}
+            className="inline-flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container-low px-3 py-1.5 text-xs font-semibold text-secondary transition hover:bg-primary-fixed/30 hover:text-primary"
+          >
+            <span className="material-symbols-outlined text-[16px]">reply</span>
+            Bình luận
+          </button>
+
           {depth === 0 && typeof onDonate === 'function' && comment.author?._id && (
             <button
               type="button"
@@ -186,6 +215,42 @@ export default function CommentItem({
             </button>
           )}
         </div>
+
+        {isReplying && (
+          <form onSubmit={handleSubmitReply} className="mt-3 rounded-xl border border-outline-variant bg-surface-container-low p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-secondary">
+                Trả lời {comment.author?.fullName || 'bình luận'}
+              </p>
+              <button
+                type="button"
+                onClick={onCancelReply}
+                className="text-xs font-semibold text-outline hover:text-error"
+              >
+                Hủy
+              </button>
+            </div>
+            <textarea
+              value={replyContent}
+              onChange={(event) => onReplyContentChange?.(event.target.value)}
+              rows={2}
+              maxLength={2000}
+              placeholder="Nhập nội dung trả lời..."
+              disabled={submittingReply}
+              className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100"
+            />
+            <div className="mt-2 flex items-center justify-end gap-2">
+              <span className="text-xs text-secondary">{replyContent.length}/2000</span>
+              <button
+                type="submit"
+                disabled={submittingReply || !replyContent.trim()}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submittingReply ? 'Đang gửi...' : 'Gửi trả lời'}
+              </button>
+            </div>
+          </form>
+        )}
 
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-3 flex flex-col gap-3">
@@ -202,6 +267,13 @@ export default function CommentItem({
                 onLoginRequired={onLoginRequired}
                 onReactComment={onReactComment}
                 reactingCommentId={reactingCommentId}
+                replyingToId={replyingToId}
+                replyContent={replyContent}
+                onStartReply={onStartReply}
+                onCancelReply={onCancelReply}
+                onReplyContentChange={onReplyContentChange}
+                onSubmitReply={onSubmitReply}
+                submittingReply={submittingReply}
               />
             ))}
           </div>

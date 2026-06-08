@@ -1,5 +1,8 @@
+import mongoose from 'mongoose';
 import postService from '../service/post.service.js';
 import commentRepository from '../repository/comment.repository.js';
+import notificationService from '../service/notification.service.js';
+import { emitToPostRoom } from '../socket/socket.js';
 import { validationResult } from 'express-validator';
 
 const recentViewMap = new Map();
@@ -8,6 +11,28 @@ const VIEW_DEDUP_WINDOW_MS = 10 * 1000;
 const getViewerKey = (req, postId, userId) => {
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';
     return `${userId || `ip:${ip}`}::${postId}`;
+};
+
+const normalizeObjectId = (value) => {
+    if (!value) return '';
+
+    if (typeof value === 'string') {
+        return mongoose.Types.ObjectId.isValid(value) ? value : '';
+    }
+
+    if (value instanceof mongoose.Types.ObjectId) {
+        return value.toString();
+    }
+
+    if (typeof value === 'object') {
+        if (value._id) return normalizeObjectId(value._id);
+        if (value.id) return normalizeObjectId(value.id);
+        if (value.$oid) return normalizeObjectId(value.$oid);
+        if (value.author) return normalizeObjectId(value.author);
+        if (value.user) return normalizeObjectId(value.user);
+    }
+
+    return '';
 };
 
 class PostController {
@@ -24,7 +49,6 @@ class PostController {
         if (validationError) return validationError;
 
         try {
-            // Parse tags từ FormData (có thể là JSON string hoặc array)
             if (typeof req.body.tags === 'string') {
                 try { req.body.tags = JSON.parse(req.body.tags); } catch { req.body.tags = []; }
             }
@@ -90,6 +114,40 @@ class PostController {
             };
 
             const comment = await postService.createComment(req.params.id, req.user.userId, req.body, files);
+            const post = comment.post;
+            const parentComment = comment.parentComment ? await commentRepository.findById(comment.parentComment) : null;
+            const postId = normalizeObjectId(post) || req.params.id;
+            const senderId = normalizeObjectId(comment.author) || req.user.userId;
+            const postAuthorId = normalizeObjectId(post?.author);
+            const parentAuthorId = normalizeObjectId(parentComment?.author);
+
+            emitToPostRoom(postId, 'comment:new', { postId, comment });
+
+            try {
+                if (parentComment && parentAuthorId && parentAuthorId !== senderId) {
+                    await notificationService.createCommentNotification({
+                        recipientId: parentAuthorId,
+                        sender: comment.author,
+                        post,
+                        comment,
+                        parentComment,
+                        type: 'comment_reply',
+                    });
+                }
+
+                if (!parentComment && postAuthorId && postAuthorId !== senderId) {
+                    await notificationService.createCommentNotification({
+                        recipientId: postAuthorId,
+                        sender: comment.author,
+                        post,
+                        comment,
+                        type: 'post_comment',
+                    });
+                }
+            } catch (notificationError) {
+                console.error('[PostController] create notification error:', notificationError.message || notificationError);
+            }
+
             return res.status(201).json({ success: true, message: 'Thêm bình luận thành công', data: comment });
         } catch (error) {
             const status = error.status || 500;
