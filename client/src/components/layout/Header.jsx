@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { logout } from '../../store/slices/loginSlice';
 import SearchBar from '../common/SearchBar';
 import CreatePostModal from '../post/CreatePostModal';
+import NotificationBell from '../notification/NotificationBell';
 
 const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
   const dispatch = useDispatch();
@@ -65,13 +66,15 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
           </button>
         </div>
 
-        <div className="flex items-center gap-4 justify-end">
+        <div className="flex items-center gap-3 justify-end">
           <button
             onClick={handleCreatePostClick}
             className="bg-primary hover:bg-primary/90 text-white font-body-sm text-body-sm font-semibold px-4 py-2 rounded-DEFAULT transition-colors shrink-0 lg:hidden"
           >
             Tạo bài viết
           </button>
+
+          {user && <NotificationBell />}
 
           {user ? (
             <div ref={menuRef} className="relative hidden md:block">
@@ -91,7 +94,7 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
                 </span>
                 <span className="material-symbols-outlined text-[18px] text-secondary">expand_more</span>
               </button>
- 
+  
               {menuOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-md overflow-hidden z-50">
                   {isAdmin && (
