@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -9,6 +9,8 @@ import {
   setUnreadCount,
 } from '../../store/slices/notificationSlice';
 import { connectSocket, disconnectSocket } from '../../lib/socketClient';
+
+const TOAST_DURATION_MS = 4200;
 
 const timeAgo = (dateString) => {
   const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
@@ -21,14 +23,47 @@ const timeAgo = (dateString) => {
   return `${days} ngày trước`;
 };
 
+const getAvatarUrl = (user) => {
+  if (user?.avatar && user.avatar !== 'default-avatar.png') return user.avatar;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'U')}&background=0066cc&color=fff&size=32`;
+};
+
 export default function NotificationBell() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { accessToken, user } = useSelector((state) => state.login);
   const { items, unreadCount, loading } = useSelector((state) => state.notifications);
   const [open, setOpen] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [toasts, setToasts] = useState([]);
   const wrapperRef = useRef(null);
+  const toastTimersRef = useRef({});
+
+  const badgeText = useMemo(() => {
+    if (!unreadCount || unreadCount <= 0) return '';
+    return unreadCount > 9 ? '9+' : String(unreadCount);
+  }, [unreadCount]);
+
+  const removeToast = (notificationId) => {
+    if (!notificationId) return;
+
+    window.clearTimeout(toastTimersRef.current[notificationId]);
+    delete toastTimersRef.current[notificationId];
+    setToasts((current) => current.filter((item) => String(item._id) !== String(notificationId)));
+  };
+
+  const addToast = (notification) => {
+    if (!notification?._id) return;
+
+    setToasts((current) => {
+      const filtered = current.filter((item) => String(item._id) !== String(notification._id));
+      return [notification, ...filtered].slice(0, 3);
+    });
+
+    window.clearTimeout(toastTimersRef.current[notification._id]);
+    toastTimersRef.current[notification._id] = window.setTimeout(() => {
+      removeToast(notification._id);
+    }, TOAST_DURATION_MS);
+  };
 
   useEffect(() => {
     if (!accessToken || !user) return undefined;
@@ -39,9 +74,7 @@ export default function NotificationBell() {
     const handleNewNotification = (payload) => {
       dispatch(pushRealtimeNotification(payload));
       if (payload?.notification) {
-        setToast(payload.notification);
-        window.clearTimeout(window.__notificationToastTimer);
-        window.__notificationToastTimer = window.setTimeout(() => setToast(null), 4500);
+        addToast(payload.notification);
       }
     };
 
@@ -55,6 +88,8 @@ export default function NotificationBell() {
     return () => {
       socket?.off('notification:new', handleNewNotification);
       socket?.off('notification:unread-count', handleUnreadCount);
+      Object.values(toastTimersRef.current).forEach((timerId) => window.clearTimeout(timerId));
+      toastTimersRef.current = {};
       disconnectSocket();
     };
   }, [accessToken, user, dispatch]);
@@ -74,6 +109,7 @@ export default function NotificationBell() {
 
   const openNotification = async (notification) => {
     if (!notification) return;
+    removeToast(notification._id);
     if (!notification.isRead) {
       await dispatch(markNotificationReadThunk(notification._id));
     }
@@ -90,9 +126,9 @@ export default function NotificationBell() {
         title="Thông báo"
       >
         <span className="material-symbols-outlined text-[22px]">notifications</span>
-        {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-white">
-            {unreadCount > 99 ? '99+' : unreadCount}
+        {badgeText && (
+          <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1.5 text-[10px] font-bold leading-none text-white shadow-sm">
+            {badgeText}
           </span>
         )}
       </button>
@@ -127,9 +163,7 @@ export default function NotificationBell() {
                   <img
                     alt="Sender avatar"
                     className="h-8 w-8 rounded-full border border-outline-variant object-cover"
-                    src={notification.sender?.avatar && notification.sender.avatar !== 'default-avatar.png'
-                      ? notification.sender.avatar
-                      : `https://ui-avatars.com/api/?name=${encodeURIComponent(notification.sender?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
+                    src={getAvatarUrl(notification.sender)}
                   />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-on-surface">{notification.title}</p>
@@ -145,20 +179,41 @@ export default function NotificationBell() {
         </div>
       )}
 
-      {toast && (
-        <button
-          type="button"
-          onClick={() => openNotification(toast)}
-          className="fixed right-4 top-20 z-[90] w-[340px] max-w-[calc(100vw-2rem)] rounded-xl border border-primary/20 bg-surface-container-lowest p-4 text-left shadow-xl hover:bg-surface-container-low transition-colors"
-        >
-          <div className="flex items-start gap-3">
-            <span className="material-symbols-outlined mt-0.5 text-primary">notifications_active</span>
-            <div>
-              <p className="text-sm font-bold text-on-surface">{toast.title}</p>
-              <p className="mt-1 text-xs text-secondary">{toast.message}</p>
+      {toasts.length > 0 && (
+        <div className="fixed right-4 top-20 z-[90] flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-3">
+          {toasts.map((toast) => (
+            <div
+              key={toast._id}
+              className="overflow-hidden rounded-xl border border-emerald-200 bg-white text-left shadow-xl ring-1 ring-black/5"
+            >
+              <div className="flex items-start gap-3 p-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                  <span className="material-symbols-outlined text-[20px]">notifications_active</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openNotification(toast)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <p className="text-sm font-bold text-slate-900">{toast.title}</p>
+                  <p className="mt-1 text-xs text-slate-600 line-clamp-2">{toast.message}</p>
+                  <p className="mt-1 text-[11px] text-slate-400 line-clamp-1">{toast.post?.title || 'Bài viết'}</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeToast(toast._id)}
+                  className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  aria-label="Tắt thông báo"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+              <div className="h-1 bg-emerald-100">
+                <div className="h-full bg-emerald-500 animate-[toast-progress_4.2s_linear_forwards]" />
+              </div>
             </div>
-          </div>
-        </button>
+          ))}
+        </div>
       )}
     </div>
   );
