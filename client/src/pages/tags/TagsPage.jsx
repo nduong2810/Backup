@@ -89,7 +89,7 @@ const TagsPage = () => {
     <main className="flex-1 flex flex-col min-w-0 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline-variant pb-4 mb-6">
         <div>
-          <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">Tags</h1>
+          <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">Thẻ</h1>
           <p className="font-body-md text-body-md text-secondary">
             Tag là nhãn giúp phân loại câu hỏi và tìm kiếm nhanh hơn.
           </p>
@@ -180,7 +180,7 @@ const TagsPage = () => {
               className="px-3 py-1.5 rounded-DEFAULT font-body-sm text-body-sm border border-outline-variant text-secondary hover:bg-surface-container-low"
               disabled={page >= pagination.totalPages}
             >
-              Next
+              Tiếp
             </button>
           </div>
           <div className="flex items-center gap-2 text-secondary font-body-sm text-body-sm">

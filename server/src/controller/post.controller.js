@@ -19,6 +19,29 @@ class PostController {
         return null;
     }
 
+    async createPost(req, res) {
+        const validationError = this.checkValidationErrors(req, res);
+        if (validationError) return validationError;
+
+        try {
+            // Parse tags từ FormData (có thể là JSON string hoặc array)
+            if (typeof req.body.tags === 'string') {
+                try { req.body.tags = JSON.parse(req.body.tags); } catch { req.body.tags = []; }
+            }
+
+            const files = {
+                images: req.files?.images || [],
+                videos: req.files?.videos || [],
+            };
+
+            const post = await postService.createPost(req.user.userId, req.body, files);
+            return res.status(201).json({ success: true, message: 'Tạo bài đăng thành công', data: post });
+        } catch (error) {
+            const status = error.status || 500;
+            return res.status(status).json({ success: false, message: error.message || 'Lỗi server khi tạo bài đăng' });
+        }
+    }
+
     async getPosts(req, res) {
         try {
             const result = await postService.getPosts(req.query, req.user?.userId || null);
@@ -61,7 +84,12 @@ class PostController {
         if (validationError) return validationError;
 
         try {
-            const comment = await postService.createComment(req.params.id, req.user.userId, req.body);
+            const files = {
+                images: req.files?.images || [],
+                videos: req.files?.videos || [],
+            };
+
+            const comment = await postService.createComment(req.params.id, req.user.userId, req.body, files);
             return res.status(201).json({ success: true, message: 'Thêm bình luận thành công', data: comment });
         } catch (error) {
             const status = error.status || 500;

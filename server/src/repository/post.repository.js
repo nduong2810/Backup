@@ -5,9 +5,13 @@ import Post from '../model/post.model.js';
 // ====================================================================
 
 class PostRepository {
+    async create(postData) {
+        return await Post.create(postData);
+    }
+
     async findById(postId) {
         return await Post.findById(postId)
-            .populate('author', '_id fullName avatar major email');
+            .populate('author', '_id fullName avatar major email reputation');
     }
 
     async incrementViewCount(postId, options = {}) {
@@ -135,6 +139,8 @@ class PostRepository {
                     tags: 1,
                     status: 1,
                     images: 1,
+                    videos: 1,
+                    postType: 1,
                     viewCount: 1,
                     upvotes: 1,
                     downvotes: 1,
@@ -146,7 +152,7 @@ class PostRepository {
                     dislikeCount: 1,
                     answerCount: 1,
                     createdAt: 1,
-                    author: { _id: 1, fullName: 1, avatar: 1, email: 1 },
+                    author: { _id: 1, fullName: 1, avatar: 1, email: 1, reputation: 1 },
                 },
             },
         ];
@@ -171,7 +177,7 @@ class PostRepository {
             { $limit: limit },
             { $lookup: { from: 'users', localField: 'author', foreignField: '_id', as: 'author' } },
             { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
-            { $project: { _id: 1, title: 1, tags: 1, images: 1, createdAt: 1, viewCount: 1, dailyViewCount: 1, author: { fullName: 1, avatar: 1 } } },
+            { $project: { _id: 1, title: 1, tags: 1, images: 1, videos: 1, postType: 1, createdAt: 1, viewCount: 1, dailyViewCount: 1, author: { fullName: 1, avatar: 1 } } },
         ]);
     }
 
@@ -188,7 +194,7 @@ class PostRepository {
             { $limit: limit },
             { $lookup: { from: 'users', localField: 'author', foreignField: '_id', as: 'author' } },
             { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
-            { $project: { _id: 1, title: 1, tags: 1, images: 1, createdAt: 1, viewCount: 1, dailyUpvoteCount: 1, upvoteCount: 1, downvoteCount: 1, author: { fullName: 1, avatar: 1 } } },
+            { $project: { _id: 1, title: 1, tags: 1, images: 1, videos: 1, postType: 1, createdAt: 1, viewCount: 1, dailyUpvoteCount: 1, upvoteCount: 1, downvoteCount: 1, author: { fullName: 1, avatar: 1 } } },
         ]);
     }
 

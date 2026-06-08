@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAdminFlagsThunk, adminUpdateFlagStatusThunk } from '../../store/slices/reportSlice';
 
@@ -298,12 +298,12 @@ export default function AdminFlagsPage() {
                 disabled={safePage === totalPages}
                 className="rounded-sm border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Next
+                Tiếp
               </button>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-600">per page</span>
+              <span className="text-sm text-slate-600">mỗi trang</span>
               {PAGE_SIZE_OPTIONS.map((size) => {
                 const active = size === pageSize;
                 return (

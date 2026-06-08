@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import ReputationBadge from '../ui/ReputationBadge';
 
 function timeAgo(dateString) {
   const now = new Date();
@@ -19,6 +20,7 @@ const normalizeIds = (items = []) => items.map((item) => String(item?._id || ite
 export default function CommentItem({
   comment,
   postAuthorId,
+  postType = 'question',
   depth = 0,
   onDonate,
   currentUserId = '',
@@ -61,7 +63,7 @@ export default function CommentItem({
       />
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1 font-body-sm text-body-sm">
+        <div className="flex items-center gap-2 mb-1 font-body-sm text-body-sm flex-wrap">
           {isAuthor && (
             <span className="font-label-mono text-label-mono font-semibold uppercase px-1.5 py-0.5 rounded border border-primary text-primary bg-primary-fixed">
               Tác giả
@@ -70,6 +72,9 @@ export default function CommentItem({
           <Link to={comment.author?._id ? `/users/${comment.author._id}` : '#'} className="font-semibold text-primary-container hover:underline">
             {comment.author?.fullName}
           </Link>
+          {comment.author?.reputation !== undefined && (
+            <ReputationBadge reputation={comment.author.reputation} size="sm" />
+          )}
           <span className="text-outline text-xs">· {timeAgo(comment.createdAt)}</span>
         </div>
 
@@ -77,34 +82,96 @@ export default function CommentItem({
           {comment.content}
         </p>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => handleReact('like')}
-            disabled={isReacting}
-            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-              hasLiked
-                ? 'border-blue-300 bg-blue-50 text-blue-700'
-                : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-blue-50 hover:text-blue-700'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[16px]">thumb_up</span>
-            Like {likeCount}
-          </button>
+        {/* Comment Attached Images */}
+        {comment.images && comment.images.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {comment.images.map((imgUrl, idx) => (
+              <a key={idx} href={imgUrl} target="_blank" rel="noopener noreferrer" className="block max-w-[200px] max-h-[140px] overflow-hidden rounded-lg border border-outline-variant hover:opacity-90 transition-opacity">
+                <img src={imgUrl} alt={`Đính kèm ${idx + 1}`} className="w-full h-full object-cover" />
+              </a>
+            ))}
+          </div>
+        )}
 
-          <button
-            type="button"
-            onClick={() => handleReact('dislike')}
-            disabled={isReacting}
-            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-              hasDisliked
-                ? 'border-rose-300 bg-rose-50 text-rose-700'
-                : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-rose-50 hover:text-rose-700'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[16px]">thumb_down</span>
-            Dislike {dislikeCount}
-          </button>
+        {/* Comment Attached Video */}
+        {comment.videos && comment.videos.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {comment.videos.map((vidUrl, index) => (
+              <div key={index} className="rounded-lg overflow-hidden border border-outline-variant bg-black max-w-[320px] max-h-[200px] flex items-center justify-center">
+                <video src={vidUrl} controls className="max-w-full max-h-[200px] object-contain" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          comment.video && (
+            <div className="mt-3 rounded-lg overflow-hidden border border-outline-variant bg-black max-w-[320px] max-h-[200px] flex items-center justify-center">
+              <video src={comment.video} controls className="max-w-full max-h-[200px] object-contain" />
+            </div>
+          )
+        )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {postType === 'question' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => handleReact('like')}
+                disabled={isReacting}
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  hasLiked
+                    ? 'border-primary/30 bg-primary-fixed text-primary'
+                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30 hover:text-primary'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
+                Upvote {likeCount}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleReact('dislike')}
+                disabled={isReacting}
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  hasDisliked
+                    ? 'border-error/30 bg-error-container text-error'
+                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30 hover:text-error'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                Downvote {dislikeCount}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleReact('like')}
+                disabled={isReacting}
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  hasLiked
+                    ? 'border-blue-300 bg-blue-50 text-blue-700'
+                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-blue-50 hover:text-blue-700'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">thumb_up</span>
+                Thích {likeCount}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleReact('dislike')}
+                disabled={isReacting}
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  hasDisliked
+                    ? 'border-rose-300 bg-rose-50 text-rose-700'
+                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-rose-50 hover:text-rose-700'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">thumb_down</span>
+                Không thích {dislikeCount}
+              </button>
+            </>
+          )}
 
           {depth === 0 && typeof onDonate === 'function' && comment.author?._id && (
             <button
@@ -127,6 +194,7 @@ export default function CommentItem({
                 key={reply._id}
                 comment={reply}
                 postAuthorId={postAuthorId}
+                postType={postType}
                 depth={depth + 1}
                 onDonate={onDonate}
                 currentUserId={currentUserId}

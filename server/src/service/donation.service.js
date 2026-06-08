@@ -7,6 +7,7 @@ import Post from '../model/post.model.js';
 import Comment from '../model/comment.model.js';
 import sendEmail from '../util/email.util.js';
 import env from '../config/environment.js';
+import reputationService from './reputation.service.js';
 
 const SUPPORTED_AMOUNTS = new Set([20000, 50000, 100000]);
 const isMongoId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || '').trim());
@@ -274,6 +275,12 @@ class DonationService {
         completedAt: new Date(),
         gatewayResponse: { ...(donation.gatewayResponse || {}), responseCode, message, amount },
       });
+
+      const authorId = updatedDonation.author?._id?.toString() || updatedDonation.author?.toString();
+      if (authorId) {
+        await reputationService.award(authorId, 'donate_received');
+      }
+
       await safeNotify(updatedDonation.author?.email, 'Bạn vừa nhận được một lượt ủng hộ', `Bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa nhận ${updatedDonation.amount.toLocaleString('vi-VN')}đ từ một người dùng.`);
       return updatedDonation;
     }
@@ -297,6 +304,12 @@ class DonationService {
       approvedAt: new Date(),
       completedAt: new Date(),
     });
+
+    const authorId = updatedDonation.author?._id?.toString() || updatedDonation.author?.toString();
+    if (authorId) {
+      await reputationService.award(authorId, 'donate_received');
+    }
+
     await safeNotify(updatedDonation.author?.email, 'Một lượt ủng hộ vừa được duyệt', `Bill chuyển khoản cho bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa được admin duyệt với số tiền ${updatedDonation.amount.toLocaleString('vi-VN')}đ.`);
     return updatedDonation;
   }

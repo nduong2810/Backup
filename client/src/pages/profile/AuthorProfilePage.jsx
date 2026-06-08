@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import AppCard from '../../components/ui/AppCard';
 import AppButton from '../../components/ui/AppButton';
 import FormAlert from '../../components/ui/FormAlert';
+import ReputationBadge from '../../components/ui/ReputationBadge';
 import { getPublicAuthorProfileApi } from '../../services/donationService';
 
 const statusLabelMap = {
@@ -110,6 +111,14 @@ export default function AuthorProfilePage() {
             />
             <div className="min-w-0">
               <p className="text-sm text-slate-500">{user.email}</p>
+              {user.major && <p className="mt-1 text-xs text-slate-400">{user.major}</p>}
+              <div className="mt-2 flex items-center gap-2">
+                <ReputationBadge
+                  reputation={user.reputationInfo?.reputation || user.reputation || 1}
+                  size="md"
+                  showLabel
+                />
+              </div>
               {user.bio ? <p className="mt-2 text-sm leading-6 text-slate-700">{user.bio}</p> : <p className="mt-2 text-sm text-slate-500">Chưa có bio.</p>}
             </div>
           </div>

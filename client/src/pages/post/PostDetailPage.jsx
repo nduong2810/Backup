@@ -109,6 +109,10 @@ export default function PostDetailPage() {
     relatedPosts,
   } = usePostDetail(id);
 
+  const minReportReputation = 15;
+  const userReputation = user?.reputationInfo?.reputation ?? user?.reputation ?? 1;
+  const isReportLockedByRep = isAuthenticated && userReputation < minReportReputation;
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20">
@@ -143,6 +147,10 @@ export default function PostDetailPage() {
     event.preventDefault();
     if (!user?._id) {
       alert('Bạn cần đăng nhập để gửi cờ báo cáo.');
+      return;
+    }
+    if (isReportLockedByRep) {
+      alert(`Bạn cần tối thiểu ${minReportReputation} điểm reputation để gửi cờ báo cáo.`);
       return;
     }
     if (!flagType) return;
@@ -243,9 +251,11 @@ export default function PostDetailPage() {
       </button>
 
       <div className="flex gap-4 sm:gap-6">
-        <div className="hidden sm:block">
-          <VoteSidebar upvoteCount={upvoteCount} downvoteCount={downvoteCount} userVote={userVote} onVote={handleVote} loading={voteLoading} />
-        </div>
+        {post.postType === 'question' && (
+          <div className="hidden sm:block">
+            <VoteSidebar upvoteCount={upvoteCount} downvoteCount={downvoteCount} userVote={userVote} onVote={handleVote} loading={voteLoading} />
+          </div>
+        )}
 
         <PostContent
           post={post}
@@ -260,28 +270,43 @@ export default function PostDetailPage() {
         />
       </div>
 
-      <div className="mt-4 flex items-center justify-center gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest py-3 sm:hidden">
-        <button
-          onClick={() => handleVote('upvote')}
-          disabled={voteLoading}
-          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'upvote' ? 'border border-primary/30 bg-primary-fixed text-primary' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30'}`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
-          {upvoteCount}
-        </button>
-        <span className="text-lg font-bold text-on-surface">{upvoteCount - downvoteCount}</span>
-        <button
-          onClick={() => handleVote('downvote')}
-          disabled={voteLoading}
-          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'downvote' ? 'border border-error/30 bg-error-container text-error' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'}`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 20l8-8h-5V4H9v8H4z" /></svg>
-          {downvoteCount}
-        </button>
-      </div>
+      {post.postType === 'question' && (
+        <div className="mt-4 flex items-center justify-center gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest py-3 sm:hidden">
+          <button
+            onClick={() => handleVote('upvote')}
+            disabled={voteLoading}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'upvote' ? 'border border-primary/30 bg-primary-fixed text-primary' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
+            {upvoteCount}
+          </button>
+          <span className="text-lg font-bold text-on-surface">{upvoteCount - downvoteCount}</span>
+          <button
+            onClick={() => handleVote('downvote')}
+            disabled={voteLoading}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'downvote' ? 'border border-error/30 bg-error-container text-error' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 20l8-8h-5V4H9v8H4z" /></svg>
+            {downvoteCount}
+          </button>
+        </div>
+      )}
 
-      <div className="mt-10 sm:mt-12">
-        <ImageSlider images={post.images} />
+      <div className="mt-10 sm:mt-12 flex flex-col gap-4">
+        {post.images && post.images.length > 0 && <ImageSlider images={post.images} />}
+        {post.videos && post.videos.length > 0 ? (
+          post.videos.map((vidUrl, index) => (
+            <div key={index} className="rounded-xl overflow-hidden border border-outline-variant bg-black max-h-[480px] flex items-center justify-center">
+              <video src={vidUrl} controls className="max-w-full max-h-[480px] object-contain" />
+            </div>
+          ))
+        ) : (
+          post.video && (
+            <div className="rounded-xl overflow-hidden border border-outline-variant bg-black max-h-[480px] flex items-center justify-center">
+              <video src={post.video} controls className="max-w-full max-h-[480px] object-contain" />
+            </div>
+          )
+        )}
       </div>
 
       {/* <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
@@ -304,6 +329,7 @@ export default function PostDetailPage() {
         comments={comments}
         commentCount={commentCount}
         postAuthorId={post.author?._id}
+        postType={post.postType}
         onDonate={handleStartDonate}
         isAuthenticated={isAuthenticated}
         onLoginRequired={() => navigate('/auth/login')}
@@ -332,6 +358,7 @@ export default function PostDetailPage() {
           <select
             value={flagType}
             onChange={(e) => { dispatch(clearReportCreateMessages()); setFlagType(e.target.value); }}
+            disabled={isReportLockedByRep}
             className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
           >
             <option value="">Chọn loại cờ...</option>
@@ -343,12 +370,20 @@ export default function PostDetailPage() {
             onChange={(e) => setDetails(e.target.value)}
             rows={3}
             placeholder="Mô tả thêm (đặc biệt hữu ích khi chọn 'Cần moderator xem thủ công')"
+            disabled={isReportLockedByRep}
             className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
           />
 
-          <button type="submit" disabled={creating || !flagType} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60">
+          <button type="submit" disabled={creating || !flagType || isReportLockedByRep} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60">
             {creating ? 'Đang gửi...' : 'Gửi cờ báo cáo'}
           </button>
+
+          {isReportLockedByRep && (
+            <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+              <span className="mt-0.5 text-rose-700">!</span>
+              <p className="leading-5">Bạn cần tối thiểu {minReportReputation} điểm reputation để gửi cờ báo cáo.</p>
+            </div>
+          )}
 
           {createSuccessMessage && <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><span className="mt-0.5 text-emerald-700">✓</span><p className="leading-5">{createSuccessMessage}</p></div>}
           {createErrorMessage && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"><span className="mt-0.5 text-rose-700">!</span><p className="leading-5">{createErrorMessage}</p></div>}

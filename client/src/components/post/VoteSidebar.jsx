@@ -19,7 +19,7 @@ export default function VoteSidebar({
       <button
         onClick={() => onVote('upvote')}
         disabled={loading}
-        title="Upvote"
+        title="Bình chọn lên"
         className={`p-2 rounded-full border transition-all duration-200 flex items-center justify-center
           ${userVote === 'upvote'
             ? 'border-primary bg-primary-fixed text-primary shadow-sm'
@@ -38,7 +38,7 @@ export default function VoteSidebar({
         className={`text-lg font-bold tabular-nums
           ${totalScore > 0 ? 'text-primary' : totalScore < 0 ? 'text-error' : 'text-on-surface'}
         `}
-        title={`${upvoteCount} upvote, ${downvoteCount} downvote`}
+        title={`${upvoteCount} lượt đồng ý, ${downvoteCount} lượt phản đối`}
       >
         {totalScore}
       </span>
@@ -47,7 +47,7 @@ export default function VoteSidebar({
       <button
         onClick={() => onVote('downvote')}
         disabled={loading}
-        title="Downvote"
+        title="Bình chọn xuống"
         className={`p-2 rounded-full border transition-all duration-200 flex items-center justify-center
           ${userVote === 'downvote'
             ? 'border-error bg-error-container text-error shadow-sm'

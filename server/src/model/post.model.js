@@ -93,6 +93,19 @@ const postSchema = new mongoose.Schema({
         default: null
     },
 
+    // Loại bài viết: 'question' (Hỏi đáp) hoặc 'advice' (Lời khuyên/Chia sẻ kiến thức)
+    postType: {
+        type: String,
+        enum: ['question', 'advice'],
+        default: 'question',
+        index: true
+    },
+
+    // URL video đính kèm (nếu có)
+    videos: [{
+        type: String
+    }],
+
     // Trạng thái bài viết
     status: { 
         type: String, 
