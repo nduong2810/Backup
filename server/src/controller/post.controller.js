@@ -1,5 +1,7 @@
 import postService from '../service/post.service.js';
 import commentRepository from '../repository/comment.repository.js';
+import notificationService from '../service/notification.service.js';
+import { emitToPostRoom } from '../socket/socket.js';
 import { validationResult } from 'express-validator';
 
 const recentViewMap = new Map();
@@ -24,7 +26,6 @@ class PostController {
         if (validationError) return validationError;
 
         try {
-            // Parse tags từ FormData (có thể là JSON string hoặc array)
             if (typeof req.body.tags === 'string') {
                 try { req.body.tags = JSON.parse(req.body.tags); } catch { req.body.tags = []; }
             }
@@ -90,6 +91,34 @@ class PostController {
             };
 
             const comment = await postService.createComment(req.params.id, req.user.userId, req.body, files);
+            const post = comment.post;
+            const parentComment = comment.parentComment ? await commentRepository.findById(comment.parentComment) : null;
+            const postId = post?._id?.toString?.() || req.params.id;
+            const senderId = comment.author?._id?.toString?.() || req.user.userId;
+            const postAuthorId = post?.author?._id?.toString?.() || post?.author?.toString?.() || '';
+            const parentAuthorId = parentComment?.author?._id?.toString?.() || parentComment?.author?.toString?.() || '';
+
+            emitToPostRoom(postId, 'comment:new', { postId, comment });
+
+            if (parentComment && parentAuthorId && parentAuthorId !== senderId) {
+                await notificationService.createCommentNotification({
+                    recipientId: parentAuthorId,
+                    sender: comment.author,
+                    post,
+                    comment,
+                    parentComment,
+                    type: 'comment_reply',
+                });
+            } else if (!parentComment && postAuthorId && postAuthorId !== senderId) {
+                await notificationService.createCommentNotification({
+                    recipientId: postAuthorId,
+                    sender: comment.author,
+                    post,
+                    comment,
+                    type: 'post_comment',
+                });
+            }
+
             return res.status(201).json({ success: true, message: 'Thêm bình luận thành công', data: comment });
         } catch (error) {
             const status = error.status || 500;
