@@ -1,25 +1,49 @@
+import mongoose from 'mongoose';
 import notificationRepository from '../repository/notification.repository.js';
 import { emitToUser } from '../socket/socket.js';
 
 const getSenderName = (sender) => sender?.fullName || sender?.email || 'Người dùng';
 
+const normalizeObjectId = (value) => {
+  if (!value) return '';
+
+  if (typeof value === 'string') {
+    return mongoose.Types.ObjectId.isValid(value) ? value : '';
+  }
+
+  if (value instanceof mongoose.Types.ObjectId) {
+    return value.toString();
+  }
+
+  if (typeof value === 'object') {
+    if (value._id) return normalizeObjectId(value._id);
+    if (value.id) return normalizeObjectId(value.id);
+    if (value.$oid) return normalizeObjectId(value.$oid);
+  }
+
+  return '';
+};
+
 class NotificationService {
   async createCommentNotification({ recipientId, sender, post, comment, parentComment = null, type }) {
-    if (!recipientId || !sender || !post || !comment) return null;
+    const safeRecipientId = normalizeObjectId(recipientId);
+    const senderId = normalizeObjectId(sender);
+    const postId = normalizeObjectId(post);
+    const commentId = normalizeObjectId(comment);
+    const parentCommentId = normalizeObjectId(parentComment);
 
-    const senderId = sender?._id?.toString?.() || sender?.toString?.() || '';
-    if (senderId && String(recipientId) === String(senderId)) return null;
+    if (!safeRecipientId || !senderId || !postId || !commentId) return null;
+    if (safeRecipientId === senderId) return null;
 
-    const postId = post?._id?.toString?.() || post?.toString?.() || '';
     const senderName = getSenderName(sender);
     const isReply = type === 'comment_reply';
 
     const notification = await notificationRepository.create({
-      recipient: recipientId,
+      recipient: safeRecipientId,
       sender: senderId,
       post: postId,
-      comment: comment._id,
-      parentComment: parentComment?._id || parentComment || null,
+      comment: commentId,
+      parentComment: parentCommentId || null,
       type: isReply ? 'comment_reply' : 'post_comment',
       title: isReply ? 'Có người trả lời bình luận của bạn' : 'Có người bình luận bài viết của bạn',
       message: isReply
@@ -28,28 +52,31 @@ class NotificationService {
       link: `/posts/${postId}`,
     });
 
-    const unreadCount = await notificationRepository.countUnread(recipientId);
-    emitToUser(recipientId, 'notification:new', { notification, unreadCount });
+    const unreadCount = await notificationRepository.countUnread(safeRecipientId);
+    emitToUser(safeRecipientId, 'notification:new', { notification, unreadCount });
 
     return notification;
   }
 
   async list(userId, limit = 20) {
-    const notifications = await notificationRepository.findByRecipient(userId, limit);
-    const unreadCount = await notificationRepository.countUnread(userId);
+    const safeUserId = normalizeObjectId(userId);
+    const notifications = await notificationRepository.findByRecipient(safeUserId, limit);
+    const unreadCount = await notificationRepository.countUnread(safeUserId);
     return { notifications, unreadCount };
   }
 
   async markAsRead(notificationId, userId) {
-    await notificationRepository.markAsRead(notificationId, userId);
-    const unreadCount = await notificationRepository.countUnread(userId);
-    emitToUser(userId, 'notification:unread-count', { unreadCount });
+    const safeUserId = normalizeObjectId(userId);
+    await notificationRepository.markAsRead(notificationId, safeUserId);
+    const unreadCount = await notificationRepository.countUnread(safeUserId);
+    emitToUser(safeUserId, 'notification:unread-count', { unreadCount });
     return { unreadCount };
   }
 
   async markAllAsRead(userId) {
-    await notificationRepository.markAllAsRead(userId);
-    emitToUser(userId, 'notification:unread-count', { unreadCount: 0 });
+    const safeUserId = normalizeObjectId(userId);
+    await notificationRepository.markAllAsRead(safeUserId);
+    emitToUser(safeUserId, 'notification:unread-count', { unreadCount: 0 });
     return { unreadCount: 0 };
   }
 }
