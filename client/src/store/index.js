@@ -7,6 +7,7 @@ import postReducer from './slices/postSlice';
 import tagReducer from './slices/tagSlice';
 import reportReducer from './slices/reportSlice';
 import savedReducer from './slices/savedSlice';
+import notificationReducer from './slices/notificationSlice';
 
 const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ const store = configureStore({
     tags: tagReducer,
     reports: reportReducer,
     saved: savedReducer,
+    notifications: notificationReducer,
   },
 });
 
