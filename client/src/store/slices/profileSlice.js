@@ -12,6 +12,7 @@ const initialState = {
     avatar: '',
   },
   reputationInfo: null,
+  createdAt: null,
   loading: false,
   saving: false,
   successMessage: '',
@@ -99,6 +100,7 @@ const profileSlice = createSlice({
         state.form.bio = action.payload.bio || '';
         state.form.avatar = action.payload.avatar || '';
         state.reputationInfo = action.payload.reputationInfo || null;
+        state.createdAt = action.payload.createdAt || null;
       })
       .addCase(fetchProfileThunk.rejected, (state, action) => {
         state.loading = false;

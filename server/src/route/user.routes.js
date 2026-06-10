@@ -1,10 +1,14 @@
 import express from 'express';
 import userController from '../controller/user.controller.js';
+import statisticsController from '../controller/statistics.controller.js';
 import { authenticateToken, authorizeRole } from '../middleware/auth.middleware.js';
 import { authLimiter } from '../middleware/rateLimit.middleware.js';
 import { body, param } from 'express-validator';
 
 const router = express.Router();
+
+// Route thống kê hoạt động user (Cần lớp 3, 4)
+router.get('/statistics', authenticateToken, authorizeRole('user'), statisticsController.getMyStatistics);
 
 // Route xem Profile (Cần lớp 3, 4)
 router.get('/profile', authenticateToken, authorizeRole('user'), userController.getMyProfile);
