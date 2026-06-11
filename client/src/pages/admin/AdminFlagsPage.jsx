@@ -82,7 +82,7 @@ const buildPagination = (current, total) => {
   return pages;
 };
 
-export default function AdminFlagsPage() {
+export default function AdminFlagsPage({ embedded = false }) {
   const dispatch = useDispatch();
   const {
     adminFlags,
@@ -132,7 +132,7 @@ export default function AdminFlagsPage() {
   }, [currentPage, totalPages]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8">
+    <div className={embedded ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8'}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Duyệt cờ báo cáo</h1>

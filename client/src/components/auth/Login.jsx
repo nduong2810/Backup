@@ -32,7 +32,7 @@ export default function Login() {
   const onSubmit = async () => {
     const resultAction = await dispatch(loginThunk());
     if (loginThunk.fulfilled.match(resultAction)) {
-      navigate(resultAction.payload.redirectUrl || '/user/profile');
+      navigate(resultAction.payload.redirectUrl || '/');
     }
   };
 

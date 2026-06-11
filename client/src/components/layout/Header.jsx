@@ -97,46 +97,49 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
   
               {menuOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-md overflow-hidden z-50">
-                  {isAdmin && (
+                  {isAdmin ? (
                     <>
                       <button
                         onClick={() => {
                           setMenuOpen(false);
-                          navigate('/admin/donations');
+                          navigate('/admin/profile');
                         }}
-                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm font-semibold text-primary hover:bg-surface-container-low transition-colors"
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
                       >
-                        Duyệt bill COD
+                        Hồ sơ
                       </button>
                       <button
                         onClick={() => {
                           setMenuOpen(false);
-                          navigate('/admin/flags');
+                          navigate('/admin/dashboard');
                         }}
-                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm font-semibold text-primary hover:bg-surface-container-low transition-colors"
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
                       >
-                        Duyệt cờ báo cáo
+                        Trang quản trị
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate('/user/profile');
+                        }}
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
+                      >
+                        Hồ sơ
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate('/user/saves');
+                        }}
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
+                      >
+                        Thư mục lưu trữ
                       </button>
                     </>
                   )}
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      navigate('/user/profile');
-                    }}
-                    className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
-                  >
-                    Hồ sơ
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      navigate('/user/saves');
-                    }}
-                    className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
-                  >
-                    Thư mục lưu trữ
-                  </button>
                   <button
                     onClick={() => {
                       setMenuOpen(false);

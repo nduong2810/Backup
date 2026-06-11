@@ -1,22 +1,25 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import AppCard from '../ui/AppCard';
 import AppButton from '../ui/AppButton';
 import InputField from '../ui/InputField';
-import FormAlert from '../ui/FormAlert';
 import { getAdminProfile } from '../../services/userService';
 import {
   fetchProfileThunk,
   setProfileField,
   updateProfileThunk,
+  clearProfileMessages,
 } from '../../store/slices/profileSlice';
+import { useToast } from '../../context/ToastContext';
 
 export default function AdminProfile() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { form, loading, saving, successMessage, errorMessage } = useSelector((state) => state.profile);
   const [checkingAccess, setCheckingAccess] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'edit'
 
   const bioCount = useMemo(() => `${form.bio.length}/500`, [form.bio]);
 
@@ -31,12 +34,10 @@ export default function AdminProfile() {
       } catch (error) {
         if (!isMounted) return;
         const status = error?.response?.status;
-
         if (status === 401) {
           navigate('/auth/login', { replace: true });
           return;
         }
-
         navigate('/user/profile', { replace: true });
       } finally {
         if (isMounted) setCheckingAccess(false);
@@ -44,117 +45,353 @@ export default function AdminProfile() {
     };
 
     verifyAdminAccess();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [dispatch, navigate]);
 
-  const alertType = errorMessage ? 'error' : successMessage ? 'success' : 'info';
-  const alertMessage = errorMessage || successMessage || 'Bạn đang ở chế độ quản trị viên.';
+  useEffect(() => {
+    if (successMessage) {
+      toast.success(successMessage);
+      dispatch(clearProfileMessages());
+      setActiveTab('overview');
+    }
+  }, [successMessage, toast, dispatch]);
+
+  useEffect(() => {
+    if (errorMessage) {
+      toast.error(errorMessage);
+      dispatch(clearProfileMessages());
+    }
+  }, [errorMessage, toast, dispatch]);
+
+  // Avatar handlers (giống User Profile)
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        dispatch(setProfileField({ field: 'avatar', value: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDeleteAvatar = () => {
+    dispatch(setProfileField({ field: 'avatar', value: 'default-avatar.png' }));
+  };
 
   if (checkingAccess || loading) {
     return (
-      <AppCard title="Chỉnh sửa hồ sơ quản trị" subtitle="Đang tải dữ liệu...">
-        <div className="h-32 animate-pulse rounded-xl bg-slate-100" />
-      </AppCard>
+      <div className="max-w-6xl mx-auto px-4 lg:px-6 py-2 space-y-8">
+        <div className="h-32 animate-pulse rounded-2xl bg-white border border-slate-200" />
+        <div className="h-64 animate-pulse rounded-2xl bg-white border border-slate-200" />
+      </div>
     );
   }
 
-  return (
-    <div className="space-y-4">
-      <AppCard
-        title="Chỉnh sửa hồ sơ quản trị"
-        subtitle="Cập nhật thông tin tài khoản quản trị viên"
-        rightSlot={(
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-            ADMIN
-          </span>
-        )}
-      >
-        <FormAlert type={alertType} message={alertMessage} />
+  const avatarUrl =
+    form.avatar && form.avatar !== 'default-avatar.png'
+      ? form.avatar
+      : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          form.fullName || 'A'
+        )}&background=004e9f&color=fff&size=120`;
 
-        <form
-          className="mt-4 space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            dispatch(updateProfileThunk());
-          }}
-        >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InputField
-              label="Họ và tên"
-              name="fullName"
-              value={form.fullName}
-              onChange={(event) => dispatch(setProfileField({ field: 'fullName', value: event.target.value }))}
-              required
-              disabled={saving}
-            />
-            <InputField label="Email" name="email" value={form.email} onChange={() => {}} disabled />
-            <InputField
-              label="Số điện thoại"
-              name="phone"
-              value={form.phone}
-              onChange={(event) => dispatch(setProfileField({ field: 'phone', value: event.target.value }))}
-              placeholder="VD: 09xxxxxxxx"
-              disabled={saving}
-            />
-            <InputField
-              label="Chuyên ngành / Công việc"
-              name="major"
-              value={form.major}
-              onChange={(event) => dispatch(setProfileField({ field: 'major', value: event.target.value }))}
-              placeholder="Quản trị hệ thống"
-              disabled={saving}
+  return (
+    <div className="max-w-6xl mx-auto px-4 lg:px-6 py-2">
+      {/* Header Card */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm flex flex-col md:flex-row items-center md:items-start justify-between gap-8">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left w-full">
+          {/* Avatar — hiển thị tĩnh */}
+          <div className="w-28 h-28 shrink-0 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
+            <img
+              src={avatarUrl}
+              alt="Admin Avatar"
+              className="w-full h-full object-cover"
             />
           </div>
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-slate-700">Bio</span>
-            <textarea
-              name="bio"
-              value={form.bio}
-              onChange={(event) => dispatch(setProfileField({ field: 'bio', value: event.target.value }))}
-              maxLength={500}
-              rows={4}
-              disabled={saving}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200"
-              placeholder="Giới thiệu ngắn về vai trò quản trị, mảng phụ trách..."
-            />
-            <p className="mt-1 text-right text-xs text-slate-500">{bioCount}</p>
-          </label>
+          {/* Name & Metadata */}
+          <div className="flex-1 min-w-0 space-y-3">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <h1 className="text-3xl font-extrabold text-slate-800 truncate">
+                {form.fullName || 'Quản trị viên'}
+              </h1>
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                <span className="material-symbols-outlined text-xs">shield</span>
+                ADMIN
+              </span>
+            </div>
 
-          <AppButton type="submit" disabled={saving}>
-            {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-          </AppButton>
-        </form>
-      </AppCard>
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-5 gap-y-1.5 text-sm text-slate-500 font-semibold">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-lg text-slate-400">mail</span>
+                <span>{form.email}</span>
+              </div>
+              {form.phone && (
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-lg text-slate-400">call</span>
+                  <span>{form.phone}</span>
+                </div>
+              )}
+              {form.major && (
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-lg text-slate-400">work</span>
+                  <span>{form.major}</span>
+                </div>
+              )}
+            </div>
 
-      <AppCard title="Tính năng quản trị" subtitle="Các quyền và công cụ dành riêng cho admin">
-        <div className="mb-3">
+            <p className="text-sm text-slate-600 leading-relaxed max-w-xl">
+              Quản trị viên hệ thống ITForum. Giám sát hoạt động, phê duyệt nội dung và hỗ trợ cộng đồng.
+            </p>
+          </div>
+        </div>
+
+        {/* Edit button */}
+        <button
+          onClick={() => setActiveTab(activeTab === 'edit' ? 'overview' : 'edit')}
+          className={`flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-bold shadow-sm transition-all shrink-0 ${
+            activeTab === 'edit'
+              ? 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
+              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+          }`}
+        >
+          <span className="material-symbols-outlined text-lg">
+            {activeTab === 'edit' ? 'close' : 'edit'}
+          </span>
+          {activeTab === 'edit' ? 'Đóng chỉnh sửa' : 'Chỉnh sửa hồ sơ'}
+        </button>
+      </div>
+
+      {/* Tab navigation */}
+      {activeTab !== 'edit' && (
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-2 mt-4">
           <button
-            type="button"
-            onClick={() => navigate('/admin/flags')}
-            className="rounded-lg border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            onClick={() => setActiveTab('overview')}
+            className={`rounded-full px-5 py-2 text-xs font-bold transition-all ${
+              activeTab === 'overview'
+                ? 'bg-primary text-white shadow-sm'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
           >
-            Mở trang duyệt cờ báo cáo
+            Tổng quan
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-sky-100 bg-sky-50 p-4">
-            <p className="text-sm font-semibold text-sky-800">Truy cập Admin API</p>
-            <p className="mt-1 text-xs text-sky-700">Sử dụng được các endpoint yêu cầu quyền quản trị.</p>
+      )}
+
+      {/* Overview Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:items-stretch mt-2">
+          {/* Left Column — 2/5 */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            {/* Bio section */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+              <h3 className="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3.5 mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-xl text-slate-500">person_search</span>
+                Giới thiệu
+              </h3>
+              {form.bio ? (
+                <p className="text-[15px] text-slate-600 whitespace-pre-wrap leading-relaxed">
+                  {form.bio}
+                </p>
+              ) : (
+                <div className="text-[15px] text-slate-400 leading-relaxed py-6 text-center">
+                  Mục giới thiệu đang trống.{' '}
+                  <button
+                    onClick={() => setActiveTab('edit')}
+                    className="text-primary font-bold hover:underline"
+                  >
+                    Cập nhật ngay
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Quyền hạn */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm lg:flex-1">
+              <h3 className="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3.5 mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-xl text-slate-500">verified_user</span>
+                Quyền hạn
+              </h3>
+              <div className="space-y-4">
+                {[
+                  { label: 'Toàn quyền hệ thống', desc: 'Truy cập đầy đủ API nghiệp vụ và quản trị.' },
+                  { label: 'Duyệt giao dịch', desc: 'Phê duyệt bill COD và giao dịch quyên góp.' },
+                  { label: 'Kiểm duyệt nội dung', desc: 'Xử lý báo cáo vi phạm từ cộng đồng.' },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-3.5 text-base">
+                    <span className="material-symbols-outlined text-primary text-lg mt-0.5">check_circle</span>
+                    <div>
+                      <p className="font-bold text-slate-800">{item.label}</p>
+                      <p className="text-slate-500 mt-1 text-sm">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-            <p className="text-sm font-semibold text-emerald-800">Giám sát người dùng</p>
-            <p className="mt-1 text-xs text-emerald-700">Theo dõi hoạt động và xử lý báo cáo từ cộng đồng.</p>
-          </div>
-          <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
-            <p className="text-sm font-semibold text-amber-800">Thao tác nâng cao</p>
-            <p className="mt-1 text-xs text-amber-700">Được cấp quyền thao tác cao hơn tài khoản thông thường.</p>
+
+          {/* Right Column — 3/5 */}
+          <div className="lg:col-span-3 lg:flex lg:flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 lg:flex-1 sm:grid-rows-2">
+              {[
+                {
+                  icon: 'bar_chart',
+                  title: 'Trang quản trị',
+                  desc: 'Theo dõi thống kê hệ thống, biểu đồ tăng trưởng và doanh thu.',
+                  link: '/admin/dashboard',
+                  color: 'text-primary',
+                  bgColor: 'bg-primary/5 border-primary/10',
+                  hoverBg: 'group-hover:bg-primary group-hover:text-white',
+                },
+                {
+                  icon: 'flag',
+                  title: 'Duyệt cờ báo cáo',
+                  desc: 'Giải quyết các phản hồi gắn cờ vi phạm từ thành viên.',
+                  link: '/admin/dashboard?tab=flags',
+                  color: 'text-orange-600',
+                  bgColor: 'bg-orange-50 border-orange-100',
+                  hoverBg: 'group-hover:bg-orange-500 group-hover:text-white',
+                },
+                {
+                  icon: 'payments',
+                  title: 'Duyệt bill ủng hộ COD',
+                  desc: 'Xác thực ảnh chuyển khoản thủ công và duyệt lượt ủng hộ.',
+                  link: '/admin/dashboard?tab=donations',
+                  color: 'text-emerald-600',
+                  bgColor: 'bg-emerald-50 border-emerald-100',
+                  hoverBg: 'group-hover:bg-emerald-500 group-hover:text-white',
+                },
+              ].map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => navigate(item.link)}
+                  className="group rounded-2xl border border-slate-200 bg-white p-8 shadow-sm hover:shadow-md transition-all text-left flex flex-col justify-between h-full"
+                >
+                  <div className="flex flex-col flex-1">
+                    <div className={`w-14 h-14 rounded-2xl border flex items-center justify-center ${item.bgColor} ${item.color} ${item.hoverBg} transition-colors`}>
+                      <span className="material-symbols-outlined text-3xl">{item.icon}</span>
+                    </div>
+                    <h3 className="font-extrabold text-slate-800 text-xl mt-5">{item.title}</h3>
+                    <p className="text-[15px] text-slate-500 mt-2 leading-relaxed flex-1">{item.desc}</p>
+                  </div>
+                  <span className="mt-5 inline-flex items-center gap-1.5 text-base font-bold text-primary">
+                    Truy cập
+                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </AppCard>
+      )}
+
+      {/* Edit Tab Content */}
+      {activeTab === 'edit' && (
+        <div className="mt-4">
+          <AppCard title="Chỉnh sửa hồ sơ" subtitle="Cập nhật thông tin tài khoản quản trị viên">
+          <form
+            className="mt-4 space-y-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              dispatch(updateProfileThunk());
+            }}
+          >
+            {/* Avatar Change Area */}
+            <div className="flex flex-col items-center gap-3 pb-5 border-b border-slate-100">
+              <div className="relative group cursor-pointer w-24 h-24">
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="w-24 h-24 rounded-full object-cover border-2 border-slate-200 group-hover:opacity-75 transition-opacity"
+                />
+                <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <span className="material-symbols-outlined text-2xl">photo_camera</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                    disabled={saving}
+                  />
+                </label>
+              </div>
+              <div className="text-center">
+                <div className="text-sm font-semibold text-slate-800">
+                  Ảnh đại diện
+                </div>
+                <div className="text-xs text-slate-400 mt-0.5">Nhấp vào ảnh để thay đổi</div>
+                {form.avatar && form.avatar !== 'default-avatar.png' && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAvatar}
+                    className="mt-2 text-xs font-semibold text-rose-500 hover:text-rose-600 hover:underline transition-colors block mx-auto"
+                    disabled={saving}
+                  >
+                    Xóa ảnh đại diện
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <InputField
+                label="Họ và tên"
+                name="fullName"
+                value={form.fullName}
+                onChange={(event) => dispatch(setProfileField({ field: 'fullName', value: event.target.value }))}
+                required
+                disabled={saving}
+              />
+              <InputField label="Email" name="email" value={form.email} onChange={() => {}} disabled />
+              <InputField
+                label="Số điện thoại"
+                name="phone"
+                value={form.phone}
+                onChange={(event) => dispatch(setProfileField({ field: 'phone', value: event.target.value }))}
+                placeholder="VD: 09xxxxxxxx"
+                disabled={saving}
+              />
+              <InputField
+                label="Chuyên ngành / Chức vụ"
+                name="major"
+                value={form.major}
+                onChange={(event) => dispatch(setProfileField({ field: 'major', value: event.target.value }))}
+                placeholder="Quản trị hệ thống"
+                disabled={saving}
+              />
+            </div>
+
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-slate-700">Bio</span>
+              <textarea
+                name="bio"
+                value={form.bio}
+                onChange={(event) => dispatch(setProfileField({ field: 'bio', value: event.target.value }))}
+                maxLength={500}
+                rows={4}
+                disabled={saving}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                placeholder="Giới thiệu ngắn về vai trò quản trị, mảng phụ trách..."
+              />
+              <p className="mt-1 text-right text-xs text-slate-500">{bioCount}</p>
+            </label>
+
+            <div className="flex items-center gap-3 pt-2">
+              <AppButton type="submit" disabled={saving}>
+                {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </AppButton>
+              <button
+                type="button"
+                onClick={() => setActiveTab('overview')}
+                className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-800"
+              >
+                Hủy bỏ
+              </button>
+            </div>
+          </form>
+        </AppCard>
+        </div>
+      )}
     </div>
   );
 }

@@ -24,6 +24,23 @@ const extractError = (error) => {
   return error?.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.';
 };
 
+const saveUserToLocalStorage = (user) => {
+  if (!user) {
+    localStorage.removeItem('user');
+    return;
+  }
+  try {
+    const userToStore = { ...user };
+    if (userToStore.avatar && userToStore.avatar.startsWith('data:image/')) {
+      // Tránh lưu base64 quá lớn gây tràn quota localStorage
+      userToStore.avatar = 'default-avatar.png';
+    }
+    localStorage.setItem('user', JSON.stringify(userToStore));
+  } catch (error) {
+    console.error('Failed to save user to localStorage:', error);
+  }
+};
+
 export const loginThunk = createAsyncThunk(
     'login/submit',
     async (_, { getState, rejectWithValue }) => {
@@ -64,7 +81,7 @@ const loginSlice = createSlice({
     },
     updateUser: (state, action) => {
       state.user = { ...state.user, ...action.payload };
-      localStorage.setItem('user', JSON.stringify(state.user));
+      saveUserToLocalStorage(state.user);
     },
   },
   extraReducers: (builder) => {
@@ -88,7 +105,7 @@ const loginSlice = createSlice({
 
           localStorage.removeItem('user');
           localStorage.removeItem('accessToken');
-          if (loggedUser) localStorage.setItem('user', JSON.stringify(loggedUser));
+          if (loggedUser) saveUserToLocalStorage(loggedUser);
           if (token) localStorage.setItem('accessToken', token);
         })
         .addCase(loginThunk.rejected, (state, action) => {
@@ -99,6 +116,21 @@ const loginSlice = createSlice({
           state.isAuthenticated = false;
           localStorage.removeItem('user');
           localStorage.removeItem('accessToken');
+        })
+        .addCase('profile/fetch/fulfilled', (state, action) => {
+          if (state.user && action.payload) {
+            state.user.fullName = action.payload.fullName || state.user.fullName;
+            state.user.avatar = action.payload.avatar || state.user.avatar;
+            saveUserToLocalStorage(state.user);
+          }
+        })
+        .addCase('profile/update/fulfilled', (state, action) => {
+          if (state.user && action.payload) {
+            const updatedUser = action.payload.user || {};
+            state.user.fullName = updatedUser.fullName || state.user.fullName;
+            state.user.avatar = updatedUser.avatar || state.user.avatar;
+            saveUserToLocalStorage(state.user);
+          }
         });
   },
 });

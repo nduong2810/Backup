@@ -1,5 +1,6 @@
 import express from 'express';
 import authController from '../controller/auth.controller.js';
+import adminController from '../controller/admin.controller.js';
 import { authenticateToken, authorizeRole } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
@@ -10,6 +11,13 @@ router.get('/profile',
     authenticateToken,                                      // Lớp 3: Xác thực JWT
     authorizeRole('admin'),                                 // Lớp 4: Chỉ admin mới được truy cập
     authController.getAdminProfile.bind(authController)     // Controller xử lý
+);
+
+// ==================== ADMIN DASHBOARD ====================
+router.get('/dashboard-stats',
+    authenticateToken,
+    authorizeRole('admin'),
+    adminController.getDashboardStats.bind(adminController)
 );
 
 export default router;

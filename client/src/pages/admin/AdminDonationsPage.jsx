@@ -24,7 +24,7 @@ const formatCurrency = (value) => {
 
 const defaultRejectReason = 'Bill không hợp lệ hoặc chưa nhận được chuyển khoản';
 
-export default function AdminDonationsPage() {
+export default function AdminDonationsPage({ embedded = false }) {
   const [donations, setDonations] = useState([]);
   const [status, setStatus] = useState('pending_review');
   const [loading, setLoading] = useState(false);
@@ -131,7 +131,7 @@ export default function AdminDonationsPage() {
   const modalBusy = !!approvingId || !!rejectingId;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8">
+    <div className={embedded ? 'w-full' : 'mx-auto w-full max-w-7xl px-4 py-8'}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Duyệt bill ủng hộ COD</h1>

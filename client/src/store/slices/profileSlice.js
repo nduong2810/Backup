@@ -1,6 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { getMyProfile, updateMyProfile } from '../../services/userService';
-import { updateUser } from './loginSlice';
 
 const initialState = {
   form: {
@@ -39,7 +38,8 @@ export const fetchProfileThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await getMyProfile();
-      return response.data;
+      const data = response.data;
+      return data;
     } catch (error) {
       return rejectWithValue(extractError(error));
     }
@@ -59,13 +59,9 @@ export const updateProfileThunk = createAsyncThunk(
         avatar: form.avatar,
       };
       const response = await updateMyProfile(payload);
-      const updatedUser = response.data.user || {};
-      dispatch(updateUser({
-        fullName: updatedUser.fullName,
-        avatar: updatedUser.avatar,
-      }));
       return response.data;
     } catch (error) {
+      dispatch(fetchProfileThunk()); // Rollback local state on server update failure
       return rejectWithValue(extractError(error));
     }
   },
