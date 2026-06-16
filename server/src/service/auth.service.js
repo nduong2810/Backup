@@ -19,7 +19,12 @@ class AuthService {
     // Logic Đăng ký tài khoản
     async registerUser(fullName, email, password) {
         const existingUser = await userRepository.findByEmail(email);
-        if (existingUser && existingUser.isActive) throw new Error("Email đã được sử dụng");
+        if (existingUser) {
+            if (!existingUser.isActive) {
+                throw new Error("Tài khoản của bạn đã bị vô hiệu hóa, vui lòng liên hệ với quản trị viên để mở lại!");
+            }
+            throw new Error("Email đã được sử dụng");
+        }
 
         // Hash mật khẩu
         const salt = await bcrypt.genSalt(10);
@@ -27,31 +32,22 @@ class AuthService {
 
         const { otp, otpExpiry } = generateOtpPayload();
 
-        if (existingUser && !existingUser.isActive) {
-            await userRepository.updateUserByEmail(email, {
+        const pendingUser = await pendingUserRepository.findByEmail(email);
+        if (pendingUser) {
+            await pendingUserRepository.updatePendingUserByEmail(email, {
                 fullName,
                 password: hashedPassword,
                 otp,
                 otpExpiry
             });
         } else {
-            const pendingUser = await pendingUserRepository.findByEmail(email);
-            if (pendingUser) {
-                await pendingUserRepository.updatePendingUserByEmail(email, {
-                    fullName,
-                    password: hashedPassword,
-                    otp,
-                    otpExpiry
-                });
-            } else {
-                await pendingUserRepository.createPendingUser({
-                    fullName,
-                    email,
-                    password: hashedPassword,
-                    otp,
-                    otpExpiry
-                });
-            }
+            await pendingUserRepository.createPendingUser({
+                fullName,
+                email,
+                password: hashedPassword,
+                otp,
+                otpExpiry
+            });
         }
 
         // Gửi email chứa OTP

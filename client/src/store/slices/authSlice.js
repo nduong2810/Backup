@@ -74,6 +74,10 @@ const authSlice = createSlice({
             const { field, value } = action.payload;
             state.form[field] = value;
         },
+        setActivationEmailAndStep: (state, action) => {
+            state.registeredEmail = action.payload.email;
+            state.step = action.payload.step;
+        },
         resetAuthState: () => initialState, // Reset mọi thứ về ban đầu
     },
     extraReducers: (builder) => {
@@ -116,5 +120,5 @@ const authSlice = createSlice({
     },
 });
 
-export const { setAuthField, resetAuthState } = authSlice.actions;
+export const { setAuthField, resetAuthState, setActivationEmailAndStep } = authSlice.actions;
 export default authSlice.reducer;
