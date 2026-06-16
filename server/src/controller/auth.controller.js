@@ -87,7 +87,11 @@ class AuthController {
             });
         } catch (error) {
             const status = error.status || 400;
-            res.status(status).json({ message: error.message });
+            res.status(status).json({
+                message: error.message,
+                code: error.code,
+                email: error.email
+            });
         }
     }
 

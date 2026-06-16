@@ -136,6 +136,26 @@ class AuthService {
         // Tìm user theo email
         const user = await userRepository.findByEmail(email);
         if (!user) {
+            const pendingUser = await pendingUserRepository.findByEmail(email);
+            if (pendingUser) {
+                const isPasswordMatch = await bcrypt.compare(password, pendingUser.password);
+                if (!isPasswordMatch) {
+                    throw { status: 401, message: 'Email hoặc mật khẩu không đúng' };
+                }
+
+                const { otp, otpExpiry } = generateOtpPayload();
+                await pendingUserRepository.updatePendingUserByEmail(email, { otp, otpExpiry });
+
+                const message = `Mã OTP kích hoạt tài khoản của bạn là: ${otp}\nMã có hiệu lực trong 5 phút.`;
+                await sendEmail(email, "Kích hoạt tài khoản Forum", message);
+
+                throw {
+                    status: 403,
+                    code: 'ACCOUNT_NOT_ACTIVATED',
+                    email: email,
+                    message: 'Tài khoản chưa được xác thực. Mã OTP mới đã được gửi vào email của bạn.'
+                };
+            }
             throw { status: 401, message: 'Email hoặc mật khẩu không đúng' };
         }
 
@@ -147,7 +167,7 @@ class AuthService {
 
         // Kiểm tra tài khoản đã kích hoạt chưa
         if (!user.isActive) {
-            throw { status: 403, message: 'Tài khoản chưa được kích hoạt' };
+            throw { status: 403, message: 'Tài khoản của bạn đã bị vô hiệu hóa, vui lòng liên hệ với quản trị viên để mở lại!' };
         }
 
         // Tạo JWT token (chứa id và role)
