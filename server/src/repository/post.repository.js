@@ -4,6 +4,8 @@ import Post from '../model/post.model.js';
 // POST REPOSITORY - Tầng Data Access cho bài viết
 // ====================================================================
 
+const PUBLIC_POST_MATCH = { status: { $nin: ['hidden', 'deleted'] } };
+
 class PostRepository {
     async create(postData) {
         return await Post.create(postData);
@@ -57,6 +59,14 @@ class PostRepository {
 
     async removeDislike(postId, userId) {
         return await Post.findByIdAndUpdate(postId, { $pull: { dislikes: userId } }, { new: true });
+    }
+
+    async setHiddenStatus(postId) {
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'hidden' } }, { new: true });
+    }
+
+    async setDeletedStatus(postId) {
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted' } }, { new: true });
     }
 
     async findRelatedByTag(tag, excludePostId, limit = 5) {
@@ -162,7 +172,7 @@ class PostRepository {
 
     async findHotNetworkQuestions(limit = 10) {
         return await Post.aggregate([
-            { $match: { status: { $ne: 'deleted' } } },
+            { $match: PUBLIC_POST_MATCH },
             { $addFields: { upvoteCount: { $cond: [{ $isArray: '$upvotes' }, { $size: { $ifNull: ['$upvotes', []] } }, { $ifNull: ['$upvotes', 0] }] } } },
             { $sort: { viewCount: -1, upvoteCount: -1, createdAt: -1 } },
             { $limit: limit },
@@ -172,7 +182,7 @@ class PostRepository {
 
     async findTrendingToday(todayStart, limit = 10) {
         return await Post.aggregate([
-            { $match: { status: { $ne: 'deleted' }, dailyViewDate: todayStart, dailyViewCount: { $gt: 0 } } },
+            { $match: { ...PUBLIC_POST_MATCH, dailyViewDate: todayStart, dailyViewCount: { $gt: 0 } } },
             { $sort: { dailyViewCount: -1, viewCount: -1, createdAt: -1 } },
             { $limit: limit },
             { $lookup: { from: 'users', localField: 'author', foreignField: '_id', as: 'author' } },
@@ -183,7 +193,7 @@ class PostRepository {
 
     async findTopUpvoted(todayStart, limit = 10) {
         return await Post.aggregate([
-            { $match: { status: { $ne: 'deleted' }, dailyUpvoteDate: todayStart, dailyUpvoteCount: { $gt: 0 } } },
+            { $match: { ...PUBLIC_POST_MATCH, dailyUpvoteDate: todayStart, dailyUpvoteCount: { $gt: 0 } } },
             {
                 $addFields: {
                     upvoteCount: { $cond: [{ $isArray: '$upvotes' }, { $size: { $ifNull: ['$upvotes', []] } }, { $ifNull: ['$upvotes', 0] }] },
@@ -204,7 +214,7 @@ class PostRepository {
 
     async findPopularTags(limit = 8) {
         return await Post.aggregate([
-            { $match: { status: { $ne: 'deleted' }, tags: { $exists: true, $ne: [] } } },
+            { $match: { ...PUBLIC_POST_MATCH, tags: { $exists: true, $ne: [] } } },
             { $unwind: '$tags' },
             { $match: { tags: { $type: 'string', $ne: '' } } },
             { $group: { _id: { $toLower: '$tags' }, count: { $sum: 1 } } },

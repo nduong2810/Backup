@@ -68,6 +68,9 @@ class SavedService {
         if (!post) {
             throw new Error('Bai viet khong ton tai');
         }
+        if (post.status === 'hidden') {
+            throw new Error('Bai viet dang bi an');
+        }
         if (post.status === 'deleted') {
             throw new Error('Bai viet da bi xoa');
         }
@@ -179,27 +182,18 @@ class SavedService {
         }
         if (!cached) return;
 
-        let parsed = [];
-        try {
-            parsed = JSON.parse(cached);
-        } catch {
-            return;
-        }
-        const current = new Set(parsed);
-        const postIds = Array.isArray(postIdOrIds) ? postIdOrIds : [postIdOrIds];
+        const ids = new Set(JSON.parse(cached));
+        const targetIds = Array.isArray(postIdOrIds) ? postIdOrIds : [postIdOrIds];
 
-        postIds.forEach((postId) => {
-            if (isAdd) {
-                current.add(postId.toString());
-            } else {
-                current.delete(postId.toString());
-            }
+        targetIds.forEach((id) => {
+            if (isAdd) ids.add(String(id));
+            else ids.delete(String(id));
         });
 
         try {
-            await client.set(cacheKey, JSON.stringify(Array.from(current)), { EX: SAVED_IDS_TTL_SECONDS });
+            await client.set(cacheKey, JSON.stringify([...ids]), { EX: SAVED_IDS_TTL_SECONDS });
         } catch {
-            // Ignore cache write failure
+            // Ignore cache update failure
         }
     }
 }

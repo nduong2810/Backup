@@ -8,9 +8,8 @@ import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import VerifyResetOTP from './components/auth/VerifyResetOTP';
 import AdminProfilePage from './pages/admin/AdminProfilePage';
-
-
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminPostsTab from './pages/admin/AdminPostsTab';
 import ProfilePage from './pages/profile/ProfilePage';
 import AuthorProfilePage from './pages/profile/AuthorProfilePage';
 import SavedPostsPage from './pages/profile/SavedPostsPage';
@@ -71,6 +70,7 @@ function App() {
         <Route path="/users/:id" element={<AuthorProfilePage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        <Route path="/admin/posts" element={<AdminPostsTab />} />
         <Route path="/admin/flags" element={<Navigate to="/admin/dashboard?tab=flags" replace />} />
         <Route path="/admin/donations" element={<Navigate to="/admin/dashboard?tab=donations" replace />} />
       </Route>

@@ -9,6 +9,8 @@ import {
 } from '../services/postService';
 import { connectSocket, getSocket } from '../lib/socketClient';
 
+const LOCKED_POST_MESSAGE = 'Bài viết đang bị khóa';
+
 export default function usePostDetail(postId) {
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
@@ -32,6 +34,8 @@ export default function usePostDetail(postId) {
 
   const [relatedPosts, setRelatedPosts] = useState([]);
 
+  const isPostLocked = post?.status === 'closed';
+
   const fetchPostDetail = useCallback(async (showLoading = true) => {
     if (!postId) return;
 
@@ -53,6 +57,7 @@ export default function usePostDetail(postId) {
       setLikeCount(postData.likeCount || postData.likes?.length || 0);
       setDislikeCount(postData.dislikeCount || postData.dislikes?.length || 0);
       setUserReaction(postData.userReaction || null);
+      setCommentError(postData.status === 'closed' ? LOCKED_POST_MESSAGE : '');
     } catch (err) {
       const message = err.response?.data?.message || 'Không thể tải bài viết.';
       setError(message);
@@ -77,6 +82,10 @@ export default function usePostDetail(postId) {
 
   const handleVote = useCallback(async (voteType) => {
     if (voteLoading) return;
+    if (isPostLocked) {
+      alert(LOCKED_POST_MESSAGE);
+      return;
+    }
 
     setVoteLoading(true);
     try {
@@ -96,10 +105,14 @@ export default function usePostDetail(postId) {
     } finally {
       setVoteLoading(false);
     }
-  }, [postId, voteLoading, userVote]);
+  }, [postId, voteLoading, userVote, isPostLocked]);
 
   const handlePostReaction = useCallback(async (reactionType) => {
     if (reactionLoading) return;
+    if (isPostLocked) {
+      alert(LOCKED_POST_MESSAGE);
+      return;
+    }
 
     setReactionLoading(true);
     try {
@@ -130,10 +143,14 @@ export default function usePostDetail(postId) {
     } finally {
       setReactionLoading(false);
     }
-  }, [postId, reactionLoading]);
+  }, [postId, reactionLoading, isPostLocked]);
 
   const submitComment = useCallback(async (payload) => {
     if (submittingComment) return false;
+    if (isPostLocked) {
+      setCommentError(LOCKED_POST_MESSAGE);
+      return false;
+    }
 
     setSubmittingComment(true);
     setCommentError('');
@@ -149,10 +166,14 @@ export default function usePostDetail(postId) {
     } finally {
       setSubmittingComment(false);
     }
-  }, [postId, submittingComment, fetchPostDetail]);
+  }, [postId, submittingComment, fetchPostDetail, isPostLocked]);
 
   const reactComment = useCallback(async (commentId, reactionType) => {
     if (reactingCommentId) return false;
+    if (isPostLocked) {
+      alert(LOCKED_POST_MESSAGE);
+      return false;
+    }
 
     setReactingCommentId(commentId);
     try {
@@ -169,7 +190,7 @@ export default function usePostDetail(postId) {
     } finally {
       setReactingCommentId('');
     }
-  }, [reactingCommentId, fetchPostDetail]);
+  }, [reactingCommentId, fetchPostDetail, isPostLocked]);
 
   useEffect(() => {
     fetchPostDetail();
