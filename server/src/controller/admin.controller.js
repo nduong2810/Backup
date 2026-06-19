@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import User from '../model/user.model.js';
 import Post from '../model/post.model.js';
 import Comment from '../model/comment.model.js';
@@ -26,10 +27,26 @@ const STATUS_LABELS = {
   retracted: 'Đã rút cờ',
 };
 
+const POST_STATUS_VALUES = ['active', 'closed', 'hidden', 'deleted'];
+const PUBLIC_POST_MATCH = { status: { $nin: ['hidden', 'deleted'] } };
+
+const POST_STATUS_MESSAGES = {
+  active: 'Bài viết đang hiển thị',
+  closed: 'Bài viết đã bị khóa',
+  hidden: 'Bài viết đang bị ẩn',
+  deleted: 'Bài viết đã bị xóa',
+};
+
+const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const getObjectId = (value) => {
+  if (!mongoose.Types.ObjectId.isValid(String(value || '').trim())) return null;
+  return new mongoose.Types.ObjectId(String(value).trim());
+};
+
 class AdminController {
     async getDashboardStats(req, res) {
         try {
-            // 1. Chỉ số nhanh (Counters)
             const [
                 totalUsers,
                 totalPosts,
@@ -39,7 +56,7 @@ class AdminController {
                 pendingFlagsCount,
             ] = await Promise.all([
                 User.countDocuments(),
-                Post.countDocuments({ status: { $ne: 'deleted' } }),
+                Post.countDocuments(PUBLIC_POST_MATCH),
                 Comment.countDocuments(),
                 DonationTransaction.aggregate([
                     { $match: { status: 'completed' } },
@@ -52,7 +69,6 @@ class AdminController {
             const totalDonationAmount = completedDonationsAgg[0]?.totalAmount || 0;
             const totalDonationsCount = completedDonationsAgg[0]?.count || 0;
 
-            // 2. Lấy dữ liệu timeline (6 tháng gần nhất)
             const startDate = new Date();
             startDate.setMonth(startDate.getMonth() - 5);
             startDate.setDate(1);
@@ -61,40 +77,15 @@ class AdminController {
             const [userTimeline, postTimeline, donationTimeline] = await Promise.all([
                 User.aggregate([
                     { $match: { createdAt: { $gte: startDate } } },
-                    {
-                        $group: {
-                            _id: {
-                                year: { $year: '$createdAt' },
-                                month: { $month: '$createdAt' }
-                            },
-                            count: { $sum: 1 }
-                        }
-                    }
+                    { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, count: { $sum: 1 } } }
                 ]),
                 Post.aggregate([
-                    { $match: { status: { $ne: 'deleted' }, createdAt: { $gte: startDate } } },
-                    {
-                        $group: {
-                            _id: {
-                                year: { $year: '$createdAt' },
-                                month: { $month: '$createdAt' }
-                            },
-                            count: { $sum: 1 }
-                        }
-                    }
+                    { $match: { ...PUBLIC_POST_MATCH, createdAt: { $gte: startDate } } },
+                    { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, count: { $sum: 1 } } }
                 ]),
                 DonationTransaction.aggregate([
                     { $match: { status: 'completed', createdAt: { $gte: startDate } } },
-                    {
-                        $group: {
-                            _id: {
-                                year: { $year: '$createdAt' },
-                                month: { $month: '$createdAt' }
-                            },
-                            amount: { $sum: '$amount' },
-                            count: { $sum: 1 }
-                        }
-                    }
+                    { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, amount: { $sum: '$amount' }, count: { $sum: 1 } } }
                 ])
             ]);
 
@@ -104,11 +95,9 @@ class AdminController {
                 const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
                 const year = d.getFullYear();
                 const month = d.getMonth() + 1;
-
                 const userEntry = userTimeline.find(t => t._id.year === year && t._id.month === month);
                 const postEntry = postTimeline.find(t => t._id.year === year && t._id.month === month);
                 const donationEntry = donationTimeline.find(t => t._id.year === year && t._id.month === month);
-
                 timeline.push({
                     year,
                     month,
@@ -120,10 +109,9 @@ class AdminController {
                 });
             }
 
-            // 3. Phân bố bài viết theo loại và tỷ lệ phản hồi bài viết
             const [postTypes, activePostIdsWithComments] = await Promise.all([
                 Post.aggregate([
-                    { $match: { status: { $ne: 'deleted' } } },
+                    { $match: PUBLIC_POST_MATCH },
                     { $group: { _id: '$postType', count: { $sum: 1 } } }
                 ]),
                 Comment.distinct('post'),
@@ -136,11 +124,10 @@ class AdminController {
 
             const postsWithCommentsCount = await Post.countDocuments({
                 _id: { $in: activePostIdsWithComments },
-                status: { $ne: 'deleted' }
+                ...PUBLIC_POST_MATCH,
             });
             const postsWithoutCommentsCount = Math.max(0, totalPosts - postsWithCommentsCount);
 
-            // 4. Danh sách 5 báo cáo vi phạm gần nhất
             const rawRecentFlags = await ReportTicket.find({})
                 .sort({ createdAt: -1 })
                 .limit(5)
@@ -153,9 +140,7 @@ class AdminController {
                 let status = ticket.status;
                 if (status === 'submitted') {
                     const elapsed = Date.now() - new Date(ticket.createdAt).getTime();
-                    if (elapsed >= THIRTY_MINUTES_MS) {
-                        status = 'received';
-                    }
+                    if (elapsed >= THIRTY_MINUTES_MS) status = 'received';
                 }
                 return {
                     ...ticket,
@@ -165,7 +150,6 @@ class AdminController {
                 };
             });
 
-            // 5. Danh sách 5 bill COD thành công gần nhất
             const recentDonations = await DonationTransaction.find({ status: 'completed' })
                 .sort({ createdAt: -1 })
                 .limit(5)
@@ -220,6 +204,106 @@ class AdminController {
         }
     }
 
+    async getManagedPosts(req, res) {
+        try {
+            const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+            const limit = Math.min(50, Math.max(5, Number.parseInt(req.query.limit, 10) || 10));
+            const keyword = String(req.query.keyword || '').trim();
+            const status = String(req.query.status || 'all').trim().toLowerCase();
+            const skip = (page - 1) * limit;
+
+            const match = {};
+            if (keyword) match.title = { $regex: escapeRegex(keyword), $options: 'i' };
+            if (POST_STATUS_VALUES.includes(status)) match.status = status;
+
+            const pipeline = [
+                { $match: match },
+                {
+                    $addFields: {
+                        upvoteCount: { $cond: [{ $isArray: '$upvotes' }, { $size: '$upvotes' }, 0] },
+                        downvoteCount: { $cond: [{ $isArray: '$downvotes' }, { $size: '$downvotes' }, 0] },
+                    },
+                },
+                {
+                    $lookup: {
+                        from: 'comments',
+                        let: { postId: '$_id' },
+                        pipeline: [
+                            { $match: { $expr: { $eq: ['$post', '$$postId'] } } },
+                            { $count: 'count' },
+                        ],
+                        as: 'commentMeta',
+                    },
+                },
+                { $addFields: { commentCount: { $ifNull: [{ $arrayElemAt: ['$commentMeta.count', 0] }, 0] } } },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'author',
+                        foreignField: '_id',
+                        as: 'authorDoc',
+                    },
+                },
+                { $unwind: { path: '$authorDoc', preserveNullAndEmptyArrays: true } },
+                {
+                    $facet: {
+                        items: [
+                            { $sort: { createdAt: -1 } },
+                            { $skip: skip },
+                            { $limit: limit },
+                            {
+                                $project: {
+                                    title: 1,
+                                    status: 1,
+                                    postType: 1,
+                                    createdAt: 1,
+                                    updatedAt: 1,
+                                    viewCount: 1,
+                                    upvoteCount: 1,
+                                    downvoteCount: 1,
+                                    commentCount: 1,
+                                    tags: 1,
+                                    author: {
+                                        _id: '$authorDoc._id',
+                                        fullName: '$authorDoc.fullName',
+                                        email: '$authorDoc.email',
+                                        avatar: '$authorDoc.avatar',
+                                    },
+                                    authorLabel: {
+                                        $ifNull: ['$authorDoc.fullName', { $ifNull: ['$authorDoc.email', 'Không rõ tác giả'] }],
+                                    },
+                                },
+                            },
+                        ],
+                        total: [{ $count: 'count' }],
+                    },
+                },
+            ];
+
+            const [result] = await Post.aggregate(pipeline);
+            const posts = result?.items || [];
+            const total = result?.total?.[0]?.count || 0;
+
+            return res.status(200).json({
+                success: true,
+                data: {
+                    posts,
+                    pagination: {
+                        page,
+                        limit,
+                        total,
+                        totalPages: Math.max(1, Math.ceil(total / limit)),
+                    },
+                },
+            });
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                message: error.message || 'Không thể tải danh sách bài viết',
+            });
+        }
+    }
+
     async updateSystemSetting(req, res) {
         try {
             const { key, value } = req.body;
@@ -252,6 +336,43 @@ class AdminController {
             res.status(500).json({
                 success: false,
                 message: error.message || 'Lỗi khi cập nhật cấu hình hệ thống'
+            });
+        }
+    }
+
+    async updatePostStatus(req, res) {
+        try {
+            const postObjectId = getObjectId(req.params.postId);
+            const status = String(req.body.status || '').trim().toLowerCase();
+
+            if (!postObjectId) {
+                return res.status(400).json({ success: false, message: 'ID bài viết không hợp lệ' });
+            }
+            if (!POST_STATUS_VALUES.includes(status)) {
+                return res.status(400).json({ success: false, message: 'Trạng thái bài viết không hợp lệ' });
+            }
+
+            const post = await Post.findByIdAndUpdate(
+                postObjectId,
+                { $set: { status } },
+                { new: true }
+            )
+                .select('title status updatedAt')
+                .lean();
+
+            if (!post) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: POST_STATUS_MESSAGES[status] || 'Đã cập nhật trạng thái bài viết',
+                data: post,
+            });
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                message: error.message || 'Không thể cập nhật trạng thái bài viết',
             });
         }
     }

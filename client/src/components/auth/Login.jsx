@@ -33,6 +33,11 @@ export default function Login() {
     const resultAction = await dispatch(loginThunk());
     if (loginThunk.fulfilled.match(resultAction)) {
       navigate(resultAction.payload.redirectUrl || '/');
+    } else if (loginThunk.rejected.match(resultAction)) {
+      const payload = resultAction.payload;
+      if (payload && payload.code === 'ACCOUNT_NOT_ACTIVATED') {
+        navigate('/auth/register', { state: { email: payload.email, step: 2 } });
+      }
     }
   };
 

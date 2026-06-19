@@ -4,19 +4,17 @@ import adminController from '../controller/admin.controller.js';
 import { authenticateToken, authorizeRole } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
+const adminOnly = [authenticateToken, authorizeRole('admin')];
 
 // ==================== ADMIN PROFILE ====================
-// Pipeline: Authentication (Lớp 3) → Authorization admin (Lớp 4) → Controller
-router.get('/profile', 
-    authenticateToken,                                      // Lớp 3: Xác thực JWT
-    authorizeRole('admin'),                                 // Lớp 4: Chỉ admin mới được truy cập
-    authController.getAdminProfile.bind(authController)     // Controller xử lý
+router.get('/profile',
+    ...adminOnly,
+    authController.getAdminProfile.bind(authController)
 );
 
 // ==================== ADMIN DASHBOARD ====================
 router.get('/dashboard-stats',
-    authenticateToken,
-    authorizeRole('admin'),
+    ...adminOnly,
     adminController.getDashboardStats.bind(adminController)
 );
 
@@ -31,6 +29,17 @@ router.put('/settings',
     authenticateToken,
     authorizeRole('admin'),
     adminController.updateSystemSetting.bind(adminController)
+);
+
+// ==================== ADMIN POST MANAGEMENT ====================
+router.get('/posts',
+    ...adminOnly,
+    adminController.getManagedPosts.bind(adminController)
+);
+
+router.patch('/posts/:postId/status',
+    ...adminOnly,
+    adminController.updatePostStatus.bind(adminController)
 );
 
 export default router;

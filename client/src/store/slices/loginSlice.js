@@ -21,6 +21,9 @@ const initialState = {
 const extractError = (error) => {
   const errors = error?.response?.data?.errors;
   if (Array.isArray(errors) && errors.length) return errors[0].msg;
+  if (error?.response?.data?.code === 'ACCOUNT_NOT_ACTIVATED') {
+    return error.response.data;
+  }
   return error?.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.';
 };
 
@@ -110,7 +113,11 @@ const loginSlice = createSlice({
         })
         .addCase(loginThunk.rejected, (state, action) => {
           state.loading = false;
-          state.errorMessage = action.payload || 'Đăng nhập thất bại.';
+          if (typeof action.payload === 'object' && action.payload !== null) {
+            state.errorMessage = action.payload.message || 'Đăng nhập thất bại.';
+          } else {
+            state.errorMessage = action.payload || 'Đăng nhập thất bại.';
+          }
           state.user = null;
           state.accessToken = null;
           state.isAuthenticated = false;

@@ -23,7 +23,7 @@ class TagRepository {
                     from: 'posts',
                     let: { tag: '$slug', startOfToday },
                     pipeline: [
-                        { $match: { status: { $ne: 'deleted' } } },
+                        { $match: { status: { $nin: ['hidden', 'deleted'] } } },
                         { $match: { $expr: { $in: ['$$tag', '$tags'] } } },
                         {
                             $group: {

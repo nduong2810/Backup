@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     setAuthField,
     resetAuthState,
     registerThunk,
     resendRegisterOtpThunk,
-    verifyRegisterOtpThunk
+    verifyRegisterOtpThunk,
+    setActivationEmailAndStep
 } from '../../store/slices/authSlice';
 
 import RegisterFormUI from '../../components/auth/RegisterFormUI';
@@ -16,13 +17,23 @@ import AuthLayout from '../../components/auth/AuthLayout';
 export default function RegisterPage() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const { step, form, registeredEmail, loading, errorMessage, successMessage } = useSelector((state) => state.auth);
 
-    // Xóa sạch dữ liệu cũ nếu người dùng thoát trang và vào lại
+    // Xóa sạch dữ liệu cũ nếu người dùng thoát trang và vào lại, hoặc chuyển tiếp từ trang đăng nhập
     useEffect(() => {
-        dispatch(resetAuthState());
-    }, [dispatch]);
+        if (location.state && location.state.step === 2 && location.state.email) {
+            dispatch(setActivationEmailAndStep({
+                email: location.state.email,
+                step: 2
+            }));
+            // Xóa state để F5 hoặc đi hướng khác không bị kẹt ở bước 2
+            window.history.replaceState({}, document.title);
+        } else {
+            dispatch(resetAuthState());
+        }
+    }, [dispatch, location.state]);
 
     // Handle của Bước 1: Đăng ký
     const handleFieldChange = (field, value) => {

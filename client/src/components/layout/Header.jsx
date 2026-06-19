@@ -94,7 +94,7 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
                 </span>
                 <span className="material-symbols-outlined text-[18px] text-secondary">expand_more</span>
               </button>
-  
+
               {menuOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-md overflow-hidden z-50">
                   {isAdmin ? (
@@ -116,6 +116,15 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
                         className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
                       >
                         Trang quản trị
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate('/admin/posts');
+                        }}
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
+                      >
+                        Quản lý bài đăng
                       </button>
                     </>
                   ) : (
