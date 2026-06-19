@@ -9,6 +9,7 @@ import reportReducer from './slices/reportSlice';
 import savedReducer from './slices/savedSlice';
 import notificationReducer from './slices/notificationSlice';
 import statisticsReducer from './slices/statisticsSlice';
+import settingsReducer from './slices/settingsSlice';
 
 const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ const store = configureStore({
     saved: savedReducer,
     notifications: notificationReducer,
     statistics: statisticsReducer,
+    settings: settingsReducer,
   },
 });
 

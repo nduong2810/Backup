@@ -30,15 +30,24 @@ export default function StatsReputation({ reputationChanges = [] }) {
       ) : (
         <div className="space-y-3">
           {reputationChanges.map((change) => {
-            const rep = change.reputationEarned || 0;
+            const rep = change.reputationEarned ?? 0;
             const isPositive = rep > 0;
+            const isNeutral = rep === 0;
             const isPostEvent = change.type?.startsWith('post_');
             
             let displayMsg = '';
             if (change.type === 'post_upvoted') {
               displayMsg = 'Nhận upvote cho bài viết:';
+            } else if (change.type === 'post_upvote_removed') {
+              displayMsg = 'Huỷ upvote cho bài viết:';
             } else if (change.type === 'post_downvoted') {
               displayMsg = 'Nhận downvote cho bài viết:';
+            } else if (change.type === 'post_downvote_removed') {
+              displayMsg = 'Huỷ downvote cho bài viết:';
+            } else if (change.type === 'downvote_given') {
+              displayMsg = 'Bị trừ điểm gửi downvote:';
+            } else if (change.type === 'downvote_given_removed') {
+              displayMsg = 'Hoàn điểm gửi downvote:';
             } else if (change.type === 'donate_received') {
               displayMsg = 'Giao dịch:';
             } else {
@@ -58,6 +67,8 @@ export default function StatsReputation({ reputationChanges = [] }) {
                   className={`flex shrink-0 items-center justify-center rounded border px-2 py-0.5 text-xs font-bold ${
                     isPositive
                       ? 'bg-emerald-50 border-emerald-100 text-emerald-600'
+                      : isNeutral
+                      ? 'bg-slate-100 border-slate-200 text-slate-500'
                       : 'bg-rose-50 border-rose-100 text-rose-600'
                   }`}
                 >

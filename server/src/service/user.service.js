@@ -1,15 +1,40 @@
 import User from '../model/user.model.js';
 import bcrypt from 'bcryptjs';
 import donationRepository from '../repository/donation.repository.js';
-import { getRankInfo } from './reputation.service.js';
+import { getRankInfo, getTodayStart } from './reputation.service.js';
 import { uploadToCloudinary } from '../util/cloudinary.js';
+import SystemSetting from '../model/systemSetting.model.js';
 
 class UserService {
     async getProfile(userId) {
         const user = await User.findById(userId).select('-password');
         if (!user) return null;
         const rep = user.reputation || 1;
-        return { ...user.toObject(), reputationInfo: { reputation: rep, ...getRankInfo(rep) } };
+
+        let dailyCap = 200;
+        try {
+            const setting = await SystemSetting.findOne({ key: 'reputation_daily_cap' });
+            if (setting && typeof setting.value === 'number') {
+                dailyCap = setting.value;
+            }
+        } catch (err) {
+            console.error('[UserService] Error loading reputation_daily_cap:', err);
+        }
+
+        const todayStart = getTodayStart();
+        const sameDay = user.reputationDailyDate &&
+            new Date(user.reputationDailyDate).getTime() === todayStart.getTime();
+        const dailyEarned = sameDay ? (user.reputationDailyEarned || 0) : 0;
+
+        return { 
+            ...user.toObject(), 
+            reputationInfo: { 
+                reputation: rep, 
+                dailyCap,
+                dailyEarned,
+                ...getRankInfo(rep) 
+            } 
+        };
     }
 
     async updateProfile(userId, updateData) {
@@ -47,8 +72,32 @@ class UserService {
         if (!user) throw { status: 404, message: 'Tác giả không tồn tại' };
 
         const rep = user.reputation || 1;
+
+        let dailyCap = 200;
+        try {
+            const setting = await SystemSetting.findOne({ key: 'reputation_daily_cap' });
+            if (setting && typeof setting.value === 'number') {
+                dailyCap = setting.value;
+            }
+        } catch (err) {
+            console.error('[UserService] Error loading reputation_daily_cap:', err);
+        }
+
+        const todayStart = getTodayStart();
+        const sameDay = user.reputationDailyDate &&
+            new Date(user.reputationDailyDate).getTime() === todayStart.getTime();
+        const dailyEarned = sameDay ? (user.reputationDailyEarned || 0) : 0;
+
         return {
-            user: { ...user.toObject(), reputationInfo: { reputation: rep, ...getRankInfo(rep) } },
+            user: { 
+                ...user.toObject(), 
+                reputationInfo: { 
+                    reputation: rep, 
+                    dailyCap,
+                    dailyEarned,
+                    ...getRankInfo(rep) 
+                } 
+            },
             donationSummary: {
                 totalAmount: summary.totalAmount || 0,
                 donationCount: summary.donationCount || 0,

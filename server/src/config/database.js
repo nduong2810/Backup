@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import env from './environment'
+import { seedSystemSettings } from '../util/seedSettings.js'
 
 // ====================================================================
 // CẤU HÌNH KẾT NỐI MONGODB
@@ -15,6 +16,9 @@ const connectDB = async () => {
 
     console.log(`✅ MongoDB connected: ${conn.connection.host}`)
     console.log(`📁 Database: ${conn.connection.name}`)
+
+    // Tự động seed cấu hình hệ thống
+    await seedSystemSettings()
 
     // --- Xử lý sự kiện kết nối ---
     mongoose.connection.on('error', (err) => {

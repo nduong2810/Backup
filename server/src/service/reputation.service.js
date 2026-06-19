@@ -1,22 +1,29 @@
 import User from '../model/user.model.js';
+import SystemSetting from '../model/systemSetting.model.js';
+import Post from '../model/post.model.js';
+import DonationTransaction from '../model/donationTransaction.model.js';
+import ReputationHistory from '../model/reputationHistory.model.js';
 
 // ====================================================================
 // REPUTATION SERVICE
 // Hệ thống điểm danh tiếng IT Forum — chỉ áp dụng cho upvote/downvote bài viết
 // ====================================================================
 
-const DAILY_CAP = 200;  // Tối đa 200 điểm/ngày từ upvote/downvote
-
 const VN_TZ_OFFSET_MIN = 7 * 60;
 
-const getTodayStart = () => {
+export const getTodayStart = () => {
     const now = new Date();
-    const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
-    const vnNow = new Date(utcMs + VN_TZ_OFFSET_MIN * 60000);
-    const vnStart = new Date(vnNow);
-    vnStart.setHours(0, 0, 0, 0);
-    const vnStartUtcMs = vnStart.getTime() - VN_TZ_OFFSET_MIN * 60000;
-    return new Date(vnStartUtcMs);
+    // Cộng 7 tiếng để ra giờ VN
+    const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    // Tạo mốc 00:00:00 của ngày VN bằng UTC
+    const vnStartUtc = Date.UTC(
+        vnTime.getUTCFullYear(),
+        vnTime.getUTCMonth(),
+        vnTime.getUTCDate(),
+        0, 0, 0, 0
+    );
+    // Trừ lại 7 tiếng để ra mốc thời gian UTC tương ứng với 00:00:00 VN
+    return new Date(vnStartUtc - 7 * 60 * 60 * 1000);
 };
 
 // ====================================================================
@@ -70,11 +77,13 @@ const DAILY_CAP_REASONS = new Set([
 
 class ReputationService {
     /**
-     * Trao/trừ điểm cho user.
-     * @param {string} userId
+     * Trao/trừ điểm cho user và ghi nhận lịch sử giao dịch.
+     * @param {string} userId - Người nhận/bị trừ điểm danh tiếng (tác giả hoặc voter)
      * @param {string} reason — key từ DELTA_MAP
+     * @param {string} targetId - ID bài viết hoặc ID quyên góp (tùy sự kiện)
+     * @param {string} voterId - ID người thực hiện vote/hủy vote (nếu có)
      */
-    async award(userId, reason) {
+    async award(userId, reason, targetId = null, voterId = null) {
         if (!userId || !reason) return;
         const delta = DELTA_MAP[reason];
         if (delta === undefined) return;
@@ -84,20 +93,94 @@ class ReputationService {
 
         let effectiveDelta = delta;
 
+        // Tải động upvote/downvote scores từ database
+        try {
+            if (reason === 'post_upvoted' || reason === 'post_upvote_removed') {
+                const setting = await SystemSetting.findOne({ key: 'reputation_upvote_score' });
+                if (setting && typeof setting.value === 'number') {
+                    const base = setting.value;
+                    effectiveDelta = reason === 'post_upvoted' ? base : -base;
+                }
+            } else if (reason === 'post_downvoted' || reason === 'post_downvote_removed') {
+                const setting = await SystemSetting.findOne({ key: 'reputation_downvote_score' });
+                if (setting && typeof setting.value === 'number') {
+                    const base = setting.value;
+                    effectiveDelta = reason === 'post_downvoted' ? base : -base;
+                }
+            }
+        } catch (err) {
+            console.error('[ReputationService] Error fetching dynamic reputation delta:', err);
+        }
+
+        // Xử lý logic rút/retract vote nếu tìm thấy lịch sử giao dịch gốc
+        const retractionMap = {
+            'post_upvote_removed': 'post_upvoted',
+            'post_downvote_removed': 'post_downvoted',
+            'downvote_given_removed': 'downvote_given',
+        };
+
+        const matchingType = retractionMap[reason];
+        let originalLog = null;
+
+        if (matchingType && targetId && voterId) {
+            try {
+                // Tìm giao dịch gốc gần nhất của voter này trên targetId
+                originalLog = await ReputationHistory.findOne({
+                    user: userId,
+                    type: matchingType,
+                    targetId: targetId,
+                    voter: voterId
+                }).sort({ createdAt: -1 });
+
+                if (originalLog) {
+                    // Nếu giao dịch gốc được cộng/trừ bao nhiêu điểm, thì khi rút ta đảo ngược bấy nhiêu điểm!
+                    effectiveDelta = -originalLog.reputationEarned;
+                }
+            } catch (err) {
+                console.error('[ReputationService] Error searching original reputation log for retraction:', err);
+            }
+        }
+
         // Áp dụng daily cap cho upvote/downvote
         if (DAILY_CAP_REASONS.has(reason)) {
+            let dailyCap = 200;
+            try {
+                const setting = await SystemSetting.findOne({ key: 'reputation_daily_cap' });
+                if (setting && typeof setting.value === 'number') {
+                    dailyCap = setting.value;
+                }
+            } catch (err) {
+                console.error('[ReputationService] Error fetching reputation_daily_cap:', err);
+            }
+
             const todayStart = getTodayStart();
             const sameDay = user.reputationDailyDate &&
                 new Date(user.reputationDailyDate).getTime() === todayStart.getTime();
             const earned = sameDay ? (user.reputationDailyEarned || 0) : 0;
 
-            if (delta > 0) {
-                const remaining = DAILY_CAP - earned;
-                if (remaining <= 0) return; // Đã đạt cap
-                effectiveDelta = Math.min(delta, remaining);
+            // Xử lý cộng điểm upvote (có giới hạn daily cap)
+            if (reason === 'post_upvoted') {
+                const remaining = dailyCap - earned;
+                if (remaining <= 0) {
+                    effectiveDelta = 0; // Đã đạt cap, cộng 0 điểm
+                } else {
+                    effectiveDelta = Math.min(effectiveDelta, remaining);
+                }
             }
 
-            const newEarned = Math.max(0, earned + (effectiveDelta > 0 ? effectiveDelta : 0));
+            // Xử lý rút upvote (nếu upvote gốc diễn ra trong ngày hôm nay, ta hoàn lại giới hạn cap hôm nay)
+            let dailyEarnedDiff = 0;
+            if (reason === 'post_upvoted') {
+                dailyEarnedDiff = effectiveDelta; // cộng thêm vào daily earned
+            } else if (reason === 'post_upvote_removed' && originalLog) {
+                const originalLogDate = new Date(originalLog.createdAt);
+                const isOriginalToday = originalLogDate.getTime() >= todayStart.getTime();
+                if (isOriginalToday) {
+                    dailyEarnedDiff = effectiveDelta; // trừ đi phần daily earned (effectiveDelta âm)
+                }
+            }
+
+            const newEarned = Math.max(0, earned + dailyEarnedDiff);
             const newReputation = Math.max(1, (user.reputation || 1) + effectiveDelta);
 
             await User.findByIdAndUpdate(userId, {
@@ -107,12 +190,52 @@ class ReputationService {
                     reputationDailyDate: sameDay ? user.reputationDailyDate : todayStart,
                 },
             });
-            return;
+        } else {
+            // Không áp dụng daily cap (donate, report)
+            if (effectiveDelta !== 0) {
+                const newReputation = Math.max(1, (user.reputation || 1) + effectiveDelta);
+                await User.findByIdAndUpdate(userId, { $set: { reputation: newReputation } });
+            }
         }
 
-        // Không có daily cap (donate, report)
-        const newReputation = Math.max(1, (user.reputation || 1) + effectiveDelta);
-        await User.findByIdAndUpdate(userId, { $set: { reputation: newReputation } });
+        // Tạo log lịch sử biến động uy tín
+        // Ta tạo log khi điểm khác 0, HOẶC khi upvote bị cap (effectiveDelta = 0) để voter sau này hủy vote sẽ biết được điểm gốc là 0.
+        if (effectiveDelta !== 0 || reason === 'post_upvoted' || (reason === 'post_upvote_removed' && originalLog && originalLog.reputationEarned === 0)) {
+            try {
+                let title = 'Biến động uy tín';
+                if (reason === 'donate_received' && targetId) {
+                    const donation = await DonationTransaction.findById(targetId).populate('donor', 'fullName');
+                    title = `Ủng hộ từ ${donation?.donorSnapshot?.fullName || donation?.donor?.fullName || 'Người ẩn danh'}`;
+                } else if (targetId) {
+                    const post = await Post.findById(targetId).select('title');
+                    title = post ? post.title : 'Bài viết đã ẩn/xóa';
+                }
+
+                // Tinh chỉnh tiêu đề hiển thị trong lịch sử cho trực quan
+                if (reason === 'post_upvoted' && effectiveDelta === 0) {
+                    title = `[Đạt giới hạn ngày] ${title}`;
+                } else if (reason === 'post_upvote_removed') {
+                    title = `Huỷ upvote: ${title}`;
+                } else if (reason === 'post_downvote_removed') {
+                    title = `Huỷ downvote: ${title}`;
+                } else if (reason === 'downvote_given_removed') {
+                    title = `Hoàn điểm downvote đã gửi`;
+                } else if (reason === 'downvote_given') {
+                    title = `Đã gửi downvote cho bài viết`;
+                }
+
+                await ReputationHistory.create({
+                    user: userId,
+                    type: reason,
+                    title,
+                    reputationEarned: effectiveDelta,
+                    targetId,
+                    voter: voterId
+                });
+            } catch (historyErr) {
+                console.error('[ReputationService] Error logging reputation history:', historyErr);
+            }
+        }
     }
 
     /**

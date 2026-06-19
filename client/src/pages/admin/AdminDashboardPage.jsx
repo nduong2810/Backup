@@ -3,11 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { getAdminDashboardStats } from '../../services/userService';
 import AdminDonationsPage from './AdminDonationsPage';
 import AdminFlagsPage from './AdminFlagsPage';
+import AdminSettingsTab from './AdminSettingsTab';
 
 const TABS = [
   { key: 'overview', label: 'Tổng quan', icon: 'query_stats' },
   { key: 'donations', label: 'Duyệt bill COD', icon: 'payments' },
   { key: 'flags', label: 'Duyệt cờ báo cáo', icon: 'flag' },
+  { key: 'settings', label: 'Cấu hình hệ thống', icon: 'settings' },
 ];
 
 const VALID_TABS = TABS.map(t => t.key);
@@ -35,12 +37,6 @@ export default function AdminDashboardPage() {
     }
   }, [activeTab]);
 
-  useEffect(() => {
-    if (activeTab === 'overview') {
-      fetchStats();
-    }
-  }, [activeTab]);
-
   const fetchStats = async () => {
     setLoading(true);
     setError(null);
@@ -58,6 +54,12 @@ export default function AdminDashboardPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      fetchStats();
+    }
+  }, [activeTab]);
 
   const formatCurrency = (val) =>
     Number(val || 0).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
@@ -360,6 +362,9 @@ export default function AdminDashboardPage() {
 
           {/* Flags Tab */}
           {activeTab === 'flags' && <AdminFlagsPage embedded />}
+
+          {/* Settings Tab */}
+          {activeTab === 'settings' && <AdminSettingsTab />}
 
           {/* Overview Tab */}
           {activeTab === 'overview' && (

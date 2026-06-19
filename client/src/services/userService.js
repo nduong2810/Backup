@@ -11,3 +11,7 @@ export const getMyStatistics = (months = 12) =>
 export const getAdminProfile = () => apiClient.get('/admin/profile');
 
 export const getAdminDashboardStats = () => apiClient.get('/admin/dashboard-stats');
+
+export const getAdminSystemSettings = () => apiClient.get('/admin/settings');
+
+export const updateAdminSystemSetting = (payload) => apiClient.put('/admin/settings', payload);

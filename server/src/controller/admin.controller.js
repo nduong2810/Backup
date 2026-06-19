@@ -3,6 +3,7 @@ import Post from '../model/post.model.js';
 import Comment from '../model/comment.model.js';
 import DonationTransaction from '../model/donationTransaction.model.js';
 import ReportTicket from '../model/reportTicket.model.js';
+import SystemSetting from '../model/systemSetting.model.js';
 
 const FLAG_LABELS = {
   spam: 'Spam',
@@ -200,6 +201,57 @@ class AdminController {
             res.status(500).json({
                 success: false,
                 message: error.message || 'Lỗi khi tải số liệu thống kê quản trị'
+            });
+        }
+    }
+
+    async getSystemSettings(req, res) {
+        try {
+            const settings = await SystemSetting.find({});
+            res.status(200).json({
+                success: true,
+                data: settings
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message || 'Lỗi khi tải cấu hình hệ thống'
+            });
+        }
+    }
+
+    async updateSystemSetting(req, res) {
+        try {
+            const { key, value } = req.body;
+            if (!key) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Thiếu tham số key'
+                });
+            }
+
+            const setting = await SystemSetting.findOneAndUpdate(
+                { key },
+                { value },
+                { new: true }
+            );
+
+            if (!setting) {
+                return res.status(404).json({
+                    success: false,
+                    message: `Không tìm thấy cấu hình với key: ${key}`
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                message: 'Cập nhật cấu hình thành công',
+                data: setting
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message || 'Lỗi khi cập nhật cấu hình hệ thống'
             });
         }
     }

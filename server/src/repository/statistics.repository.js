@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Post from '../model/post.model.js';
 import Comment from '../model/comment.model.js';
 import DonationTransaction from '../model/donationTransaction.model.js';
+import ReputationHistory from '../model/reputationHistory.model.js';
 
 // ====================================================================
 // STATISTICS REPOSITORY - Tầng Data Access cho thống kê hoạt động user
@@ -351,72 +352,18 @@ class StatisticsRepository {
     async getReputationChanges(userId, limit = 10) {
         const objectId = new mongoose.Types.ObjectId(userId);
 
-        // 1. Lấy danh sách bài viết có upvotes hoặc downvotes
-        const posts = await Post.find({
-            author: objectId,
-            status: { $ne: 'deleted' },
-            $or: [
-                { 'upvotes.0': { $exists: true } },
-                { 'downvotes.0': { $exists: true } }
-            ]
-        })
-        .select('_id title upvotes downvotes createdAt')
-        .lean();
+        const logs = await ReputationHistory.find({ user: objectId })
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .lean();
 
-        // 2. Lấy danh sách giao dịch nhận ủng hộ thành công
-        const donations = await DonationTransaction.find({
-            author: objectId,
-            status: 'completed'
-        })
-        .select('_id amount donor createdAt')
-        .populate('donor', 'fullName')
-        .lean();
-
-        // 3. Chuyển đổi thành các sự kiện điểm uy tín
-        const events = [];
-
-        // Upvote / Downvote trên Post
-        posts.forEach(post => {
-            const upvotes = post.upvotes?.length || 0;
-            const downvotes = post.downvotes?.length || 0;
-
-            if (upvotes > 0) {
-                events.push({
-                    _id: `${post._id}_upvote`,
-                    title: post.title,
-                    type: 'post_upvoted',
-                    reputationEarned: upvotes * 10,
-                    createdAt: post.createdAt,
-                });
-            }
-
-            if (downvotes > 0) {
-                events.push({
-                    _id: `${post._id}_downvote`,
-                    title: post.title,
-                    type: 'post_downvoted',
-                    reputationEarned: downvotes * -2,
-                    createdAt: post.createdAt,
-                });
-            }
-        });
-
-        // Donations nhận được
-        donations.forEach(donation => {
-            events.push({
-                _id: donation._id.toString(),
-                title: `Ủng hộ từ ${donation.donor?.fullName || 'Người ẩn danh'}`,
-                type: 'donate_received',
-                reputationEarned: 20, // +20 reputation per donation
-                createdAt: donation.createdAt,
-            });
-        });
-
-        // Sắp xếp các sự kiện theo thời gian giảm dần
-        events.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-        // Trả về số lượng giới hạn
-        return events.slice(0, limit);
+        return logs.map(log => ({
+            _id: log.targetId ? `${log.targetId.toString()}_${log.type}` : `${log._id.toString()}_reputation`,
+            title: log.title,
+            type: log.type,
+            reputationEarned: log.reputationEarned,
+            createdAt: log.createdAt,
+        }));
     }
 
     /**

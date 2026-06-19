@@ -278,7 +278,7 @@ class DonationService {
 
       const authorId = updatedDonation.author?._id?.toString() || updatedDonation.author?.toString();
       if (authorId) {
-        await reputationService.award(authorId, 'donate_received');
+        await reputationService.award(authorId, 'donate_received', updatedDonation._id);
       }
 
       await safeNotify(updatedDonation.author?.email, 'Bạn vừa nhận được một lượt ủng hộ', `Bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa nhận ${updatedDonation.amount.toLocaleString('vi-VN')}đ từ một người dùng.`);
@@ -307,7 +307,7 @@ class DonationService {
 
     const authorId = updatedDonation.author?._id?.toString() || updatedDonation.author?.toString();
     if (authorId) {
-      await reputationService.award(authorId, 'donate_received');
+      await reputationService.award(authorId, 'donate_received', updatedDonation._id);
     }
 
     await safeNotify(updatedDonation.author?.email, 'Một lượt ủng hộ vừa được duyệt', `Bill chuyển khoản cho bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa được admin duyệt với số tiền ${updatedDonation.amount.toLocaleString('vi-VN')}đ.`);

@@ -20,4 +20,17 @@ router.get('/dashboard-stats',
     adminController.getDashboardStats.bind(adminController)
 );
 
+// ==================== SYSTEM SETTINGS ====================
+router.get('/settings',
+    authenticateToken,
+    authorizeRole('admin'),
+    adminController.getSystemSettings.bind(adminController)
+);
+
+router.put('/settings',
+    authenticateToken,
+    authorizeRole('admin'),
+    adminController.updateSystemSetting.bind(adminController)
+);
+
 export default router;

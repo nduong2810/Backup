@@ -2,6 +2,7 @@ import reportRepository from '../repository/report.repository.js';
 import postRepository from '../repository/post.repository.js';
 import userRepository from '../repository/user.repository.js';
 import reputationService from './reputation.service.js';
+import SystemSetting from '../model/systemSetting.model.js';
 
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 const MIN_REPUTATION_TO_REPORT = 15;
@@ -28,7 +29,6 @@ const STATUS_LABELS = {
 };
 
 const AUTO_DELETE_TYPES = ['spam', 'rude_abusive'];
-const AUTO_DELETE_THRESHOLD = 4;
 const OPEN_STATUSES = ['submitted', 'received', 'in_review'];
 const ADMIN_TRANSITION_MAP = {
   received: ['in_review'],
@@ -97,17 +97,27 @@ class ReportService {
     });
 
     if (AUTO_DELETE_TYPES.includes(flagType)) {
+      let autoDeleteThreshold = 4;
+      try {
+        const setting = await SystemSetting.findOne({ key: 'flag_auto_hide_threshold' });
+        if (setting && typeof setting.value === 'number') {
+          autoDeleteThreshold = setting.value;
+        }
+      } catch (err) {
+        console.error('[ReportService] Error fetching flag_auto_hide_threshold:', err);
+      }
+
       const count = await reportRepository.countActiveByFlagType(postId, flagType);
-      if (count >= AUTO_DELETE_THRESHOLD) {
+      if (count >= autoDeleteThreshold) {
         await postRepository.setDeletedStatus(postId);
         await reportRepository.bulkMarkActionTakenByPost(
           postId,
-          `Tự động xử lý: bài viết bị xóa khi đủ ${AUTO_DELETE_THRESHOLD} cờ ${FLAG_LABELS[flagType]}.`,
+          `Tự động xử lý: bài viết bị xóa khi đủ ${autoDeleteThreshold} cờ ${FLAG_LABELS[flagType]}.`,
         );
         // Trừ reputation tác giả khi bài bị xóa do report
         const deletedPost = await postRepository.findById(postId);
         const authorId = deletedPost?.author?._id?.toString() || deletedPost?.author?.toString();
-        if (authorId) await reputationService.award(authorId, 'post_deleted_by_report');
+        if (authorId) await reputationService.award(authorId, 'post_deleted_by_report', postId);
       }
     }
 

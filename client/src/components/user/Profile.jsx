@@ -86,6 +86,11 @@ export default function Profile() {
       )
     : 100;
 
+  // Tính toán tiến trình giới hạn nhận danh tiếng trong ngày (Daily Cap)
+  const dailyCap = reputationInfo?.dailyCap || 200;
+  const dailyEarned = reputationInfo?.dailyEarned || 0;
+  const dailyProgressPct = Math.min(100, Math.round((dailyEarned / dailyCap) * 100));
+
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -161,6 +166,25 @@ export default function Profile() {
                   <span className="text-xs text-slate-400 font-bold uppercase">{nextRank.name}</span>
                   <span className="text-xs text-slate-400">({nextRank.minRep - reputation} điểm nữa)</span>
                 </div>
+              )}
+            </div>
+
+            {/* Thanh progress bar giới hạn ngày (Daily Cap) */}
+            <div className="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-x-2.5 gap-y-1.5 text-xs text-slate-500 font-semibold">
+              <div className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-base text-slate-400">hourglass_top</span>
+                <span>Hạn mức hôm nay: <span className="font-bold text-slate-700">{dailyEarned}/{dailyCap}</span> điểm từ vote</span>
+              </div>
+              <div className="h-1.5 w-24 sm:w-28 rounded-full bg-slate-100 overflow-hidden inline-block align-middle ml-1">
+                <div
+                  className="h-full rounded-full transition-all duration-500 bg-sky-500"
+                  style={{ width: `${dailyProgressPct}%` }}
+                />
+              </div>
+              {dailyEarned >= dailyCap && (
+                <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded font-bold uppercase animate-pulse">
+                  Đã đạt giới hạn
+                </span>
               )}
             </div>
           </div>
