@@ -23,3 +23,9 @@ export const getAdminPosts = ({ page = 1, limit = 10, keyword = '', status = 'al
 
 export const updateAdminPostStatus = (postId, status) =>
   apiClient.patch(`/admin/posts/${postId}/status`, { status });
+
+export const adminCreateTag = (payload) => apiClient.post('/admin/tags', payload);
+
+export const adminUpdateTag = (tagId, payload) => apiClient.put(`/admin/tags/${tagId}`, payload);
+
+export const adminDeleteTag = (tagId) => apiClient.delete(`/admin/tags/${tagId}`);

@@ -42,4 +42,20 @@ router.patch('/posts/:postId/status',
     adminController.updatePostStatus.bind(adminController)
 );
 
+// ==================== ADMIN TAG MANAGEMENT ====================
+router.post('/tags',
+    ...adminOnly,
+    adminController.createTag.bind(adminController)
+);
+
+router.put('/tags/:tagId',
+    ...adminOnly,
+    adminController.updateTag.bind(adminController)
+);
+
+router.delete('/tags/:tagId',
+    ...adminOnly,
+    adminController.deleteTag.bind(adminController)
+);
+
 export default router;

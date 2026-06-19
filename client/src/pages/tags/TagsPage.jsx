@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTagsThunk } from '../../store/slices/tagSlice';
@@ -59,9 +59,6 @@ const TagsPage = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(30);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
 
   useEffect(() => {
     let mounted = true;
@@ -100,7 +97,10 @@ const TagsPage = () => {
             <input
               type="text"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
               placeholder="Lọc theo tên tag"
               className="w-full bg-surface-container-lowest border border-outline-variant rounded-DEFAULT pl-10 pr-3 py-2 font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:border-primary-container focus:ring-2 focus:ring-primary-container/20"
             />

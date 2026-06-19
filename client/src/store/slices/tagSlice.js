@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { getTagsApi } from '../../services/postService';
+import { adminCreateTag, adminUpdateTag, adminDeleteTag } from '../../services/userService';
 
 const DEFAULT_COLLECTION = {
   items: [],
@@ -20,6 +21,10 @@ const ensureCollection = (state, key) => {
   return state.collections[key];
 };
 
+const extractError = (error) => {
+  return error?.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.';
+};
+
 export const fetchTagsThunk = createAsyncThunk(
   'tags/fetchTags',
   async ({ key, params, append = false }, { rejectWithValue }) => {
@@ -38,10 +43,49 @@ export const fetchTagsThunk = createAsyncThunk(
   }
 );
 
+export const createTagThunk = createAsyncThunk(
+  'tags/createTag',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const response = await adminCreateTag(payload);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(extractError(error));
+    }
+  }
+);
+
+export const updateTagThunk = createAsyncThunk(
+  'tags/updateTag',
+  async ({ tagId, payload }, { rejectWithValue }) => {
+    try {
+      const response = await adminUpdateTag(tagId, payload);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(extractError(error));
+    }
+  }
+);
+
+export const deleteTagThunk = createAsyncThunk(
+  'tags/deleteTag',
+  async (tagId, { rejectWithValue }) => {
+    try {
+      const response = await adminDeleteTag(tagId);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(extractError(error));
+    }
+  }
+);
+
 const tagSlice = createSlice({
   name: 'tags',
   initialState: {
     collections: {},
+    saving: false,
+    successMsg: '',
+    errorMsg: '',
   },
   reducers: {
     resetTagCollection: (state, action) => {
@@ -50,9 +94,14 @@ const tagSlice = createSlice({
         state.collections[key] = { ...DEFAULT_COLLECTION };
       }
     },
+    clearTagMessages: (state) => {
+      state.successMsg = '';
+      state.errorMsg = '';
+    },
   },
   extraReducers: (builder) => {
     builder
+      // Fetch Tags
       .addCase(fetchTagsThunk.pending, (state, action) => {
         const { key } = action.meta.arg;
         const collection = ensureCollection(state, key);
@@ -83,9 +132,51 @@ const tagSlice = createSlice({
         if (!collection.items?.length) {
           collection.items = [];
         }
+      })
+      // Create Tag
+      .addCase(createTagThunk.pending, (state) => {
+        state.saving = true;
+        state.errorMsg = '';
+        state.successMsg = '';
+      })
+      .addCase(createTagThunk.fulfilled, (state, action) => {
+        state.saving = false;
+        state.successMsg = action.payload.message || 'Tạo thẻ tag thành công.';
+      })
+      .addCase(createTagThunk.rejected, (state, action) => {
+        state.saving = false;
+        state.errorMsg = action.payload || 'Tạo thẻ tag thất bại.';
+      })
+      // Update Tag
+      .addCase(updateTagThunk.pending, (state) => {
+        state.saving = true;
+        state.errorMsg = '';
+        state.successMsg = '';
+      })
+      .addCase(updateTagThunk.fulfilled, (state, action) => {
+        state.saving = false;
+        state.successMsg = action.payload.message || 'Cập nhật thẻ tag thành công.';
+      })
+      .addCase(updateTagThunk.rejected, (state, action) => {
+        state.saving = false;
+        state.errorMsg = action.payload || 'Cập nhật thẻ tag thất bại.';
+      })
+      // Delete Tag
+      .addCase(deleteTagThunk.pending, (state) => {
+        state.saving = true;
+        state.errorMsg = '';
+        state.successMsg = '';
+      })
+      .addCase(deleteTagThunk.fulfilled, (state, action) => {
+        state.saving = false;
+        state.successMsg = action.payload.message || 'Xóa thẻ tag thành công.';
+      })
+      .addCase(deleteTagThunk.rejected, (state, action) => {
+        state.saving = false;
+        state.errorMsg = action.payload || 'Xóa thẻ tag thất bại.';
       });
   },
 });
 
-export const { resetTagCollection } = tagSlice.actions;
+export const { resetTagCollection, clearTagMessages } = tagSlice.actions;
 export default tagSlice.reducer;

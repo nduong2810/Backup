@@ -6,6 +6,7 @@ class TagService {
             search = '',
             page = 1,
             limit = 24,
+            sortBy = 'posts',
         } = query;
 
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
@@ -20,6 +21,7 @@ class TagService {
             skip,
             limit: limitNum,
             startOfToday,
+            sortBy,
         });
 
         return {

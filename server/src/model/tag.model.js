@@ -23,11 +23,10 @@ const tagSchema = new mongoose.Schema({
     timestamps: true,
 });
 
-tagSchema.pre('validate', function(next) {
+tagSchema.pre('validate', function() {
     if (!this.slug && this.name) {
         this.slug = this.name.trim().toLowerCase();
     }
-    next();
 });
 
 tagSchema.index({ name: 'text', slug: 'text' });

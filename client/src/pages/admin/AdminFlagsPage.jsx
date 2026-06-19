@@ -128,7 +128,12 @@ export default function AdminFlagsPage({ embedded = false }) {
   const paginationItems = buildPagination(safePage, totalPages);
 
   useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
+    if (currentPage > totalPages) {
+      const timer = setTimeout(() => {
+        setCurrentPage(totalPages);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
   }, [currentPage, totalPages]);
 
   return (

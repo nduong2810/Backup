@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -69,15 +69,21 @@ export default function SavedPostsPage() {
     if (!collections.length) return;
     const exists = collections.some((item) => item._id === activeCollectionId);
     if (!activeCollectionId || !exists) {
-      setActiveCollectionId(collections[0]._id);
+      const timer = setTimeout(() => {
+        setActiveCollectionId(collections[0]._id);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [collections, activeCollectionId]);
 
   useEffect(() => {
     if (activeCollectionId) {
       dispatch(fetchSavedPostsThunk(activeCollectionId));
-      setSelectedPostIds([]);
-      setTargetCollectionId('');
+      const timer = setTimeout(() => {
+        setSelectedPostIds([]);
+        setTargetCollectionId('');
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [dispatch, activeCollectionId]);
 

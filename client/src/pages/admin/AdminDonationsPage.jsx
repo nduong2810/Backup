@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { approveCodDonationApi, fetchAdminDonationsApi, rejectCodDonationApi } from '../../services/donationService';
 
 const statusLabels = {
@@ -35,7 +35,7 @@ export default function AdminDonationsPage({ embedded = false }) {
   const [reviewModal, setReviewModal] = useState(null);
   const [rejectReason, setRejectReason] = useState(defaultRejectReason);
 
-  const loadDonations = async () => {
+  const loadDonations = useCallback(async () => {
     setLoading(true);
     setErrorMessage('');
 
@@ -47,12 +47,14 @@ export default function AdminDonationsPage({ embedded = false }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [status]);
 
   useEffect(() => {
-    loadDonations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+    const timer = setTimeout(() => {
+      loadDonations();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadDonations]);
 
   const summary = useMemo(() => {
     return donations.reduce(

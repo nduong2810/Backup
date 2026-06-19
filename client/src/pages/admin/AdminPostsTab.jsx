@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getAdminPosts, updateAdminPostStatus } from '../../services/userService';
 
@@ -116,7 +116,7 @@ export default function AdminPostsTab({ embedded = false }) {
     status,
   }), [pagination.page, pagination.limit, appliedKeyword, status]);
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -130,11 +130,14 @@ export default function AdminPostsTab({ embedded = false }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [query]);
 
   useEffect(() => {
-    fetchPosts();
-  }, [query.page, query.limit, query.keyword, query.status]);
+    const timer = setTimeout(() => {
+      fetchPosts();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchPosts]);
 
   const handleApplySearch = (event) => {
     event?.preventDefault();

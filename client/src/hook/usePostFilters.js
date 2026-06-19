@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import { fetchPostsThunk } from '../store/slices/postSlice';
@@ -15,13 +15,16 @@ export const usePostFilters = () => {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [searchInput, setSearchInput] = useState('');
 
-  const appliedFilters = parseFiltersFromSearchParams(searchParams);
+  const appliedFilters = useMemo(() => parseFiltersFromSearchParams(searchParams), [searchParams]);
 
   useEffect(() => {
-    setFilters((prev) => ({ ...prev, ...appliedFilters }));
-    setSearchInput(searchParams.get('q') ?? appliedFilters.keyword ?? '');
+    const timer = setTimeout(() => {
+      setFilters((prev) => ({ ...prev, ...appliedFilters }));
+      setSearchInput(searchParams.get('q') ?? appliedFilters.keyword ?? '');
+    }, 0);
     dispatch(fetchPostsThunk(appliedFilters));
-  }, [dispatch, searchParams]);
+    return () => clearTimeout(timer);
+  }, [dispatch, searchParams, appliedFilters]);
 
   const handleFilterChange = (name, value) => {
     setFilters((prev) => ({ ...prev, [name]: value }));

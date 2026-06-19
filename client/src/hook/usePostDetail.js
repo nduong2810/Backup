@@ -193,11 +193,17 @@ export default function usePostDetail(postId) {
   }, [reactingCommentId, fetchPostDetail, isPostLocked]);
 
   useEffect(() => {
-    fetchPostDetail();
+    const timer = setTimeout(() => {
+      fetchPostDetail();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [fetchPostDetail]);
 
   useEffect(() => {
-    fetchRelatedPosts();
+    const timer = setTimeout(() => {
+      fetchRelatedPosts();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [fetchRelatedPosts]);
 
   useEffect(() => {

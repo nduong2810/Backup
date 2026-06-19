@@ -5,6 +5,7 @@ import Comment from '../model/comment.model.js';
 import DonationTransaction from '../model/donationTransaction.model.js';
 import ReportTicket from '../model/reportTicket.model.js';
 import SystemSetting from '../model/systemSetting.model.js';
+import Tag from '../model/tag.model.js';
 
 const FLAG_LABELS = {
   spam: 'Spam',
@@ -374,6 +375,123 @@ class AdminController {
                 success: false,
                 message: error.message || 'Không thể cập nhật trạng thái bài viết',
             });
+        }
+    }
+
+    async createTag(req, res) {
+        try {
+            const { name, description } = req.body;
+            if (!name || !name.trim()) {
+                return res.status(400).json({ success: false, message: 'Tên thẻ tag không được để trống' });
+            }
+
+            const slug = name.trim().toLowerCase();
+            const existingTag = await Tag.findOne({ slug });
+            if (existingTag) {
+                return res.status(400).json({ success: false, message: 'Thẻ tag này đã tồn tại' });
+            }
+
+            const newTag = await Tag.create({
+                name: name.trim(),
+                slug,
+                description: (description || '').trim()
+            });
+
+            return res.status(201).json({
+                success: true,
+                message: 'Tạo thẻ tag thành công',
+                data: newTag
+            });
+        } catch (error) {
+            console.error('[AdminController] createTag error:', error);
+            return res.status(500).json({ success: false, message: 'Lỗi server khi tạo thẻ tag' });
+        }
+    }
+
+    async updateTag(req, res) {
+        try {
+            const tagObjectId = getObjectId(req.params.tagId);
+            if (!tagObjectId) {
+                return res.status(400).json({ success: false, message: 'ID thẻ tag không hợp lệ' });
+            }
+
+            const { name, description } = req.body;
+            if (!name || !name.trim()) {
+                return res.status(400).json({ success: false, message: 'Tên thẻ tag không được để trống' });
+            }
+
+            const slug = name.trim().toLowerCase();
+            const existingTag = await Tag.findOne({ slug, _id: { $ne: tagObjectId } });
+            if (existingTag) {
+                return res.status(400).json({ success: false, message: 'Tên thẻ tag đã được sử dụng bởi thẻ khác' });
+            }
+
+            const oldTag = await Tag.findById(tagObjectId);
+            if (!oldTag) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy thẻ tag' });
+            }
+
+            const updatedTag = await Tag.findByIdAndUpdate(
+                tagObjectId,
+                {
+                    $set: {
+                        name: name.trim(),
+                        slug,
+                        description: (description || '').trim()
+                    }
+                },
+                { new: true }
+            );
+
+            if (oldTag.slug !== slug) {
+                await Post.updateMany(
+                    { tags: oldTag.slug },
+                    { $set: { "tags.$[elem]": slug } },
+                    { arrayFilters: [{ elem: oldTag.slug }] }
+                );
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: 'Cập nhật thẻ tag thành công',
+                data: updatedTag
+            });
+        } catch (error) {
+            console.error('[AdminController] updateTag error:', error);
+            return res.status(500).json({ success: false, message: 'Lỗi server khi cập nhật thẻ tag' });
+        }
+    }
+
+    async deleteTag(req, res) {
+        try {
+            const tagObjectId = getObjectId(req.params.tagId);
+            if (!tagObjectId) {
+                return res.status(400).json({ success: false, message: 'ID thẻ tag không hợp lệ' });
+            }
+
+            const tag = await Tag.findById(tagObjectId);
+            if (!tag) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy thẻ tag' });
+            }
+
+            // Kiểm tra xem thẻ tag có đang được bài viết nào sử dụng không
+            const postCount = await Post.countDocuments({ tags: tag.slug });
+            if (postCount > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Không thể xóa thẻ tag này vì đang có ${postCount} bài viết sử dụng.`
+                });
+            }
+
+            await Tag.findByIdAndDelete(tagObjectId);
+
+            return res.status(200).json({
+                success: true,
+                message: 'Xóa thẻ tag thành công'
+            });
+        } catch (error) {
+            console.error('[AdminController] deleteTag error:', error);
+            return res.status(500).json({ success: false, message: 'Lỗi server khi xóa thẻ tag' });
         }
     }
 }

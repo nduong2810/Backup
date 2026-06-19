@@ -1,7 +1,7 @@
 import Tag from '../model/tag.model.js';
 
 class TagRepository {
-    async findTags({ search = '', skip = 0, limit = 24, startOfToday }) {
+    async findTags({ search = '', skip = 0, limit = 24, startOfToday, sortBy = 'posts' }) {
         const normalizedSearch = search.trim();
         const basePipeline = [];
 
@@ -14,6 +14,13 @@ class TagRepository {
                     ],
                 },
             });
+        }
+
+        let sortStage = { totalCount: -1, slug: 1 };
+        if (sortBy === 'name') {
+            sortStage = { slug: 1 };
+        } else if (sortBy === 'newest') {
+            sortStage = { createdAt: -1 };
         }
 
         const itemsPipeline = [
@@ -51,7 +58,7 @@ class TagRepository {
                 },
             },
             { $project: { stats: 0 } },
-            { $sort: { totalCount: -1, slug: 1 } },
+            { $sort: sortStage },
             { $skip: skip },
             { $limit: limit },
         ];
