@@ -60,23 +60,32 @@ export default function VerifyOTP() {
   return (
     <AppCard
       title="Xác thực OTP"
-      subtitle="Bước 2/3: Nhập mã OTP đã gửi về email"
-      rightSlot={<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Bước 2/3</span>}
+      subtitle={`Nhập mã 6 số đã gửi về ${email}`}
+      icon="mark_email_read"
+      className="mx-auto max-w-xl"
+      contentClassName="mx-auto max-w-md"
+      rightSlot={
+        <span className="hidden h-[52px] min-w-16 items-center justify-center rounded-2xl bg-slate-100 px-3 text-center text-xs font-bold leading-5 text-slate-600 sm:flex">
+          Bước<br />2/3
+        </span>
+      }
     >
       <FormAlert type={alertType} message={alertMessage} />
 
-      <form className="mt-4 space-y-4" onSubmit={onSubmit}>
+      <form className="mt-5 space-y-5" onSubmit={onSubmit}>
         <InputField
           label="Mã OTP"
           name="otp"
           value={otp}
           onChange={(event) => dispatch(setField({ field: 'otp', value: event.target.value }))}
           placeholder="Nhập mã 6 số"
+          maxLength={6}
           required
           disabled={loading}
+          inputClassName="text-center text-lg font-bold tracking-[0.35em]"
         />
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <span>
+        <div className="flex flex-col gap-2 rounded-xl bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <span className="leading-5">
             {timeLeft > 0
               ? `Mã OTP hết hạn sau ${formatTime(timeLeft)}.`
               : 'Mã OTP đã hết hạn. Vui lòng gửi lại.'}
@@ -92,7 +101,7 @@ export default function VerifyOTP() {
             </button>
           )}
         </div>
-        <div className="flex gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex-1">
             <AppButton
               variant="secondary"

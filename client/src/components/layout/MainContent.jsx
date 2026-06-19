@@ -5,6 +5,7 @@ import { getTopUpvotedPosts, getTrendingTodayPosts, votePost, reactPost } from '
 import SaveIconButton from '../ui/SaveIconButton';
 import { fetchCollectionsThunk, savePostToCollectionThunk, toggleSaveThunk } from '../../store/slices/savedSlice';
 import { updatePostVoteInList, updatePostReactionInList } from '../../store/slices/postSlice';
+import { useToast } from '../../context/ToastContext';
 
 const PER_PAGE_OPTIONS = [15, 30, 50];
 
@@ -184,7 +185,7 @@ const QuestionCard = ({
                             {question.author?.fullName || question.author?.username || 'Ẩn danh'}
                         </a>
                         <span className="font-body-sm text-body-sm text-secondary">
-                            asked {new Date(question.createdAt).toLocaleDateString('vi-VN')}
+                            asked {new Date(question.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
                         </span>
                     </div>
                 </div>
@@ -207,7 +208,7 @@ const TrendingCard = ({ post, rank, onTagClick }) => {
         <article className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm p-4 flex flex-col gap-3 h-full">
             <div className="flex items-center justify-between text-xs text-secondary">
                 <span className="inline-flex items-center justify-center h-6 px-2 rounded-DEFAULT bg-primary-container/15 text-primary-container font-semibold">#{rank}</span>
-                <span>{new Date(post.createdAt).toLocaleDateString('vi-VN')}</span>
+                <span>{new Date(post.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</span>
             </div>
             <div className="flex flex-col gap-2 flex-1">
                 <h3 className="font-headline-md text-headline-md leading-snug line-clamp-2 min-h-[3.25rem]">
@@ -250,7 +251,7 @@ const TopUpvotedCard = ({ post, rank, onTagClick }) => {
         <article className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm p-4 flex flex-col gap-3 h-full">
             <div className="flex items-center justify-between text-xs text-secondary">
                 <span className="inline-flex items-center justify-center h-6 px-2 rounded-DEFAULT bg-primary-container/15 text-primary-container font-semibold">#{rank}</span>
-                <span>{new Date(post.createdAt).toLocaleDateString('vi-VN')}</span>
+                <span>{new Date(post.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</span>
             </div>
             <div className="flex flex-col gap-2 flex-1">
                 <h3 className="font-headline-md text-headline-md leading-snug line-clamp-2 min-h-[3.25rem]">
@@ -298,6 +299,9 @@ const MainContent = () => {
     const { list: questionsList, loading, error, pagination } = useSelector((state) => state.posts);
     const { ids: savedIds, collections, loadingCollections } = useSelector((state) => state.saved);
     const isAuthenticated = useSelector((state) => state.login.isAuthenticated);
+    const currentUser = useSelector((state) => state.login.user);
+    const isAdmin = currentUser?.role === 'admin';
+    const { toast } = useToast();
     const { filters, handleFilterChange, handleApplyFilters } = useOutletContext();
     const [trending, setTrending] = useState([]);
     const [trendingLoading, setTrendingLoading] = useState(true);
@@ -332,6 +336,7 @@ const MainContent = () => {
 
     const handleVotePost = async (postId, voteType) => {
         if (!isAuthenticated) return navigate('/auth/login');
+        if (isAdmin) { toast.warning('Quản trị viên không được phép thực hiện tương tác này.'); return; }
         if (!postId || votingPostId) return;
         setVotingPostId(postId);
         try {
@@ -347,6 +352,7 @@ const MainContent = () => {
 
     const handleReactPost = async (postId, reactionType) => {
         if (!isAuthenticated) return navigate('/auth/login');
+        if (isAdmin) { toast.warning('Quản trị viên không được phép thực hiện tương tác này.'); return; }
         if (!postId || reactingPostId) return;
         setReactingPostId(postId);
         try {

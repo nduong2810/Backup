@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSelector } from 'react-redux';
 import {
   getPostDetail,
   votePost,
@@ -8,8 +9,10 @@ import {
   reactPostComment,
 } from '../services/postService';
 import { connectSocket, getSocket } from '../lib/socketClient';
+import { useToast } from '../context/ToastContext';
 
 const LOCKED_POST_MESSAGE = 'Bài viết đang bị khóa';
+const ADMIN_INTERACTION_MESSAGE = 'Quản trị viên không được phép thực hiện tương tác này.';
 
 export default function usePostDetail(postId) {
   const [post, setPost] = useState(null);
@@ -33,6 +36,10 @@ export default function usePostDetail(postId) {
   const [reactingCommentId, setReactingCommentId] = useState('');
 
   const [relatedPosts, setRelatedPosts] = useState([]);
+
+  const { user: currentUser } = useSelector((state) => state.login);
+  const isAdmin = currentUser?.role === 'admin';
+  const { toast } = useToast();
 
   const isPostLocked = post?.status === 'closed';
 
@@ -82,6 +89,10 @@ export default function usePostDetail(postId) {
 
   const handleVote = useCallback(async (voteType) => {
     if (voteLoading) return;
+    if (isAdmin) {
+      toast.warning(ADMIN_INTERACTION_MESSAGE);
+      return;
+    }
     if (isPostLocked) {
       alert(LOCKED_POST_MESSAGE);
       return;
@@ -105,10 +116,14 @@ export default function usePostDetail(postId) {
     } finally {
       setVoteLoading(false);
     }
-  }, [postId, voteLoading, userVote, isPostLocked]);
+  }, [postId, voteLoading, userVote, isPostLocked, isAdmin, toast]);
 
   const handlePostReaction = useCallback(async (reactionType) => {
     if (reactionLoading) return;
+    if (isAdmin) {
+      toast.warning(ADMIN_INTERACTION_MESSAGE);
+      return;
+    }
     if (isPostLocked) {
       alert(LOCKED_POST_MESSAGE);
       return;
@@ -143,7 +158,7 @@ export default function usePostDetail(postId) {
     } finally {
       setReactionLoading(false);
     }
-  }, [postId, reactionLoading, isPostLocked]);
+  }, [postId, reactionLoading, isPostLocked, isAdmin, toast]);
 
   const submitComment = useCallback(async (payload) => {
     if (submittingComment) return false;
@@ -170,6 +185,10 @@ export default function usePostDetail(postId) {
 
   const reactComment = useCallback(async (commentId, reactionType) => {
     if (reactingCommentId) return false;
+    if (isAdmin) {
+      toast.warning(ADMIN_INTERACTION_MESSAGE);
+      return false;
+    }
     if (isPostLocked) {
       alert(LOCKED_POST_MESSAGE);
       return false;
@@ -190,7 +209,7 @@ export default function usePostDetail(postId) {
     } finally {
       setReactingCommentId('');
     }
-  }, [reactingCommentId, fetchPostDetail, isPostLocked]);
+  }, [reactingCommentId, fetchPostDetail, isPostLocked, isAdmin, toast]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

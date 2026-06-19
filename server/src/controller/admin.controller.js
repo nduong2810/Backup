@@ -73,7 +73,9 @@ class AdminController {
             const startDate = new Date();
             startDate.setMonth(startDate.getMonth() - 5);
             startDate.setDate(1);
-            startDate.setHours(0, 0, 0, 0);
+            const vnTime = new Date(startDate.getTime() + 7 * 60 * 60 * 1000);
+            const vnStartUtc = Date.UTC(vnTime.getUTCFullYear(), vnTime.getUTCMonth(), vnTime.getUTCDate(), 0, 0, 0, 0);
+            startDate.setTime(vnStartUtc - 7 * 60 * 60 * 1000);
 
             const [userTimeline, postTimeline, donationTimeline] = await Promise.all([
                 User.aggregate([
@@ -492,6 +494,170 @@ class AdminController {
         } catch (error) {
             console.error('[AdminController] deleteTag error:', error);
             return res.status(500).json({ success: false, message: 'Lỗi server khi xóa thẻ tag' });
+        }
+    }
+
+    // ==================== ADMIN USER MANAGEMENT ====================
+
+    async getManagedUsers(req, res) {
+        try {
+            const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+            const limit = Math.min(50, Math.max(5, Number.parseInt(req.query.limit, 10) || 10));
+            const keyword = String(req.query.keyword || '').trim();
+            const status = String(req.query.status || 'all').trim().toLowerCase();
+            const skip = (page - 1) * limit;
+
+            // Chỉ load user thường (role='user'), không load admin
+            const match = { role: 'user' };
+
+            if (keyword) {
+                const regex = { $regex: escapeRegex(keyword), $options: 'i' };
+                match.$or = [{ fullName: regex }, { email: regex }];
+            }
+
+            if (status === 'active') match.isActive = true;
+            else if (status === 'locked') match.isActive = false;
+
+            const pipeline = [
+                { $match: match },
+                {
+                    $facet: {
+                        items: [
+                            { $sort: { createdAt: -1 } },
+                            { $skip: skip },
+                            { $limit: limit },
+                            {
+                                $project: {
+                                    fullName: 1,
+                                    email: 1,
+                                    avatar: 1,
+                                    major: 1,
+                                    reputation: 1,
+                                    isActive: 1,
+                                    createdAt: 1,
+                                },
+                            },
+                        ],
+                        total: [{ $count: 'count' }],
+                    },
+                },
+            ];
+
+            const [result] = await User.aggregate(pipeline);
+            const users = result?.items || [];
+            const total = result?.total?.[0]?.count || 0;
+
+            return res.status(200).json({
+                success: true,
+                data: {
+                    users,
+                    pagination: {
+                        page,
+                        limit,
+                        total,
+                        totalPages: Math.max(1, Math.ceil(total / limit)),
+                    },
+                },
+            });
+        } catch (error) {
+            console.error('[AdminController] getManagedUsers error:', error);
+            return res.status(500).json({
+                success: false,
+                message: error.message || 'Không thể tải danh sách thành viên',
+            });
+        }
+    }
+
+    async getUserDetail(req, res) {
+        try {
+            const userObjectId = getObjectId(req.params.userId);
+            if (!userObjectId) {
+                return res.status(400).json({ success: false, message: 'ID thành viên không hợp lệ' });
+            }
+
+            const user = await User.findById(userObjectId)
+                .select('-password -otp -otpExpiry -resetOTP -resetOTPExpiry -resetToken')
+                .lean();
+
+            if (!user) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy thành viên' });
+            }
+
+            // Thống kê hoạt động của user
+            const [postCount, commentCount, reportCount] = await Promise.all([
+                Post.countDocuments({ author: userObjectId }),
+                Comment.countDocuments({ author: userObjectId }),
+                ReportTicket.countDocuments({ post: { $in: await Post.find({ author: userObjectId }).distinct('_id') } }),
+            ]);
+
+            return res.status(200).json({
+                success: true,
+                data: {
+                    user,
+                    stats: {
+                        postCount,
+                        commentCount,
+                        reportCount,
+                    },
+                },
+            });
+        } catch (error) {
+            console.error('[AdminController] getUserDetail error:', error);
+            return res.status(500).json({
+                success: false,
+                message: error.message || 'Không thể tải thông tin thành viên',
+            });
+        }
+    }
+
+    async toggleUserStatus(req, res) {
+        try {
+            const userObjectId = getObjectId(req.params.userId);
+            if (!userObjectId) {
+                return res.status(400).json({ success: false, message: 'ID thành viên không hợp lệ' });
+            }
+
+            const { isActive } = req.body;
+            if (typeof isActive !== 'boolean') {
+                return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
+            }
+
+            // Không cho phép admin tự khóa chính mình
+            if (String(userObjectId) === String(req.user.userId)) {
+                return res.status(400).json({ success: false, message: 'Không thể thay đổi trạng thái tài khoản của chính bạn' });
+            }
+
+            const targetUser = await User.findById(userObjectId).select('role fullName isActive');
+            if (!targetUser) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy thành viên' });
+            }
+
+            // Không cho phép thao tác trên tài khoản admin khác (phòng thủ thêm)
+            if (targetUser.role === 'admin') {
+                return res.status(403).json({ success: false, message: 'Không thể thay đổi trạng thái tài khoản quản trị viên' });
+            }
+
+            targetUser.isActive = isActive;
+            await targetUser.save();
+
+            const statusMessage = isActive
+                ? `Đã mở khóa tài khoản "${targetUser.fullName}"`
+                : `Đã khóa tài khoản "${targetUser.fullName}"`;
+
+            return res.status(200).json({
+                success: true,
+                message: statusMessage,
+                data: {
+                    _id: targetUser._id,
+                    isActive: targetUser.isActive,
+                },
+            });
+        } catch (error) {
+            console.error('[AdminController] toggleUserStatus error:', error);
+            return res.status(500).json({
+                success: false,
+                message: error.message || 'Không thể cập nhật trạng thái thành viên',
+            });
         }
     }
 }

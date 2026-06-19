@@ -13,8 +13,10 @@ class TagService {
         const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 24));
         const skip = (pageNum - 1) * limitNum;
 
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
+        const now = new Date();
+        const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+        const vnStartUtc = Date.UTC(vnTime.getUTCFullYear(), vnTime.getUTCMonth(), vnTime.getUTCDate(), 0, 0, 0, 0);
+        const startOfToday = new Date(vnStartUtc - 7 * 60 * 60 * 1000);
 
         const { items, total } = await tagRepository.findTags({
             search,

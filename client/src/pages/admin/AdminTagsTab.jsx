@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchTagsThunk,
@@ -44,6 +45,7 @@ export default function AdminTagsTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTag, setEditingTag] = useState(null); // Tag object being edited
   const [deletingTag, setDeletingTag] = useState(null); // Tag object being deleted
+  const isModalOpen = Boolean(deletingTag);
 
   // Form states
   const [tagName, setTagName] = useState('');
@@ -75,6 +77,17 @@ export default function AdminTagsTab() {
       return () => clearTimeout(timer);
     }
   }, [successMsg, errorMsg, dispatch]);
+
+  useEffect(() => {
+    if (!isModalOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isModalOpen]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -443,8 +456,8 @@ export default function AdminTagsTab() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {deletingTag && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fadeIn">
+      {deletingTag && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl space-y-4">
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <span className="material-symbols-outlined text-rose-500 text-xl font-bold">warning</span>
@@ -471,7 +484,8 @@ export default function AdminTagsTab() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -6,11 +6,13 @@ import AdminFlagsPage from './AdminFlagsPage';
 import AdminSettingsTab from './AdminSettingsTab';
 import AdminTagsTab from './AdminTagsTab';
 import AdminPostsTab from './AdminPostsTab';
+import AdminUsersTab from './AdminUsersTab';
 
 const TABS = [
   { key: 'overview', label: 'Tổng quan', icon: 'query_stats' },
   { key: 'donations', label: 'Duyệt bill COD', icon: 'payments' },
   { key: 'flags', label: 'Duyệt cờ báo cáo', icon: 'flag' },
+  { key: 'users', label: 'Quản lý thành viên', icon: 'group' },
   { key: 'tags', label: 'Quản lý thẻ tag', icon: 'label' },
   { key: 'posts', label: 'Quản lý bài đăng', icon: 'article' },
   { key: 'settings', label: 'Cấu hình hệ thống', icon: 'settings' },
@@ -257,6 +259,9 @@ export default function AdminDashboardPage() {
 
       {/* Posts Tab */}
       {activeTab === 'posts' && <AdminPostsTab embedded />}
+
+      {/* Users Tab */}
+      {activeTab === 'users' && <AdminUsersTab embedded />}
 
       {/* Settings Tab */}
       {activeTab === 'settings' && <AdminSettingsTab />}

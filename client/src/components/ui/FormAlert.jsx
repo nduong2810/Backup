@@ -7,6 +7,10 @@
     info: 'border-slate-200 bg-slate-50 text-slate-700',
   };
 
-  return <div className={`rounded-xl border px-3 py-2 text-sm ${styles[type]}`}>{message}</div>;
+  return (
+    <div className={`flex min-h-11 items-center rounded-xl border px-4 py-2.5 text-sm font-medium ${styles[type]}`}>
+      {message}
+    </div>
+  );
 }
 

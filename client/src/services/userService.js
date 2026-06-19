@@ -29,3 +29,14 @@ export const adminCreateTag = (payload) => apiClient.post('/admin/tags', payload
 export const adminUpdateTag = (tagId, payload) => apiClient.put(`/admin/tags/${tagId}`, payload);
 
 export const adminDeleteTag = (tagId) => apiClient.delete(`/admin/tags/${tagId}`);
+
+// ==================== ADMIN USER MANAGEMENT ====================
+export const getAdminUsers = ({ page = 1, limit = 10, keyword = '', status = 'all' } = {}) =>
+  apiClient.get('/admin/users', {
+    params: { page, limit, keyword, status },
+  });
+
+export const getAdminUserDetail = (userId) => apiClient.get(`/admin/users/${userId}`);
+
+export const toggleAdminUserStatus = (userId, isActive) =>
+  apiClient.patch(`/admin/users/${userId}/status`, { isActive });

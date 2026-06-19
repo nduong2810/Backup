@@ -159,6 +159,10 @@ class PostController {
         const validationError = this.checkValidationErrors(req, res);
         if (validationError) return validationError;
 
+        if (req.user.role === 'admin') {
+            return res.status(403).json({ success: false, message: 'Quản trị viên không được phép thực hiện tương tác này.' });
+        }
+
         try {
             const { commentId } = req.params;
             const { reactionType } = req.body;
@@ -210,6 +214,10 @@ class PostController {
         const validationError = this.checkValidationErrors(req, res);
         if (validationError) return validationError;
 
+        if (req.user.role === 'admin') {
+            return res.status(403).json({ success: false, message: 'Quản trị viên không được phép thực hiện tương tác này.' });
+        }
+
         try {
             const result = await postService.toggleVote(req.params.id, req.user.userId, req.body.voteType);
             return res.status(200).json({ success: true, message: 'Vote thành công', data: result });
@@ -222,6 +230,10 @@ class PostController {
     async reactPost(req, res) {
         const validationError = this.checkValidationErrors(req, res);
         if (validationError) return validationError;
+
+        if (req.user.role === 'admin') {
+            return res.status(403).json({ success: false, message: 'Quản trị viên không được phép thực hiện tương tác này.' });
+        }
 
         try {
             const result = await postService.toggleReaction(req.params.id, req.user.userId, req.body.reactionType);

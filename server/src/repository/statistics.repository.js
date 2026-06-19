@@ -105,7 +105,9 @@ class StatisticsRepository {
         const startDate = new Date();
         startDate.setMonth(startDate.getMonth() - months);
         startDate.setDate(1);
-        startDate.setHours(0, 0, 0, 0);
+        const vnTime = new Date(startDate.getTime() + 7 * 60 * 60 * 1000);
+        const vnStartUtc = Date.UTC(vnTime.getUTCFullYear(), vnTime.getUTCMonth(), vnTime.getUTCDate(), 0, 0, 0, 0);
+        startDate.setTime(vnStartUtc - 7 * 60 * 60 * 1000);
 
         return await Post.aggregate([
             {
@@ -143,7 +145,9 @@ class StatisticsRepository {
         const startDate = new Date();
         startDate.setMonth(startDate.getMonth() - months);
         startDate.setDate(1);
-        startDate.setHours(0, 0, 0, 0);
+        const vnTime2 = new Date(startDate.getTime() + 7 * 60 * 60 * 1000);
+        const vnStartUtc2 = Date.UTC(vnTime2.getUTCFullYear(), vnTime2.getUTCMonth(), vnTime2.getUTCDate(), 0, 0, 0, 0);
+        startDate.setTime(vnStartUtc2 - 7 * 60 * 60 * 1000);
 
         return await Comment.aggregate([
             {

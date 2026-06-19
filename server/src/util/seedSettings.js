@@ -41,9 +41,6 @@ export const seedSystemSettings = async () => {
         { reputationDailyDate: { $exists: true, $ne: null } },
         { $set: { reputationDailyDate: todayStart } }
       );
-      if (migrateResult.modifiedCount > 0) {
-        console.log(`🔄 [Migration] Đã chuẩn hóa múi giờ reputationDailyDate cho ${migrateResult.modifiedCount} người dùng.`);
-      }
     } catch (migErr) {
       console.error('❌ Lỗi chạy migration chuẩn hóa ngày:', migErr);
     }

@@ -36,10 +36,21 @@ export default function ResetPassword() {
   };
 
   return (
-    <AppCard title="Đặt lại mật khẩu" subtitle="Bước 3/3: Tạo mật khẩu mới">
+    <AppCard
+      title="Đặt lại mật khẩu"
+      subtitle="Tạo mật khẩu mới an toàn để hoàn tất khôi phục tài khoản"
+      icon="password"
+      className="mx-auto max-w-xl"
+      contentClassName="mx-auto max-w-md"
+      rightSlot={
+        <span className="hidden h-[52px] min-w-16 items-center justify-center rounded-2xl bg-slate-100 px-3 text-center text-xs font-bold leading-5 text-slate-600 sm:flex">
+          Bước<br />3/3
+        </span>
+      }
+    >
       <FormAlert type={alertType} message={alertMessage} />
 
-      <form className="mt-4 space-y-4" onSubmit={onSubmit}>
+      <form className="mt-5 space-y-5" onSubmit={onSubmit}>
         <InputField
           label="Mật khẩu mới"
           name="newPassword"
@@ -49,6 +60,7 @@ export default function ResetPassword() {
           placeholder="Tối thiểu 6 ký tự, có số"
           required
           disabled={loading}
+          allowPasswordToggle
         />
         <InputField
           label="Xác nhận mật khẩu"
@@ -56,8 +68,10 @@ export default function ResetPassword() {
           type="password"
           value={confirmPassword}
           onChange={(event) => dispatch(setField({ field: 'confirmPassword', value: event.target.value }))}
+          placeholder="Nhập lại mật khẩu mới"
           required
           disabled={loading}
+          allowPasswordToggle
         />
 
         <AppButton type="submit" fullWidth disabled={loading}>

@@ -58,4 +58,20 @@ router.delete('/tags/:tagId',
     adminController.deleteTag.bind(adminController)
 );
 
+// ==================== ADMIN USER MANAGEMENT ====================
+router.get('/users',
+    ...adminOnly,
+    adminController.getManagedUsers.bind(adminController)
+);
+
+router.get('/users/:userId',
+    ...adminOnly,
+    adminController.getUserDetail.bind(adminController)
+);
+
+router.patch('/users/:userId/status',
+    ...adminOnly,
+    adminController.toggleUserStatus.bind(adminController)
+);
+
 export default router;
