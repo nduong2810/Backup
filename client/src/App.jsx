@@ -9,6 +9,8 @@ import ResetPassword from './components/auth/ResetPassword';
 import VerifyResetOTP from './components/auth/VerifyResetOTP';
 import AdminProfilePage from './pages/admin/AdminProfilePage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminPostsTab from './pages/admin/AdminPostsTab';
+import AdminAllDonationsTab from './pages/admin/AdminAllDonationsTab';
 import ProfilePage from './pages/profile/ProfilePage';
 import AuthorProfilePage from './pages/profile/AuthorProfilePage';
 import SavedPostsPage from './pages/profile/SavedPostsPage';

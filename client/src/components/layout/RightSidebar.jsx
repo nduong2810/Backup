@@ -19,9 +19,14 @@ const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
 
     useEffect(() => {
         if (!tags.length && !loadingTags) {
-            dispatch(fetchTagsThunk({ key: 'sidebarTags', params: { limit: 8, page: 1 } }));
+            dispatch(fetchTagsThunk({ key: 'sidebarTags', params: { limit: 8, page: 1, sortBy: 'posts' } }));
         }
     }, [dispatch, loadingTags, tags.length]);
+
+    const visibleTags = [...tags].sort(
+        (left, right) => (Number(right.totalCount) || 0) - (Number(left.totalCount) || 0)
+            || String(left.name || left.slug || '').localeCompare(String(right.name || right.slug || ''))
+    );
 
     return (
         <aside className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-stack-lg pb-12">
@@ -69,7 +74,7 @@ const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
                     {!loadingTags && tags.length === 0 && (
                         <p className="font-body-sm text-body-sm text-secondary">Chưa có tags.</p>
                     )}
-                    {tags.map((item) => {
+                    {visibleTags.map((item) => {
                         const tagLabel = item.name || item.slug;
                         return (
                         <div key={item.slug} className="flex items-center justify-between">

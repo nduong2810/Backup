@@ -37,7 +37,6 @@ const POST_STATUS_MESSAGES = {
     hidden: 'Bài viết đang bị ẩn',
     deleted: 'Bài viết đã bị xóa',
 };
-
 const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const getObjectId = (value) => {

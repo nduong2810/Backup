@@ -69,7 +69,7 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
       dispatch(
         fetchTagsThunk({
           key: 'filterTags',
-          params: { limit: tagLimit, page: 1 },
+          params: { limit: tagLimit, page: 1, sortBy: 'posts' },
           append: false,
         })
       );
@@ -86,7 +86,7 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
       dispatch(
         fetchTagsThunk({
           key: 'filterTags',
-          params: { limit: tagLimit, page: tagPagination.page + 1 },
+          params: { limit: tagLimit, page: tagPagination.page + 1, sortBy: 'posts' },
           append: true,
         })
       );
@@ -103,14 +103,20 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
       dispatch(
         fetchTagsThunk({
           key: 'filterTags',
-          params: { limit: tagLimit, page: tagPagination.page + 1 },
+          params: { limit: tagLimit, page: tagPagination.page + 1, sortBy: 'posts' },
           append: true,
         })
       );
     }
   };
 
-  const visibleTags = useMemo(() => tagOptions, [tagOptions]);
+  const visibleTags = useMemo(
+    () => [...tagOptions].sort(
+      (left, right) => (Number(right.totalCount) || 0) - (Number(left.totalCount) || 0)
+        || String(left.name || left.slug || '').localeCompare(String(right.name || right.slug || ''))
+    ),
+    [tagOptions]
+  );
 
   const body = (
     <div className="p-4 flex flex-col gap-4">

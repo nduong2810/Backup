@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate, useOutletContext } from 'react-router-dom';
+import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { getTopUpvotedPosts, getTrendingTodayPosts, votePost, reactPost } from '../../services/postService';
 import SaveIconButton from '../ui/SaveIconButton';
 import { fetchCollectionsThunk, savePostToCollectionThunk, toggleSaveThunk } from '../../store/slices/savedSlice';
@@ -304,6 +304,7 @@ const MainContent = () => {
     const isAdmin = currentUser?.role === 'admin';
     const { toast } = useToast();
     const { filters, handleFilterChange, handleApplyFilters } = useOutletContext();
+    const [searchParams] = useSearchParams();
     const [trending, setTrending] = useState([]);
     const [trendingLoading, setTrendingLoading] = useState(true);
     const [trendingError, setTrendingError] = useState('');
@@ -474,6 +475,7 @@ const MainContent = () => {
     const currentPage = pagination.page || 1;
     const totalPages = pagination.totalPages || 1;
     const paginationItems = buildPaginationItems(currentPage, totalPages);
+    const hasAppliedSearchOrFilters = searchParams.toString().length > 0;
 
     const renderPagerButton = (enabled, onClick, icon, label) => (
         <button
@@ -489,6 +491,7 @@ const MainContent = () => {
 
     return (
         <main className="flex-1 flex flex-col min-w-0 pb-12">
+            {!hasAppliedSearchOrFilters && (
             <section className="mb-stack-lg">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <div>
@@ -511,7 +514,9 @@ const MainContent = () => {
                     </div>
                 )}
             </section>
+            )}
 
+            {!hasAppliedSearchOrFilters && (
             <section className="mb-stack-lg">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <div>
@@ -534,30 +539,39 @@ const MainContent = () => {
                     </div>
                 )}
             </section>
+            )}
 
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-stack-lg gap-4 border-b border-outline-variant pb-4">
                 <div>
-                    <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">Bài viết mới nhất</h1>
-                    <p className="font-body-md text-body-md text-secondary">{pagination.total?.toLocaleString('vi-VN') || 0} bài viết</p>
+                    <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">
+                        {hasAppliedSearchOrFilters ? 'Kết quả tìm kiếm' : 'Bài viết mới nhất'}
+                    </h1>
+                    <p className="font-body-md text-body-md text-secondary">
+                        {hasAppliedSearchOrFilters
+                          ? `${pagination.total?.toLocaleString('vi-VN') || 0} kết quả`
+                          : `${pagination.total?.toLocaleString('vi-VN') || 0} bài viết`}
+                    </p>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex border border-outline-variant rounded-DEFAULT overflow-hidden bg-surface-container-lowest">
-                        {sortOptions.map((option, index) => (
-                            <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => {
-                                    handleFilterChange?.('sortBy', option.value);
-                                    handleApplyFilters?.({ sortBy: option.value });
-                                }}
-                                className={`px-3 py-1.5 font-body-sm text-body-sm border-outline-variant transition-colors ${index < sortOptions.length - 1 ? 'border-r' : ''} ${filters?.sortBy === option.value ? 'bg-surface-container-low text-on-surface font-semibold' : 'text-secondary hover:bg-surface-container hover:text-on-surface'}`}
-                            >
-                                {option.label}
-                            </button>
-                        ))}
+                {!hasAppliedSearchOrFilters && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex border border-outline-variant rounded-DEFAULT overflow-hidden bg-surface-container-lowest">
+                            {sortOptions.map((option, index) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => {
+                                        handleFilterChange?.('sortBy', option.value);
+                                        handleApplyFilters?.({ sortBy: option.value });
+                                    }}
+                                    className={`px-3 py-1.5 font-body-sm text-body-sm border-outline-variant transition-colors ${index < sortOptions.length - 1 ? 'border-r' : ''} ${filters?.sortBy === option.value ? 'bg-surface-container-low text-on-surface font-semibold' : 'text-secondary hover:bg-surface-container hover:text-on-surface'}`}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             <div className="flex flex-col gap-0 border-t border-outline-variant">
@@ -575,7 +589,20 @@ const MainContent = () => {
                         reactingPostId={reactingPostId}
                     />
                 ))}
-                {!loading && !error && (!questionsList || questionsList.length === 0) && <p className="p-4 text-center text-secondary">Chưa có bài viết nào trên diễn đàn.</p>}
+                {!loading && !error && (!questionsList || questionsList.length === 0) && (
+                    <div className="p-6 text-center text-secondary">
+                        <p className="font-medium">
+                            {hasAppliedSearchOrFilters
+                                ? 'Không tìm thấy bài viết phù hợp với từ khóa hoặc bộ lọc.'
+                                : 'Chưa có bài viết nào trên diễn đàn.'}
+                        </p>
+                        {hasAppliedSearchOrFilters && (
+                            <p className="mt-1 text-sm text-slate-400">
+                                Thử đổi từ khóa tìm kiếm hoặc bớt điều kiện lọc để xem thêm kết quả.
+                            </p>
+                        )}
+                    </div>
+                )}
             </div>
 
             {!loading && !error && totalPages > 1 && (
