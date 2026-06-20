@@ -189,17 +189,12 @@ export default function AdminPostsTab({ embedded = false }) {
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="space-y-5">
           <div className="max-w-3xl">
-
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
               Post Management
             </p>
             <h2 className="mt-2 text-2xl font-extrabold leading-9 text-slate-900 sm:text-3xl">
               Quản lý bài đăng
             </h2>
-
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Post Management</p>
-            <h2 className="mt-2 text-2xl font-extrabold leading-9 text-slate-900 sm:text-3xl">Quản lý bài đăng</h2>
-
           </div>
 
           <form
@@ -272,24 +267,12 @@ export default function AdminPostsTab({ embedded = false }) {
               {loading && (
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={index} className="animate-pulse">
-                    <td className="px-5 py-5">
-                      <div className="h-4 w-64 rounded bg-slate-100" />
-                    </td>
-                    <td className="px-5 py-5">
-                      <div className="h-4 w-32 rounded bg-slate-100" />
-                    </td>
-                    <td className="px-5 py-5">
-                      <div className="mx-auto h-4 w-10 rounded bg-slate-100" />
-                    </td>
-                    <td className="px-5 py-5">
-                      <div className="mx-auto h-4 w-10 rounded bg-slate-100" />
-                    </td>
-                    <td className="px-5 py-5">
-                      <div className="mx-auto h-7 w-40 rounded-full bg-slate-100" />
-                    </td>
-                    <td className="px-5 py-5">
-                      <div className="ml-auto h-9 w-44 rounded-full bg-slate-100" />
-                    </td>
+                    <td className="px-5 py-5"><div className="h-4 w-64 rounded bg-slate-100" /></td>
+                    <td className="px-5 py-5"><div className="h-4 w-32 rounded bg-slate-100" /></td>
+                    <td className="px-5 py-5"><div className="mx-auto h-4 w-10 rounded bg-slate-100" /></td>
+                    <td className="px-5 py-5"><div className="mx-auto h-4 w-10 rounded bg-slate-100" /></td>
+                    <td className="px-5 py-5"><div className="mx-auto h-7 w-40 rounded-full bg-slate-100" /></td>
+                    <td className="px-5 py-5"><div className="ml-auto h-9 w-44 rounded-full bg-slate-100" /></td>
                   </tr>
                 ))
               )}
@@ -330,9 +313,7 @@ export default function AdminPostsTab({ embedded = false }) {
                         {post.title}
                       </Link>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs leading-5 text-slate-400">
-                        <span className="font-medium">
-                          {formatDate(post.createdAt)}
-                        </span>
+                        <span className="font-medium">{formatDate(post.createdAt)}</span>
                         {post.postType && (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-500">
                             {post.postType}

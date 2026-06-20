@@ -30,12 +30,9 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleTabChange = useCallback((tabKey) => {
     const safeTab = VALID_TABS.includes(tabKey) ? tabKey : 'overview';
-
-    setSidebarOpen(false);
 
     if (safeTab === 'overview') {
       setSearchParams({}, { replace: false });
@@ -82,13 +79,6 @@ export default function AdminDashboardPage() {
     if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
 
     return value;
-  };
-
-  const pendingBadge = (key) => {
-    if (!stats?.summary) return 0;
-    if (key === 'donations') return stats.summary.pendingDonationsCount || 0;
-    if (key === 'flags') return stats.summary.pendingFlagsCount || 0;
-    return 0;
   };
 
   const renderMiniBarChart = (timeline = []) => {
@@ -379,123 +369,15 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1480px] px-4 pb-8 pt-2 sm:px-6 lg:px-8 xl:px-10">
-      <div className="flex flex-col gap-6 md:flex-row lg:gap-8">
-        <aside className="w-full shrink-0 md:w-72">
-          <div className="mb-4 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-xl text-primary">
-                admin_panel_settings
-              </span>
-              <div className="min-w-0">
-                <h1 className="text-lg font-bold leading-6 text-slate-900">
-                  Trang quản trị
-                </h1>
-                <p className="mt-0.5 text-xs font-medium leading-5 text-slate-400">
-                  Giám sát & phê duyệt
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="mb-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm md:hidden"
-          >
-            <span className="flex min-w-0 items-center gap-2.5">
-              <span className="material-symbols-outlined shrink-0 text-base">
-                {TABS.find((tab) => tab.key === activeTab)?.icon}
-              </span>
-              <span className="truncate">
-                {TABS.find((tab) => tab.key === activeTab)?.label}
-              </span>
-            </span>
-            <span
-              className="material-symbols-outlined shrink-0 text-sm transition-transform"
-              style={{ transform: sidebarOpen ? 'rotate(180deg)' : '' }}
-            >
-              expand_more
-            </span>
-          </button>
-
-          <nav className={`space-y-2 ${sidebarOpen ? 'block' : 'hidden'} md:block`}>
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.key;
-              const badge = pendingBadge(tab.key);
-
-              return (
-                <button
-                  type="button"
-                  key={tab.key}
-                  onClick={() => handleTabChange(tab.key)}
-                  className={`flex min-h-[58px] w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-sm font-semibold transition-all ${
-                    isActive
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'border border-transparent bg-white text-slate-600 shadow-sm hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900'
-                  }`}
-                >
-                  <span
-                    className={`material-symbols-outlined flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg ${
-                      isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-400'
-                    }`}
-                  >
-                    {tab.icon}
-                  </span>
-                  <span className="min-w-0 flex-1 leading-5">
-                    {tab.label}
-                  </span>
-
-                  {badge > 0 && (
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold leading-none ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'
-                      }`}
-                    >
-                      {badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="mt-5 hidden rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm md:block">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Lối tắt
-            </p>
-            <a
-              href="/"
-              className="mt-3 flex items-center gap-2.5 rounded-xl px-1 py-1.5 text-sm font-medium leading-5 text-slate-500 transition-colors hover:text-primary"
-            >
-              <span className="material-symbols-outlined shrink-0 text-base">
-                home
-              </span>
-              <span>Về trang chủ</span>
-            </a>
-            <a
-              href="/admin/profile"
-              className="mt-1 flex items-center gap-2.5 rounded-xl px-1 py-1.5 text-sm font-medium leading-5 text-slate-500 transition-colors hover:text-primary"
-            >
-              <span className="material-symbols-outlined shrink-0 text-base">
-                person
-              </span>
-              <span>Hồ sơ Admin</span>
-            </a>
-          </div>
-        </aside>
-
-        <main className="min-w-0 flex-1 space-y-6">
-          {activeTab === 'overview' && renderOverview()}
-          {activeTab === 'donations' && <AdminDonationsPage embedded />}
-          {activeTab === 'all-donations' && <AdminAllDonationsTab embedded />}
-          {activeTab === 'posts' && <AdminPostsTab embedded />}
-          {activeTab === 'flags' && <AdminFlagsPage embedded />}
-          {activeTab === 'users' && <AdminUsersTab embedded />}
-          {activeTab === 'tags' && <AdminTagsTab />}
-          {activeTab === 'settings' && <AdminSettingsTab />}
-        </main>
-      </div>
-    </div>
+    <main className="min-w-0 flex-1 px-4 pb-8 pt-2 sm:px-6 lg:px-8 xl:px-10">
+      {activeTab === 'overview' && renderOverview()}
+      {activeTab === 'donations' && <AdminDonationsPage embedded />}
+      {activeTab === 'all-donations' && <AdminAllDonationsTab embedded />}
+      {activeTab === 'posts' && <AdminPostsTab embedded />}
+      {activeTab === 'flags' && <AdminFlagsPage embedded />}
+      {activeTab === 'users' && <AdminUsersTab embedded />}
+      {activeTab === 'tags' && <AdminTagsTab />}
+      {activeTab === 'settings' && <AdminSettingsTab />}
+    </main>
   );
 }

@@ -8,46 +8,41 @@ import SystemSetting from '../model/systemSetting.model.js';
 import Tag from '../model/tag.model.js';
 
 const FLAG_LABELS = {
-  spam: 'Spam',
-  rude_abusive: 'Công kích/Xúc phạm',
-  off_topic: 'Lạc chủ đề',
-  needs_detail: 'Cần thêm chi tiết',
-  needs_focus: 'Cần tập trung',
-  opinion_based: 'Quan điểm cá nhân',
-  duplicate: 'Trùng lặp',
-  very_low_quality: 'Chất lượng thấp',
-  moderator_attention: 'Cần moderator',
+    spam: 'Spam',
+    rude_abusive: 'Công kích/Xúc phạm',
+    off_topic: 'Lạc chủ đề',
+    needs_detail: 'Cần thêm chi tiết',
+    needs_focus: 'Cần tập trung',
+    opinion_based: 'Quan điểm cá nhân',
+    duplicate: 'Trùng lặp',
+    very_low_quality: 'Chất lượng thấp',
+    moderator_attention: 'Cần moderator',
 };
 
 const STATUS_LABELS = {
-  submitted: 'Mới gửi',
-  received: 'Đã tiếp nhận',
-  in_review: 'Đang xem xét',
-  action_taken: 'Đã xử lý vi phạm',
-  closed: 'Đã đóng (không xử lý)',
-  retracted: 'Đã rút cờ',
+    submitted: 'Mới gửi',
+    received: 'Đã tiếp nhận',
+    in_review: 'Đang xem xét',
+    action_taken: 'Đã xử lý vi phạm',
+    closed: 'Đã đóng (không xử lý)',
+    retracted: 'Đã rút cờ',
 };
-
 
 const POST_STATUS_VALUES = ['active', 'closed', 'hidden', 'deleted'];
 const PUBLIC_POST_MATCH = { status: { $nin: ['hidden', 'deleted'] } };
 
 const POST_STATUS_MESSAGES = {
-  active: 'Bài viết đang hiển thị',
-  closed: 'Bài viết đã bị khóa',
-  hidden: 'Bài viết đang bị ẩn',
-  deleted: 'Bài viết đã bị xóa',
+    active: 'Bài viết đang hiển thị',
+    closed: 'Bài viết đã bị khóa',
+    hidden: 'Bài viết đang bị ẩn',
+    deleted: 'Bài viết đã bị xóa',
 };
-
-const POST_STATUS_VALUES = ['active', 'closed', 'deleted'];
-
-
 
 const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const getObjectId = (value) => {
-  if (!mongoose.Types.ObjectId.isValid(String(value || '').trim())) return null;
-  return new mongoose.Types.ObjectId(String(value).trim());
+    if (!mongoose.Types.ObjectId.isValid(String(value || '').trim())) return null;
+    return new mongoose.Types.ObjectId(String(value).trim());
 };
 
 class AdminController {
@@ -66,7 +61,7 @@ class AdminController {
                 Comment.countDocuments(),
                 DonationTransaction.aggregate([
                     { $match: { status: 'completed' } },
-                    { $group: { _id: null, totalAmount: { $sum: '$amount' }, count: { $sum: 1 } } }
+                    { $group: { _id: null, totalAmount: { $sum: '$amount' }, count: { $sum: 1 } } },
                 ]),
                 DonationTransaction.countDocuments({ status: 'pending_review', paymentMethod: 'cod' }),
                 ReportTicket.countDocuments({ status: { $in: ['submitted', 'received', 'in_review'] } }),
@@ -79,28 +74,30 @@ class AdminController {
             startDate.setMonth(startDate.getMonth() - 5);
             startDate.setDate(1);
             const vnTime = new Date(startDate.getTime() + 7 * 60 * 60 * 1000);
-            const vnStartUtc = Date.UTC(vnTime.getUTCFullYear(), vnTime.getUTCMonth(), vnTime.getUTCDate(), 0, 0, 0, 0);
+            const vnStartUtc = Date.UTC(
+                vnTime.getUTCFullYear(),
+                vnTime.getUTCMonth(),
+                vnTime.getUTCDate(),
+                0,
+                0,
+                0,
+                0,
+            );
             startDate.setTime(vnStartUtc - 7 * 60 * 60 * 1000);
 
             const [userTimeline, postTimeline, donationTimeline] = await Promise.all([
                 User.aggregate([
                     { $match: { createdAt: { $gte: startDate } } },
-                    { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, count: { $sum: 1 } } }
+                    { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, count: { $sum: 1 } } },
                 ]),
                 Post.aggregate([
-
                     { $match: { ...PUBLIC_POST_MATCH, createdAt: { $gte: startDate } } },
-
-                    { $match: { status: { $ne: 'deleted' }, createdAt: { $gte: startDate } } },
-
-                    { $match: { ...PUBLIC_POST_MATCH, createdAt: { $gte: startDate } } },
-
-                    { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, count: { $sum: 1 } } }
+                    { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, count: { $sum: 1 } } },
                 ]),
                 DonationTransaction.aggregate([
                     { $match: { status: 'completed', createdAt: { $gte: startDate } } },
-                    { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, amount: { $sum: '$amount' }, count: { $sum: 1 } } }
-                ])
+                    { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, amount: { $sum: '$amount' }, count: { $sum: 1 } } },
+                ]),
             ]);
 
             const now = new Date();
@@ -109,9 +106,9 @@ class AdminController {
                 const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
                 const year = d.getFullYear();
                 const month = d.getMonth() + 1;
-                const userEntry = userTimeline.find(t => t._id.year === year && t._id.month === month);
-                const postEntry = postTimeline.find(t => t._id.year === year && t._id.month === month);
-                const donationEntry = donationTimeline.find(t => t._id.year === year && t._id.month === month);
+                const userEntry = userTimeline.find((t) => t._id.year === year && t._id.month === month);
+                const postEntry = postTimeline.find((t) => t._id.year === year && t._id.month === month);
+                const donationEntry = donationTimeline.find((t) => t._id.year === year && t._id.month === month);
                 timeline.push({
                     year,
                     month,
@@ -126,7 +123,7 @@ class AdminController {
             const [postTypes, activePostIdsWithComments] = await Promise.all([
                 Post.aggregate([
                     { $match: PUBLIC_POST_MATCH },
-                    { $group: { _id: '$postType', count: { $sum: 1 } } }
+                    { $group: { _id: '$postType', count: { $sum: 1 } } },
                 ]),
                 Comment.distinct('post'),
             ]);
@@ -150,7 +147,7 @@ class AdminController {
                 .lean();
 
             const THIRTY_MINUTES_MS = 30 * 60 * 1000;
-            const recentFlags = rawRecentFlags.map(ticket => {
+            const recentFlags = rawRecentFlags.map((ticket) => {
                 let status = ticket.status;
                 if (status === 'submitted') {
                     const elapsed = Date.now() - new Date(ticket.createdAt).getTime();
@@ -171,7 +168,7 @@ class AdminController {
                 .populate('author', 'fullName')
                 .lean();
 
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 data: {
                     summary: {
@@ -193,32 +190,30 @@ class AdminController {
                     },
                     recentFlags,
                     recentDonations,
-                }
+                },
             });
         } catch (error) {
-            res.status(500).json({
+            return res.status(500).json({
                 success: false,
-                message: error.message || 'Lỗi khi tải số liệu thống kê quản trị'
+                message: error.message || 'Lỗi khi tải số liệu thống kê quản trị',
             });
         }
     }
-
 
     async getSystemSettings(req, res) {
         try {
             const settings = await SystemSetting.find({});
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
-                data: settings
+                data: settings,
             });
         } catch (error) {
-            res.status(500).json({
+            return res.status(500).json({
                 success: false,
-                message: error.message || 'Lỗi khi tải cấu hình hệ thống'
+                message: error.message || 'Lỗi khi tải cấu hình hệ thống',
             });
         }
     }
-
 
     async getManagedPosts(req, res) {
         try {
@@ -320,43 +315,41 @@ class AdminController {
         }
     }
 
-
     async updateSystemSetting(req, res) {
         try {
             const { key, value } = req.body;
             if (!key) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Thiếu tham số key'
+                    message: 'Thiếu tham số key',
                 });
             }
 
             const setting = await SystemSetting.findOneAndUpdate(
                 { key },
                 { value },
-                { new: true }
+                { new: true },
             );
 
             if (!setting) {
                 return res.status(404).json({
                     success: false,
-                    message: `Không tìm thấy cấu hình với key: ${key}`
+                    message: `Không tìm thấy cấu hình với key: ${key}`,
                 });
             }
 
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 message: 'Cập nhật cấu hình thành công',
-                data: setting
+                data: setting,
             });
         } catch (error) {
-            res.status(500).json({
+            return res.status(500).json({
                 success: false,
-                message: error.message || 'Lỗi khi cập nhật cấu hình hệ thống'
+                message: error.message || 'Lỗi khi cập nhật cấu hình hệ thống',
             });
         }
     }
-
 
     async updatePostStatus(req, res) {
         try {
@@ -373,7 +366,7 @@ class AdminController {
             const post = await Post.findByIdAndUpdate(
                 postObjectId,
                 { $set: { status } },
-                { new: true }
+                { new: true },
             )
                 .select('title status updatedAt')
                 .lean();
@@ -384,14 +377,7 @@ class AdminController {
 
             return res.status(200).json({
                 success: true,
-
                 message: POST_STATUS_MESSAGES[status] || 'Đã cập nhật trạng thái bài viết',
-
-                message: status === 'deleted' ? 'Đã ẩn bài viết' : 'Đã cập nhật trạng thái bài viết',
-
-
-                message: POST_STATUS_MESSAGES[status] || 'Đã cập nhật trạng thái bài viết',
-
                 data: post,
             });
         } catch (error) {
@@ -418,13 +404,13 @@ class AdminController {
             const newTag = await Tag.create({
                 name: name.trim(),
                 slug,
-                description: (description || '').trim()
+                description: (description || '').trim(),
             });
 
             return res.status(201).json({
                 success: true,
                 message: 'Tạo thẻ tag thành công',
-                data: newTag
+                data: newTag,
             });
         } catch (error) {
             console.error('[AdminController] createTag error:', error);
@@ -461,24 +447,24 @@ class AdminController {
                     $set: {
                         name: name.trim(),
                         slug,
-                        description: (description || '').trim()
-                    }
+                        description: (description || '').trim(),
+                    },
                 },
-                { new: true }
+                { new: true },
             );
 
             if (oldTag.slug !== slug) {
                 await Post.updateMany(
                     { tags: oldTag.slug },
-                    { $set: { "tags.$[elem]": slug } },
-                    { arrayFilters: [{ elem: oldTag.slug }] }
+                    { $set: { 'tags.$[elem]': slug } },
+                    { arrayFilters: [{ elem: oldTag.slug }] },
                 );
             }
 
             return res.status(200).json({
                 success: true,
                 message: 'Cập nhật thẻ tag thành công',
-                data: updatedTag
+                data: updatedTag,
             });
         } catch (error) {
             console.error('[AdminController] updateTag error:', error);
@@ -498,12 +484,11 @@ class AdminController {
                 return res.status(404).json({ success: false, message: 'Không tìm thấy thẻ tag' });
             }
 
-            // Kiểm tra xem thẻ tag có đang được bài viết nào sử dụng không
             const postCount = await Post.countDocuments({ tags: tag.slug });
             if (postCount > 0) {
                 return res.status(400).json({
                     success: false,
-                    message: `Không thể xóa thẻ tag này vì đang có ${postCount} bài viết sử dụng.`
+                    message: `Không thể xóa thẻ tag này vì đang có ${postCount} bài viết sử dụng.`,
                 });
             }
 
@@ -511,15 +496,13 @@ class AdminController {
 
             return res.status(200).json({
                 success: true,
-                message: 'Xóa thẻ tag thành công'
+                message: 'Xóa thẻ tag thành công',
             });
         } catch (error) {
             console.error('[AdminController] deleteTag error:', error);
             return res.status(500).json({ success: false, message: 'Lỗi server khi xóa thẻ tag' });
         }
     }
-
-    // ==================== ADMIN USER MANAGEMENT ====================
 
     async getManagedUsers(req, res) {
         try {
@@ -529,7 +512,6 @@ class AdminController {
             const status = String(req.query.status || 'all').trim().toLowerCase();
             const skip = (page - 1) * limit;
 
-            // Chỉ load user thường (role='user'), không load admin
             const match = { role: 'user' };
 
             if (keyword) {
@@ -605,11 +587,11 @@ class AdminController {
                 return res.status(404).json({ success: false, message: 'Không tìm thấy thành viên' });
             }
 
-            // Thống kê hoạt động của user
+            const userPostIds = await Post.find({ author: userObjectId }).distinct('_id');
             const [postCount, commentCount, reportCount] = await Promise.all([
                 Post.countDocuments({ author: userObjectId }),
                 Comment.countDocuments({ author: userObjectId }),
-                ReportTicket.countDocuments({ post: { $in: await Post.find({ author: userObjectId }).distinct('_id') } }),
+                ReportTicket.countDocuments({ post: { $in: userPostIds } }),
             ]);
 
             return res.status(200).json({
@@ -644,7 +626,6 @@ class AdminController {
                 return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
             }
 
-            // Không cho phép admin tự khóa chính mình
             if (String(userObjectId) === String(req.user.userId)) {
                 return res.status(400).json({ success: false, message: 'Không thể thay đổi trạng thái tài khoản của chính bạn' });
             }
@@ -654,7 +635,6 @@ class AdminController {
                 return res.status(404).json({ success: false, message: 'Không tìm thấy thành viên' });
             }
 
-            // Không cho phép thao tác trên tài khoản admin khác (phòng thủ thêm)
             if (targetUser.role === 'admin') {
                 return res.status(403).json({ success: false, message: 'Không thể thay đổi trạng thái tài khoản quản trị viên' });
             }
@@ -682,7 +662,6 @@ class AdminController {
             });
         }
     }
-
 }
 
 export default new AdminController();

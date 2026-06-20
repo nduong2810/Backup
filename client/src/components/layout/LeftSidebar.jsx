@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 const ADMIN_TABS = [
     { key: 'overview', label: 'Tổng quan', icon: 'query_stats', tab: null },
     { key: 'donations', label: 'Duyệt bill COD', icon: 'payments', tab: 'donations' },
+    { key: 'all-donations', label: 'Quản lý giao dịch quyên góp', icon: 'receipt_long', tab: 'all-donations' },
     { key: 'flags', label: 'Duyệt cờ báo cáo', icon: 'flag', tab: 'flags' },
     { key: 'users', label: 'Quản lý thành viên', icon: 'group', tab: 'users' },
     { key: 'tags', label: 'Quản lý thẻ tag', icon: 'label', tab: 'tags' },
@@ -25,7 +26,6 @@ const LeftSidebar = () => {
     const location = useLocation();
     const [searchParams] = useSearchParams();
 
-    // Determine which admin tab is active
     const isAdminPage = location.pathname.startsWith('/admin');
     const currentAdminTab = isAdminPage ? (searchParams.get('tab') || 'overview') : null;
 
@@ -69,7 +69,6 @@ const LeftSidebar = () => {
                     )}
                 </div>
 
-                {/* Admin Section - Only visible for admins */}
                 {isAdmin && (
                     <>
                         <div className="mt-4 px-4 pb-2 border-t border-outline-variant pt-4">

@@ -25,7 +25,6 @@ import './App.css';
 function App() {
   return (
     <Routes>
-      {/* Home + Admin (shared ForumLayout) */}
       <Route element={<ForumLayout />}>
         <Route index element={<MainContent />} />
         <Route path="home" element={<MainContent />} />
@@ -34,12 +33,17 @@ function App() {
         <Route path="trash" element={<TrashPage />} />
         <Route path="donate/checkout" element={<DonateCheckoutPage />} />
         <Route path="donate/result" element={<DonateResultPage />} />
-        {/* Admin pages inside ForumLayout */}
+
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/posts" element={<Navigate to="/admin/dashboard?tab=posts" replace />} />
+        <Route path="/admin/all-donations" element={<Navigate to="/admin/dashboard?tab=all-donations" replace />} />
+        <Route path="/admin/flags" element={<Navigate to="/admin/dashboard?tab=flags" replace />} />
+        <Route path="/admin/donations" element={<Navigate to="/admin/dashboard?tab=donations" replace />} />
+        <Route path="/admin/users" element={<Navigate to="/admin/dashboard?tab=users" replace />} />
+        <Route path="/admin/tags" element={<Navigate to="/admin/dashboard?tab=tags" replace />} />
+        <Route path="/admin/settings" element={<Navigate to="/admin/dashboard?tab=settings" replace />} />
       </Route>
 
-      {/* Auth */}
       <Route element={<AuthShellLayout />}>
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
@@ -53,28 +57,17 @@ function App() {
       <Route path="/verify-reset-otp" element={<Navigate to="/auth/verify-reset-otp" replace />} />
       <Route path="/reset-password" element={<Navigate to="/auth/reset-password" replace />} />
 
-      {/* User / Admin Profile */}
       <Route element={<ProfileShellLayout />}>
         <Route path="/user/profile" element={<ProfilePage />} />
         <Route path="/user/saves" element={<SavedPostsPage />} />
         <Route path="/users/:id" element={<AuthorProfilePage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
-        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-        <Route path="/admin/posts" element={<AdminPostsTab />} />
-        <Route path="/admin/all-donations" element={<AdminAllDonationsTab />} />
-        <Route path="/admin/posts" element={<Navigate to="/admin/dashboard?tab=posts" replace />} />
-        <Route path="/admin/all-donations" element={<Navigate to="/admin/dashboard?tab=all-donations" replace />} />
-        <Route path="/admin/flags" element={<Navigate to="/admin/dashboard?tab=flags" replace />} />
-        <Route path="/admin/donations" element={<Navigate to="/admin/dashboard?tab=donations" replace />} />
-
       </Route>
 
-      {/* Post Detail */}
       <Route element={<PostDetailLayout />}>
         <Route path="/posts/:id" element={<PostDetailPage />} />
       </Route>
 
-      {/* Fallback */}
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   );
