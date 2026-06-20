@@ -18,6 +18,7 @@ router.get('/dashboard-stats',
     adminController.getDashboardStats.bind(adminController)
 );
 
+
 // ==================== SYSTEM SETTINGS ====================
 router.get('/settings',
     authenticateToken,
@@ -30,6 +31,7 @@ router.put('/settings',
     authorizeRole('admin'),
     adminController.updateSystemSetting.bind(adminController)
 );
+
 
 // ==================== ADMIN POST MANAGEMENT ====================
 router.get('/posts',

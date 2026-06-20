@@ -28,6 +28,7 @@ const STATUS_LABELS = {
   retracted: 'Đã rút cờ',
 };
 
+
 const POST_STATUS_VALUES = ['active', 'closed', 'hidden', 'deleted'];
 const PUBLIC_POST_MATCH = { status: { $nin: ['hidden', 'deleted'] } };
 
@@ -37,6 +38,10 @@ const POST_STATUS_MESSAGES = {
   hidden: 'Bài viết đang bị ẩn',
   deleted: 'Bài viết đã bị xóa',
 };
+
+const POST_STATUS_VALUES = ['active', 'closed', 'deleted'];
+
+
 
 const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -83,7 +88,13 @@ class AdminController {
                     { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, count: { $sum: 1 } } }
                 ]),
                 Post.aggregate([
+
                     { $match: { ...PUBLIC_POST_MATCH, createdAt: { $gte: startDate } } },
+
+                    { $match: { status: { $ne: 'deleted' }, createdAt: { $gte: startDate } } },
+
+                    { $match: { ...PUBLIC_POST_MATCH, createdAt: { $gte: startDate } } },
+
                     { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, count: { $sum: 1 } } }
                 ]),
                 DonationTransaction.aggregate([
@@ -192,6 +203,7 @@ class AdminController {
         }
     }
 
+
     async getSystemSettings(req, res) {
         try {
             const settings = await SystemSetting.find({});
@@ -206,6 +218,7 @@ class AdminController {
             });
         }
     }
+
 
     async getManagedPosts(req, res) {
         try {
@@ -307,6 +320,7 @@ class AdminController {
         }
     }
 
+
     async updateSystemSetting(req, res) {
         try {
             const { key, value } = req.body;
@@ -343,6 +357,7 @@ class AdminController {
         }
     }
 
+
     async updatePostStatus(req, res) {
         try {
             const postObjectId = getObjectId(req.params.postId);
@@ -369,7 +384,14 @@ class AdminController {
 
             return res.status(200).json({
                 success: true,
+
                 message: POST_STATUS_MESSAGES[status] || 'Đã cập nhật trạng thái bài viết',
+
+                message: status === 'deleted' ? 'Đã ẩn bài viết' : 'Đã cập nhật trạng thái bài viết',
+
+
+                message: POST_STATUS_MESSAGES[status] || 'Đã cập nhật trạng thái bài viết',
+
                 data: post,
             });
         } catch (error) {
@@ -660,6 +682,7 @@ class AdminController {
             });
         }
     }
+
 }
 
 export default new AdminController();

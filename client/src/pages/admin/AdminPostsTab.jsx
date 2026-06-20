@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAdminPosts, updateAdminPostStatus } from '../../services/userService';
 
@@ -91,6 +91,7 @@ const ACTION_CONFIG = {
 
 const formatDate = (value) => {
   if (!value) return '—';
+
   return new Date(value).toLocaleDateString('vi-VN', {
     day: '2-digit',
     month: '2-digit',
@@ -101,7 +102,12 @@ const formatDate = (value) => {
 
 export default function AdminPostsTab({ embedded = false }) {
   const [posts, setPosts] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+  });
   const [keyword, setKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [status, setStatus] = useState('all');
@@ -117,12 +123,14 @@ export default function AdminPostsTab({ embedded = false }) {
     status,
   }), [pagination.page, pagination.limit, appliedKeyword, status]);
 
-  const fetchPosts = useCallback(async () => {
+  const fetchPosts = async () => {
     setLoading(true);
     setError('');
+
     try {
       const response = await getAdminPosts(query);
       const data = response?.data?.data || {};
+
       setPosts(Array.isArray(data.posts) ? data.posts : []);
       setPagination((prev) => ({ ...prev, ...(data.pagination || {}) }));
     } catch (fetchError) {
@@ -131,14 +139,12 @@ export default function AdminPostsTab({ embedded = false }) {
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchPosts();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [fetchPosts]);
+    fetchPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.page, query.limit, query.keyword, query.status]);
 
   const handleApplySearch = (event) => {
     event?.preventDefault();
@@ -159,9 +165,11 @@ export default function AdminPostsTab({ embedded = false }) {
 
     try {
       await updateAdminPostStatus(post._id, nextStatus);
+
       setPosts((current) => current.map((item) => (
         item._id === post._id ? { ...item, status: nextStatus } : item
       )));
+
       setRecentlyUpdatedId(post._id);
       window.setTimeout(() => setRecentlyUpdatedId(''), 900);
     } catch (updateError) {
@@ -178,43 +186,62 @@ export default function AdminPostsTab({ embedded = false }) {
 
   return (
     <section className={embedded ? 'space-y-5' : 'mx-auto w-full max-w-[1280px] px-6 py-8'}>
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Post Management</p>
-            <h2 className="mt-1 text-2xl font-extrabold text-slate-900">Quản lý bài đăng</h2>
-            <p className="mt-1 text-sm text-slate-500">Phân biệt rõ: khóa, ẩn và xóa bài viết.</p>
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="space-y-5">
+          <div className="max-w-3xl">
+
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              Post Management
+            </p>
+            <h2 className="mt-2 text-2xl font-extrabold leading-9 text-slate-900 sm:text-3xl">
+              Quản lý bài đăng
+            </h2>
+
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Post Management</p>
+            <h2 className="mt-2 text-2xl font-extrabold leading-9 text-slate-900 sm:text-3xl">Quản lý bài đăng</h2>
+
           </div>
 
-          <form onSubmit={handleApplySearch} className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
-            <div className="relative min-w-0 sm:w-72">
-              <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">search</span>
+          <form
+            onSubmit={handleApplySearch}
+            className="grid w-full grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1fr),220px,104px]"
+          >
+            <div className="relative min-w-0">
+              <span className="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[20px] text-slate-400">
+                search
+              </span>
               <input
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
                 placeholder="Tìm theo tiêu đề..."
-                className="h-10 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm font-medium text-slate-700 outline-none transition focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-12 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
               />
             </div>
-            <div className="relative w-full sm:w-44">
+
+            <div className="relative min-w-0">
               <select
                 value={status}
                 onChange={handleStatusFilter}
-                className="h-10 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-3 pr-10 text-sm font-semibold text-slate-700 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+                className="h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-4 pr-10 text-sm font-semibold text-slate-700 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
               >
                 {STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
                 ))}
               </select>
-              <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">
+              <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">
                 expand_more
               </span>
             </div>
+
             <button
               type="submit"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
             >
-              <span className="material-symbols-outlined text-[18px]">manage_search</span>
+              <span className="material-symbols-outlined text-[18px]">
+                manage_search
+              </span>
               Lọc
             </button>
           </form>
@@ -229,27 +256,40 @@ export default function AdminPostsTab({ embedded = false }) {
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-100">
+          <table className="min-w-[1180px] divide-y divide-slate-100">
             <thead className="bg-slate-50/80">
               <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                <th className="px-5 py-4">Bài đăng</th>
-                <th className="px-5 py-4">Tác giả</th>
-                <th className="px-5 py-4 text-center">Upvote</th>
-                <th className="px-5 py-4 text-center">Bình luận</th>
-                <th className="px-5 py-4">Trạng thái</th>
-                <th className="px-5 py-4 text-right">Thao tác</th>
+                <th className="w-[360px] px-5 py-4 align-middle">Bài đăng</th>
+                <th className="w-[240px] px-5 py-4 align-middle">Tác giả</th>
+                <th className="w-[90px] px-5 py-4 text-center align-middle">Upvote</th>
+                <th className="w-[110px] px-5 py-4 text-center align-middle">Bình luận</th>
+                <th className="w-[190px] px-5 py-4 text-center align-middle">Trạng thái</th>
+                <th className="w-[220px] px-5 py-4 text-right align-middle">Thao tác</th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-slate-100">
               {loading && (
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={index} className="animate-pulse">
-                    <td className="px-5 py-4"><div className="h-4 w-64 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-4"><div className="h-4 w-32 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-4"><div className="mx-auto h-4 w-10 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-4"><div className="mx-auto h-4 w-10 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-4"><div className="h-7 w-40 rounded-full bg-slate-100" /></td>
-                    <td className="px-5 py-4"><div className="ml-auto h-9 w-40 rounded-full bg-slate-100" /></td>
+                    <td className="px-5 py-5">
+                      <div className="h-4 w-64 rounded bg-slate-100" />
+                    </td>
+                    <td className="px-5 py-5">
+                      <div className="h-4 w-32 rounded bg-slate-100" />
+                    </td>
+                    <td className="px-5 py-5">
+                      <div className="mx-auto h-4 w-10 rounded bg-slate-100" />
+                    </td>
+                    <td className="px-5 py-5">
+                      <div className="mx-auto h-4 w-10 rounded bg-slate-100" />
+                    </td>
+                    <td className="px-5 py-5">
+                      <div className="mx-auto h-7 w-40 rounded-full bg-slate-100" />
+                    </td>
+                    <td className="px-5 py-5">
+                      <div className="ml-auto h-9 w-44 rounded-full bg-slate-100" />
+                    </td>
                   </tr>
                 ))
               )}
@@ -260,8 +300,12 @@ export default function AdminPostsTab({ embedded = false }) {
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                       <span className="material-symbols-outlined">article</span>
                     </div>
-                    <p className="mt-3 text-sm font-semibold text-slate-700">Không có bài đăng phù hợp.</p>
-                    <p className="mt-1 text-xs text-slate-400">Thử đổi từ khóa hoặc bộ lọc trạng thái.</p>
+                    <p className="mt-3 text-sm font-semibold text-slate-700">
+                      Không có bài đăng phù hợp.
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Thử đổi từ khóa hoặc bộ lọc trạng thái.
+                    </p>
                   </td>
                 </tr>
               )}
@@ -270,42 +314,88 @@ export default function AdminPostsTab({ embedded = false }) {
                 const isUpdating = updatingId === post._id;
                 const isRecent = recentlyUpdatedId === post._id;
                 const actions = ACTION_CONFIG[post.status] || ACTION_CONFIG.active;
+
                 return (
-                  <tr key={post._id} className={`transition-all duration-300 hover:bg-slate-50 ${isRecent ? 'bg-emerald-50/60' : ''}`}>
-                    <td className="max-w-[420px] px-5 py-4">
-                      <Link to={`/posts/${post._id}`} className="line-clamp-2 text-sm font-bold text-slate-900 transition hover:text-primary">
+                  <tr
+                    key={post._id}
+                    className={`transition-all duration-300 hover:bg-slate-50 ${
+                      isRecent ? 'bg-emerald-50/60' : ''
+                    }`}
+                  >
+                    <td className="px-5 py-5 align-top">
+                      <Link
+                        to={`/posts/${post._id}`}
+                        className="line-clamp-2 max-w-[340px] text-sm font-bold leading-6 text-slate-900 transition hover:text-primary"
+                      >
                         {post.title}
                       </Link>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                        <span>{formatDate(post.createdAt)}</span>
-                        {post.postType && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-500">{post.postType}</span>}
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs leading-5 text-slate-400">
+                        <span className="font-medium">
+                          {formatDate(post.createdAt)}
+                        </span>
+                        {post.postType && (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-500">
+                            {post.postType}
+                          </span>
+                        )}
                       </div>
                     </td>
-                    <td className="px-5 py-4">
-                      <div className="text-sm font-semibold text-slate-700">{post.author?.fullName || post.authorLabel || 'Không rõ tác giả'}</div>
-                      <div className="text-xs text-slate-400">{post.author?.email || '—'}</div>
+
+                    <td className="px-5 py-5 align-top">
+                      <div
+                        className="max-w-[220px] truncate text-sm font-semibold leading-6 text-slate-700"
+                        title={post.author?.fullName || post.authorLabel || 'Không rõ tác giả'}
+                      >
+                        {post.author?.fullName || post.authorLabel || 'Không rõ tác giả'}
+                      </div>
+                      <div
+                        className="max-w-[220px] truncate text-xs leading-5 text-slate-400"
+                        title={post.author?.email || '—'}
+                      >
+                        {post.author?.email || '—'}
+                      </div>
                     </td>
-                    <td className="px-5 py-4 text-center text-sm font-extrabold text-slate-800">{post.upvoteCount || 0}</td>
-                    <td className="px-5 py-4 text-center text-sm font-extrabold text-slate-800">{post.commentCount || 0}</td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${STATUS_STYLES[post.status] || 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+
+                    <td className="whitespace-nowrap px-5 py-5 text-center align-middle text-sm font-extrabold text-slate-800">
+                      {post.upvoteCount || 0}
+                    </td>
+
+                    <td className="whitespace-nowrap px-5 py-5 text-center align-middle text-sm font-extrabold text-slate-800">
+                      {post.commentCount || 0}
+                    </td>
+
+                    <td className="px-5 py-5 text-center align-middle">
+                      <span
+                        className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold leading-none ${
+                          STATUS_STYLES[post.status] || 'border-slate-200 bg-slate-50 text-slate-600'
+                        }`}
+                      >
                         {STATUS_LABELS[post.status] || post.status}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex flex-wrap justify-end gap-2">
+
+                    <td className="px-5 py-5 text-right align-middle">
+                      <div className="ml-auto grid w-[188px] grid-cols-2 gap-2">
                         {actions.map((action) => (
                           <button
                             key={`${post._id}-${action.status}`}
                             type="button"
                             disabled={isUpdating}
                             onClick={() => handleSetPostStatus(post, action.status)}
-                            className={`group inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-extrabold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${action.className}`}
+                            className={`group inline-flex h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-extrabold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
+                              actions.length === 1 ? 'col-span-2' : ''
+                            } ${action.className}`}
                           >
-                            <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${isUpdating ? 'animate-spin' : 'group-hover:rotate-6'}`}>
+                            <span
+                              className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${
+                                isUpdating ? 'animate-spin' : 'group-hover:rotate-6'
+                              }`}
+                            >
                               {isUpdating ? 'progress_activity' : action.icon}
                             </span>
-                            {isUpdating ? 'Đang xử lý' : action.label}
+                            <span className="whitespace-nowrap">
+                              {isUpdating ? 'Đang xử lý' : action.label}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -321,6 +411,7 @@ export default function AdminPostsTab({ embedded = false }) {
           <p className="text-sm font-semibold text-slate-500">
             Tổng <span className="text-slate-900">{pagination.total || 0}</span> bài đăng
           </p>
+
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -330,9 +421,11 @@ export default function AdminPostsTab({ embedded = false }) {
             >
               Trước
             </button>
+
             <span className="text-sm font-bold text-slate-700">
               {pagination.page || 1} / {pagination.totalPages || 1}
             </span>
+
             <button
               type="button"
               disabled={pagination.page >= pagination.totalPages || loading}

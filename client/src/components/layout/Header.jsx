@@ -108,6 +108,36 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
                       >
                         Hồ sơ
                       </button>
+
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate('/admin/dashboard');
+                        }}
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
+                      >
+                        Trang quản trị
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate('/admin/posts');
+                        }}
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
+                      >
+                        Quản lý bài đăng
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          navigate('/admin/all-donations');
+                        }}
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
+                      >
+                        Quản lý giao dịch quyên góp
+                      </button>
+
                     </>
                   ) : (
                     <>

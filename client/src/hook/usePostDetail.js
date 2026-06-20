@@ -50,11 +50,16 @@ export default function usePostDetail(postId) {
     if (showLoading) {
       setLoading(true);
     }
+
     setError(null);
 
     try {
       const response = await getPostDetail(postId);
-      const { post: postData, comments: commentsData, commentCount: count } = response.data.data;
+      const {
+        post: postData,
+        comments: commentsData,
+        commentCount: count,
+      } = response.data.data;
 
       setPost(postData);
       setComments(commentsData);
@@ -90,20 +95,26 @@ export default function usePostDetail(postId) {
 
   const handleVote = useCallback(async (voteType) => {
     if (voteLoading) return;
+
     if (isAdmin) {
       toast.warning(ADMIN_INTERACTION_MESSAGE);
       return;
     }
+
     if (isPostLocked) {
       alert(LOCKED_POST_MESSAGE);
       return;
     }
 
     setVoteLoading(true);
+
     try {
-      const effectiveVoteType = userVote && userVote !== voteType ? userVote : voteType;
-      const response = await votePost(postId, effectiveVoteType);
-      const { upvoteCount: up, downvoteCount: down, userVote: vote } = response.data.data;
+      const response = await votePost(postId, voteType);
+      const {
+        upvoteCount: up,
+        downvoteCount: down,
+        userVote: vote,
+      } = response.data.data;
 
       setUpvoteCount(up);
       setDownvoteCount(down);
@@ -117,20 +128,23 @@ export default function usePostDetail(postId) {
     } finally {
       setVoteLoading(false);
     }
-  }, [postId, voteLoading, userVote, isPostLocked, isAdmin, toast]);
+  }, [postId, voteLoading, isPostLocked, isAdmin, toast]);
 
   const handlePostReaction = useCallback(async (reactionType) => {
     if (reactionLoading) return;
+
     if (isAdmin) {
       toast.warning(ADMIN_INTERACTION_MESSAGE);
       return;
     }
+
     if (isPostLocked) {
       alert(LOCKED_POST_MESSAGE);
       return;
     }
 
     setReactionLoading(true);
+
     try {
       const response = await reactPost(postId, reactionType);
       const {
@@ -142,6 +156,7 @@ export default function usePostDetail(postId) {
       setLikeCount(likes);
       setDislikeCount(dislikes);
       setUserReaction(reaction);
+
       setPost((currentPost) => currentPost
         ? {
             ...currentPost,
@@ -163,6 +178,12 @@ export default function usePostDetail(postId) {
 
   const submitComment = useCallback(async (payload) => {
     if (submittingComment) return false;
+
+    if (isAdmin) {
+      toast.warning(ADMIN_INTERACTION_MESSAGE);
+      return false;
+    }
+
     if (isPostLocked) {
       setCommentError(LOCKED_POST_MESSAGE);
       return false;
@@ -182,20 +203,23 @@ export default function usePostDetail(postId) {
     } finally {
       setSubmittingComment(false);
     }
-  }, [postId, submittingComment, fetchPostDetail, isPostLocked]);
+  }, [postId, submittingComment, fetchPostDetail, isPostLocked, isAdmin, toast]);
 
   const reactComment = useCallback(async (commentId, reactionType) => {
     if (reactingCommentId) return false;
+
     if (isAdmin) {
       toast.warning(ADMIN_INTERACTION_MESSAGE);
       return false;
     }
+
     if (isPostLocked) {
       alert(LOCKED_POST_MESSAGE);
       return false;
     }
 
     setReactingCommentId(commentId);
+
     try {
       await reactPostComment(commentId, reactionType);
       await fetchPostDetail(false);
@@ -206,6 +230,7 @@ export default function usePostDetail(postId) {
       } else {
         alert(err.response?.data?.message || 'Không thể cập nhật like/dislike bình luận.');
       }
+
       return false;
     } finally {
       setReactingCommentId('');
@@ -229,6 +254,7 @@ export default function usePostDetail(postId) {
     const timer = setTimeout(() => {
       fetchPostDetail();
     }, 0);
+
     return () => clearTimeout(timer);
   }, [fetchPostDetail]);
 
@@ -236,6 +262,7 @@ export default function usePostDetail(postId) {
     const timer = setTimeout(() => {
       fetchRelatedPosts();
     }, 0);
+
     return () => clearTimeout(timer);
   }, [fetchRelatedPosts]);
 
@@ -244,6 +271,7 @@ export default function usePostDetail(postId) {
 
     const token = localStorage.getItem('accessToken');
     const socket = token ? connectSocket(token) : getSocket();
+
     if (!socket) return undefined;
 
     const handleNewComment = (payload) => {

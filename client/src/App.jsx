@@ -59,6 +59,14 @@ function App() {
         <Route path="/user/saves" element={<SavedPostsPage />} />
         <Route path="/users/:id" element={<AuthorProfilePage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        <Route path="/admin/posts" element={<AdminPostsTab />} />
+        <Route path="/admin/all-donations" element={<AdminAllDonationsTab />} />
+        <Route path="/admin/posts" element={<Navigate to="/admin/dashboard?tab=posts" replace />} />
+        <Route path="/admin/all-donations" element={<Navigate to="/admin/dashboard?tab=all-donations" replace />} />
+        <Route path="/admin/flags" element={<Navigate to="/admin/dashboard?tab=flags" replace />} />
+        <Route path="/admin/donations" element={<Navigate to="/admin/dashboard?tab=donations" replace />} />
+
       </Route>
 
       {/* Post Detail */}

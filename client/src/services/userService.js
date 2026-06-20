@@ -12,9 +12,11 @@ export const getAdminProfile = () => apiClient.get('/admin/profile');
 
 export const getAdminDashboardStats = () => apiClient.get('/admin/dashboard-stats');
 
+
 export const getAdminSystemSettings = () => apiClient.get('/admin/settings');
 
 export const updateAdminSystemSetting = (payload) => apiClient.put('/admin/settings', payload);
+
 
 export const getAdminPosts = ({ page = 1, limit = 10, keyword = '', status = 'all' } = {}) =>
   apiClient.get('/admin/posts', {
@@ -23,6 +25,7 @@ export const getAdminPosts = ({ page = 1, limit = 10, keyword = '', status = 'al
 
 export const updateAdminPostStatus = (postId, status) =>
   apiClient.patch(`/admin/posts/${postId}/status`, { status });
+
 
 export const adminCreateTag = (payload) => apiClient.post('/admin/tags', payload);
 
@@ -40,3 +43,14 @@ export const getAdminUserDetail = (userId) => apiClient.get(`/admin/users/${user
 
 export const toggleAdminUserStatus = (userId, isActive) =>
   apiClient.patch(`/admin/users/${userId}/status`, { isActive });
+
+export const getAdminAllDonations = ({
+  page = 1,
+  limit = 10,
+  keyword = '',
+  status = '',
+  paymentMethod = '',
+} = {}) =>
+  apiClient.get('/donations/admin/all', {
+    params: { page, limit, keyword, status, paymentMethod },
+  });

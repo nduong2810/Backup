@@ -10,6 +10,8 @@ import env from '../config/environment.js';
 import reputationService from './reputation.service.js';
 
 const SUPPORTED_AMOUNTS = new Set([20000, 50000, 100000]);
+const DONATION_STATUS_VALUES = ['pending_review', 'pending_payment', 'completed', 'rejected'];
+const PAYMENT_METHOD_VALUES = ['cod', 'vnpay'];
 const isMongoId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || '').trim());
 
 const normalizeId = (value) => {
@@ -90,6 +92,37 @@ const safeNotify = async (email, subject, message) => {
   }
 };
 
+const normalizeStatusFilter = (value = '') => {
+  const status = String(value || '').trim();
+  return DONATION_STATUS_VALUES.includes(status) ? status : '';
+};
+
+const normalizePaymentMethodFilter = (value = '') => {
+  const paymentMethod = String(value || '').trim();
+  return PAYMENT_METHOD_VALUES.includes(paymentMethod) ? paymentMethod : '';
+};
+
+const buildSixMonthTimeline = (rawTimeline = []) => {
+  const now = new Date();
+  const result = [];
+  for (let i = 5; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const found = rawTimeline.find((item) => item._id?.year === year && item._id?.month === month);
+    result.push({
+      year,
+      month,
+      label: `T${month}/${year}`,
+      totalAmount: found?.totalAmount || 0,
+      completedAmount: found?.completedAmount || 0,
+      donationCount: found?.donationCount || 0,
+      completedCount: found?.completedCount || 0,
+    });
+  }
+  return result;
+};
+
 class DonationService {
   async resolveAuthor(authorId, ...candidates) {
     const directAuthorId = normalizeId(authorId);
@@ -157,10 +190,35 @@ class DonationService {
   }
 
   async getAdminDonations(query = {}) {
-    const status = query.status || '';
-    const paymentMethod = query.paymentMethod || '';
+    const status = normalizeStatusFilter(query.status);
+    const paymentMethod = normalizePaymentMethodFilter(query.paymentMethod);
     const limit = query.limit || 100;
     return await donationRepository.findAdminDonations({ status, paymentMethod, limit });
+  }
+
+  async getAllAdminDonations(query = {}) {
+    const status = normalizeStatusFilter(query.status);
+    const paymentMethod = normalizePaymentMethodFilter(query.paymentMethod);
+    const keyword = String(query.keyword || '').trim();
+    const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(5, Number.parseInt(query.limit, 10) || 10));
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+    const result = await donationRepository.findAllAdminDonations({
+      status,
+      paymentMethod,
+      keyword,
+      page,
+      limit,
+      startDate,
+    });
+
+    return {
+      ...result,
+      filters: { status, paymentMethod, keyword },
+      timeline: buildSixMonthTimeline(result.timeline),
+    };
   }
 
   async createCheckout(donorId, payload) {
@@ -183,6 +241,8 @@ class DonationService {
 
     if (!donor) throw { status: 404, message: 'Người donate không tồn tại' };
     if (!currentPost) throw { status: 404, message: 'Bài viết không tồn tại' };
+    if (currentPost.status === 'closed') throw { status: 423, message: 'Bài viết đang bị khóa' };
+    if (currentPost.status === 'hidden') throw { status: 403, message: 'Bài viết đang bị ẩn' };
     if (currentPost.status === 'deleted') throw { status: 410, message: 'Bài viết đã bị xóa' };
 
     let answer = null;
@@ -276,11 +336,13 @@ class DonationService {
         gatewayResponse: { ...(donation.gatewayResponse || {}), responseCode, message, amount },
       });
 
+
       const authorId = updatedDonation.author?._id?.toString() || updatedDonation.author?.toString();
       if (authorId) {
         await reputationService.award(authorId, 'donate_received', updatedDonation._id);
       }
 
+      await reputationService.award(updatedDonation.author?._id?.toString(), 'donate_received');
       await safeNotify(updatedDonation.author?.email, 'Bạn vừa nhận được một lượt ủng hộ', `Bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa nhận ${updatedDonation.amount.toLocaleString('vi-VN')}đ từ một người dùng.`);
       return updatedDonation;
     }
@@ -309,6 +371,8 @@ class DonationService {
     if (authorId) {
       await reputationService.award(authorId, 'donate_received', updatedDonation._id);
     }
+
+    await reputationService.award(updatedDonation.author?._id?.toString(), 'donate_received');
 
     await safeNotify(updatedDonation.author?.email, 'Một lượt ủng hộ vừa được duyệt', `Bill chuyển khoản cho bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa được admin duyệt với số tiền ${updatedDonation.amount.toLocaleString('vi-VN')}đ.`);
     return updatedDonation;
