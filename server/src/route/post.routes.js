@@ -42,6 +42,9 @@ router.get('/trending-today', postController.getTrendingToday.bind(postControlle
 // GET /api/posts/top-upvoted — Top 10 lượt upvote
 router.get('/top-upvoted', postController.getTopUpvoted.bind(postController));
 
+// GET /api/posts/trash — Thùng rác chứa các bài viết đã xóa mềm (Yêu cầu đăng nhập)
+router.get('/trash', authenticateToken, postController.getTrashPosts.bind(postController));
+
 // GET /api/posts/:id — Xem chi tiết (Public)
 router.get('/:id',
   optionalAuthenticateToken,
@@ -80,6 +83,33 @@ router.post('/:id/vote',
   voteLimiter,
   voteValidation,
   postController.votePost.bind(postController)
+);
+
+// DELETE /api/posts/comments/:commentId — Xóa vĩnh viễn bình luận (Yêu cầu đăng nhập)
+router.delete('/comments/:commentId',
+  authenticateToken,
+  postController.deleteComment.bind(postController)
+);
+
+// DELETE /api/posts/:id — Xóa mềm bài viết (đưa vào thùng rác) (Yêu cầu đăng nhập)
+router.delete('/:id',
+  authenticateToken,
+  postIdValidation,
+  postController.softDeletePost.bind(postController)
+);
+
+// PATCH /api/posts/:id/restore — Khôi phục bài viết đã xóa mềm (Yêu cầu đăng nhập)
+router.patch('/:id/restore',
+  authenticateToken,
+  postIdValidation,
+  postController.restorePost.bind(postController)
+);
+
+// DELETE /api/posts/:id/permanent — Xóa vĩnh viễn bài viết (Yêu cầu đăng nhập)
+router.delete('/:id/permanent',
+  authenticateToken,
+  postIdValidation,
+  postController.permanentlyDeletePost.bind(postController)
 );
 
 export default router;

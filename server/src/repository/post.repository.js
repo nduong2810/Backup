@@ -223,6 +223,25 @@ class PostRepository {
             { $project: { _id: 0, name: '$_id', count: 1 } },
         ]);
     }
+
+    async softDelete(postId) {
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted', deletedAt: new Date() } }, { new: true });
+    }
+
+    async restore(postId) {
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'active' }, $unset: { deletedAt: "" } }, { new: true });
+    }
+
+    async permanentlyDelete(postId) {
+        return await Post.findByIdAndDelete(postId);
+    }
+
+    async findDeletedPostsByAuthor(authorId) {
+        return await Post.find({ author: authorId, status: 'deleted' })
+            .sort({ deletedAt: -1 })
+            .populate('author', '_id fullName avatar email')
+            .lean();
+    }
 }
 
 export default new PostRepository();

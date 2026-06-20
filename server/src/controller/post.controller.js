@@ -286,6 +286,65 @@ class PostController {
             return res.status(status).json({ success: false, message: error.message || 'Loi server khi lay du lieu top upvote' });
         }
     }
+
+    async getTrashPosts(req, res) {
+        try {
+            const userId = req.user.userId;
+            const posts = await postService.getTrashPosts(userId);
+            return res.status(200).json({ success: true, message: 'Lấy danh sách bài viết đã xóa thành công', data: posts });
+        } catch (error) {
+            const status = error.status || 500;
+            return res.status(status).json({ success: false, message: error.message || 'Lỗi server khi lấy bài viết đã xóa' });
+        }
+    }
+
+    async softDeletePost(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.userId;
+            await postService.softDeletePost(id, userId);
+            return res.status(200).json({ success: true, message: 'Đã di chuyển bài viết vào thùng rác thành công' });
+        } catch (error) {
+            const status = error.status || 500;
+            return res.status(status).json({ success: false, message: error.message || 'Lỗi server khi xóa bài viết' });
+        }
+    }
+
+    async restorePost(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.userId;
+            await postService.restorePost(id, userId);
+            return res.status(200).json({ success: true, message: 'Khôi phục bài viết thành công' });
+        } catch (error) {
+            const status = error.status || 500;
+            return res.status(status).json({ success: false, message: error.message || 'Lỗi server khi khôi phục bài viết' });
+        }
+    }
+
+    async permanentlyDeletePost(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.userId;
+            const result = await postService.permanentlyDeletePost(id, userId);
+            return res.status(200).json({ success: true, message: result.message });
+        } catch (error) {
+            const status = error.status || 500;
+            return res.status(status).json({ success: false, message: error.message || 'Lỗi server khi xóa vĩnh viễn bài viết' });
+        }
+    }
+
+    async deleteComment(req, res) {
+        try {
+            const { commentId } = req.params;
+            const userId = req.user.userId;
+            const result = await postService.deleteComment(commentId, userId);
+            return res.status(200).json({ success: true, message: result.message });
+        } catch (error) {
+            const status = error.status || 500;
+            return res.status(status).json({ success: false, message: error.message || 'Lỗi server khi xóa bình luận' });
+        }
+    }
 }
 
 export default new PostController();

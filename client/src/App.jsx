@@ -19,6 +19,7 @@ import DonateCheckoutPage from './pages/donate/DonateCheckoutPage';
 import DonateResultPage from './pages/donate/DonateResultPage';
 import TagsPage from './pages/tags/TagsPage';
 import ReportHistoryPage from './pages/report/ReportHistoryPage';
+import TrashPage from './pages/trash/TrashPage';
 import './App.css';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
         <Route path="home" element={<MainContent />} />
         <Route path="tags" element={<TagsPage />} />
         <Route path="reports/history" element={<ReportHistoryPage />} />
+        <Route path="trash" element={<TrashPage />} />
         <Route path="donate/checkout" element={<DonateCheckoutPage />} />
         <Route path="donate/result" element={<DonateResultPage />} />
         {/* Admin pages inside ForumLayout */}

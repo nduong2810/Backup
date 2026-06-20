@@ -107,6 +107,7 @@ export default function PostDetailPage() {
     reactComment,
     reactingCommentId,
     relatedPosts,
+    deleteComment,
   } = usePostDetail(id);
 
   const minReportReputation = 15;
@@ -267,6 +268,7 @@ export default function PostDetailPage() {
           userReaction={userReaction}
           reactionLoading={reactionLoading}
           onPostReaction={requireLoginOrReact}
+          currentUserId={user?._id || user?.id || ''}
         />
       </div>
 
@@ -339,6 +341,7 @@ export default function PostDetailPage() {
         currentUserId={user?._id || user?.id || ''}
         onReactComment={reactComment}
         reactingCommentId={reactingCommentId}
+        onDeleteComment={deleteComment}
       />
 
       <RelatedPosts posts={relatedPosts} />

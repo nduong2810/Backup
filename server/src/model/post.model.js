@@ -116,6 +116,11 @@ const postSchema = new mongoose.Schema({
         enum: ['active', 'closed', 'hidden', 'deleted'], 
         default: 'active' 
     },
+    deletedAt: {
+        type: Date,
+        default: null,
+        index: { expires: '7d' }
+    },
 }, { 
     timestamps: true,
     toJSON: { virtuals: true },

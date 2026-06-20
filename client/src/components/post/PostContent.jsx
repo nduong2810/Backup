@@ -1,6 +1,9 @@
-import { Link } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import SaveIconButton from '../ui/SaveIconButton';
 import ReputationBadge from '../ui/ReputationBadge';
+import { softDeletePost } from '../../services/postService';
+import { useToast } from '../../context/ToastContext';
 
 function timeAgo(dateString) {
   const now = new Date();
@@ -45,21 +48,89 @@ export default function PostContent({
   userReaction = null,
   reactionLoading = false,
   onPostReaction,
+  currentUserId = '',
 }) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const menuRef = useRef(null);
+  
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   if (!post) return null;
+
+  const isOwner = currentUserId && post.author?._id && String(currentUserId) === String(post.author._id);
+
+  const handleDeleteClick = () => {
+    setShowMenu(false);
+    setShowConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await softDeletePost(post._id);
+      toast.success('Đã di chuyển bài viết vào thùng rác!');
+      setShowConfirm(false);
+      navigate('/home');
+    } catch (err) {
+      console.error('[PostContent] Delete error:', err);
+      toast.error(err.response?.data?.message || 'Không thể xóa bài viết.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <article className="flex-1 min-w-0 flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
-        <h1 className="-mt-1 font-headline-xl text-headline-xl text-on-surface leading-tight">
+        <h1 className="-mt-1 font-headline-xl text-headline-xl text-on-surface leading-tight break-words flex-1">
           {post.title}
         </h1>
-        <SaveIconButton
-          saved={isSaved}
-          onClick={onToggleSave}
-          className="mt-1"
-          title={isSaved ? 'Đã lưu' : 'Lưu'}
-        />
+        <div className="flex items-center gap-2 mt-1 shrink-0">
+          <SaveIconButton
+            saved={isSaved}
+            onClick={onToggleSave}
+            title={isSaved ? 'Đã lưu' : 'Lưu'}
+          />
+          {isOwner && (
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setShowMenu(!showMenu)}
+                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-surface-container-low transition-colors"
+                title="Tùy chọn"
+              >
+                <span className="material-symbols-outlined text-xl text-slate-500">more_vert</span>
+              </button>
+              
+              {showMenu && (
+                <div className="absolute right-0 mt-1 w-36 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
+                  <button
+                    type="button"
+                    onClick={handleDeleteClick}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50"
+                  >
+                    <span className="material-symbols-outlined text-base">delete</span>
+                    Xóa bài viết
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-4 font-body-sm text-body-sm text-secondary pb-3 border-b border-outline-variant">
@@ -142,6 +213,49 @@ export default function PostContent({
       <div className="text-on-surface font-body-md text-body-md leading-relaxed whitespace-pre-wrap">
         {post.content}
       </div>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <button
+            type="button"
+            onClick={() => setShowConfirm(false)}
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm cursor-default"
+            aria-label="Đóng"
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-scale-in">
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+                <span className="material-symbols-outlined">warning</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-800">Xóa bài viết của bạn?</h3>
+                <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                  Bài viết này sẽ được di chuyển vào thùng rác của bạn. Bạn vẫn có thể khôi phục lại bài viết này trong vòng 7 ngày tiếp theo.
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                disabled={deleting}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-50"
+              >
+                {deleting ? 'Đang xóa...' : 'Xác nhận xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 }

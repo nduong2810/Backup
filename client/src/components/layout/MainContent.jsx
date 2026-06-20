@@ -35,9 +35,8 @@ const SmallPostActionButton = ({ active, disabled, onClick, icon, label, count, 
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className={`inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-semibold leading-none transition disabled:cursor-not-allowed disabled:opacity-60 ${
-            active ? activeClass : `border-outline-variant bg-surface-container-lowest text-secondary ${hoverClass}`
-        }`}
+        className={`inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-semibold leading-none transition disabled:cursor-not-allowed disabled:opacity-60 ${active ? activeClass : `border-outline-variant bg-surface-container-lowest text-secondary ${hoverClass}`
+            }`}
     >
         <span className="material-symbols-outlined text-[14px] leading-none">{icon}</span>
         <span>{label}</span>
@@ -185,7 +184,7 @@ const QuestionCard = ({
                             {question.author?.fullName || question.author?.username || 'Ẩn danh'}
                         </a>
                         <span className="font-body-sm text-body-sm text-secondary">
-                            asked {new Date(question.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+                            đăng {new Date(question.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
                         </span>
                     </div>
                 </div>
@@ -536,8 +535,8 @@ const MainContent = () => {
 
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-stack-lg gap-4 border-b border-outline-variant pb-4">
                 <div>
-                    <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">Câu hỏi mới nhất</h1>
-                    <p className="font-body-md text-body-md text-secondary">{pagination.total?.toLocaleString('vi-VN') || 0} câu hỏi</p>
+                    <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">Bài viết mới nhất</h1>
+                    <p className="font-body-md text-body-md text-secondary">{pagination.total?.toLocaleString('vi-VN') || 0} bài viết</p>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
@@ -560,7 +559,7 @@ const MainContent = () => {
             </div>
 
             <div className="flex flex-col gap-0 border-t border-outline-variant">
-                {loading && <p className="p-4 text-center text-secondary">Đang tải danh sách câu hỏi...</p>}
+                {loading && <p className="p-4 text-center text-secondary">Đang tải danh sách bài viết...</p>}
                 {error && <p className="p-4 text-center text-red-500">{error}</p>}
                 {!loading && !error && questionsList && questionsList.length > 0 && questionsList.map((q) => (
                     <QuestionCard
@@ -574,7 +573,7 @@ const MainContent = () => {
                         reactingPostId={reactingPostId}
                     />
                 ))}
-                {!loading && !error && (!questionsList || questionsList.length === 0) && <p className="p-4 text-center text-secondary">Chưa có câu hỏi nào trên diễn đàn.</p>}
+                {!loading && !error && (!questionsList || questionsList.length === 0) && <p className="p-4 text-center text-secondary">Chưa có bài viết nào trên diễn đàn.</p>}
             </div>
 
             {!loading && !error && totalPages > 1 && (

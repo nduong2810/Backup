@@ -1,5 +1,6 @@
 import postRepository from '../repository/post.repository.js';
 import commentRepository from '../repository/comment.repository.js';
+import Comment from '../model/comment.model.js';
 import reputationService from './reputation.service.js';
 import { uploadToCloudinary } from '../util/cloudinary.js';
 
@@ -458,6 +459,69 @@ class PostService {
             }
         });
         return rootComments;
+    }
+
+    async softDeletePost(postId, userId) {
+        const post = await postRepository.findById(postId);
+        if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
+
+        if (String(post.author?._id || post.author) !== String(userId)) {
+            throw { status: 403, message: 'Bạn không có quyền xóa bài viết này' };
+        }
+
+        return await postRepository.softDelete(postId);
+    }
+
+    async restorePost(postId, userId) {
+        const post = await postRepository.findById(postId);
+        if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
+
+        if (String(post.author?._id || post.author) !== String(userId)) {
+            throw { status: 403, message: 'Bạn không có quyền khôi phục bài viết này' };
+        }
+
+        if (post.status !== 'deleted') {
+            throw { status: 400, message: 'Bài viết không nằm trong thùng rác' };
+        }
+
+        return await postRepository.restore(postId);
+    }
+
+    async permanentlyDeletePost(postId, userId) {
+        const post = await postRepository.findById(postId);
+        if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
+
+        if (String(post.author?._id || post.author) !== String(userId)) {
+            throw { status: 403, message: 'Bạn không có quyền xóa vĩnh viễn bài viết này' };
+        }
+
+        await postRepository.permanentlyDelete(postId);
+        await Comment.deleteMany({ post: postId });
+        return { success: true, message: 'Xóa vĩnh viễn bài viết thành công' };
+    }
+
+    async getTrashPosts(userId) {
+        return await postRepository.findDeletedPostsByAuthor(userId);
+    }
+
+    async deleteComment(commentId, userId) {
+        const comment = await commentRepository.findById(commentId);
+        if (!comment) throw { status: 404, message: 'Bình luận không tồn tại' };
+
+        if (String(comment.author?._id || comment.author) !== String(userId)) {
+            throw { status: 403, message: 'Bạn không có quyền xóa bình luận này' };
+        }
+
+        const deleteCommentAndReplies = async (id) => {
+            const replies = await Comment.find({ parentComment: id });
+            for (const reply of replies) {
+                await deleteCommentAndReplies(reply._id);
+            }
+            await Comment.findByIdAndDelete(id);
+        };
+
+        await deleteCommentAndReplies(commentId);
+        return { success: true, message: 'Xóa bình luận thành công' };
     }
 }
 

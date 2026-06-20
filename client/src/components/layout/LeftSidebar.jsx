@@ -58,6 +58,15 @@ const LeftSidebar = () => {
                         <span className="material-symbols-outlined text-[18px]">history</span>
                         <span>Báo cáo</span>
                     </NavLink>
+                    {user && (
+                        <NavLink
+                            to="/trash"
+                            className={navLinkClass}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                            <span>Thùng rác</span>
+                        </NavLink>
+                    )}
                 </div>
 
                 {/* Admin Section - Only visible for admins */}

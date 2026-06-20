@@ -142,8 +142,8 @@ function HomePage() {
           {/* Tiêu đề + bộ đếm */}
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-800">Câu hỏi mới nhất</h2>
-              <p className="text-sm text-slate-500">{pagination.total.toLocaleString('vi-VN')} câu hỏi</p>
+              <h2 className="text-lg font-bold text-slate-800">Bài viết mới nhất</h2>
+              <p className="text-sm text-slate-500">{pagination.total.toLocaleString('vi-VN')} bài viết</p>
             </div>
             {/* Hiển thị active filters nếu có */}
             {Object.keys(activeFilters).length > 0 && (

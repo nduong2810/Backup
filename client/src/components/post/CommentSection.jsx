@@ -19,6 +19,7 @@ export default function CommentSection({
   currentUserId = '',
   onReactComment,
   reactingCommentId = '',
+  onDeleteComment,
 }) {
   const [content, setContent] = useState('');
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -290,6 +291,7 @@ export default function CommentSection({
               onReplyContentChange={setReplyContent}
               onSubmitReply={handleSubmitReply}
               submittingReply={submittingReply || submittingComment}
+              onDeleteComment={onDeleteComment}
             />
           ))}
         </div>

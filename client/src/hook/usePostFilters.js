@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { fetchPostsThunk } from '../store/slices/postSlice';
 import {
   DEFAULT_FILTERS,
@@ -11,6 +11,7 @@ import {
 
 export const usePostFilters = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [searchInput, setSearchInput] = useState('');
@@ -18,13 +19,17 @@ export const usePostFilters = () => {
   const appliedFilters = useMemo(() => parseFiltersFromSearchParams(searchParams), [searchParams]);
 
   useEffect(() => {
+    // Only fetch posts if we are on the main posts page (/ or /home)
+    const isPostListPage = location.pathname === '/' || location.pathname === '/home';
+    if (!isPostListPage) return;
+
     const timer = setTimeout(() => {
       setFilters((prev) => ({ ...prev, ...appliedFilters }));
       setSearchInput(searchParams.get('q') ?? appliedFilters.keyword ?? '');
     }, 0);
     dispatch(fetchPostsThunk(appliedFilters));
     return () => clearTimeout(timer);
-  }, [dispatch, searchParams, appliedFilters]);
+  }, [dispatch, searchParams, appliedFilters, location.pathname]);
 
   const handleFilterChange = (name, value) => {
     setFilters((prev) => ({ ...prev, [name]: value }));

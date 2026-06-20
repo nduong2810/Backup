@@ -7,6 +7,7 @@ import {
   getRelatedPosts,
   createPostComment,
   reactPostComment,
+  deleteCommentApi,
 } from '../services/postService';
 import { connectSocket, getSocket } from '../lib/socketClient';
 import { useToast } from '../context/ToastContext';
@@ -211,6 +212,19 @@ export default function usePostDetail(postId) {
     }
   }, [reactingCommentId, fetchPostDetail, isPostLocked, isAdmin, toast]);
 
+  const deleteComment = useCallback(async (commentId) => {
+    try {
+      await deleteCommentApi(commentId);
+      toast.success('Xóa bình luận thành công!');
+      await fetchPostDetail(false);
+      return true;
+    } catch (err) {
+      console.error('[usePostDetail] Delete comment error:', err);
+      toast.error(err.response?.data?.message || 'Không thể xóa bình luận.');
+      return false;
+    }
+  }, [fetchPostDetail, toast]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchPostDetail();
@@ -270,5 +284,6 @@ export default function usePostDetail(postId) {
     reactingCommentId,
     relatedPosts,
     refreshPost: fetchPostDetail,
+    deleteComment,
   };
 }
