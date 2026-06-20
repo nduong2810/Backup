@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticateToken, authorizeRole } from '../middleware/auth.middleware.js';
+import { donationLimiter } from '../middleware/rateLimit.middleware.js';
 import donationController from '../controller/donation.controller.js';
 import {
   authorIdValidation,
@@ -10,7 +11,7 @@ import {
 
 const router = express.Router();
 
-router.post('/', authenticateToken, createDonationValidation, donationController.createCheckout.bind(donationController));
+router.post('/', authenticateToken, donationLimiter, createDonationValidation, donationController.createCheckout.bind(donationController));
 
 router.post('/gateway/vnpay/confirm', vnpayConfirmValidation, donationController.confirmVnpayPayment.bind(donationController));
 

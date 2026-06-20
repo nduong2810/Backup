@@ -2,7 +2,7 @@ import express from 'express';
 import userController from '../controller/user.controller.js';
 import statisticsController from '../controller/statistics.controller.js';
 import { authenticateToken, authorizeRole } from '../middleware/auth.middleware.js';
-import { authLimiter } from '../middleware/rateLimit.middleware.js';
+import { profileUpdateLimiter } from '../middleware/rateLimit.middleware.js';
 import { body, param } from 'express-validator';
 
 const router = express.Router();
@@ -22,7 +22,7 @@ router.get('/public/:userId', [
 router.put('/profile', 
     authenticateToken, 
     authorizeRole('user'), 
-    authLimiter, // Lớp 2
+    profileUpdateLimiter, // Lớp 2
     [
         body('fullName').optional().notEmpty().withMessage('Tên không được để trống'), // Lớp 1 
         body('phone').optional().isMobilePhone('vi-VN').withMessage('SĐT không hợp lệ'),
@@ -34,7 +34,7 @@ router.put('/profile',
 // Route đổi mật khẩu
 router.put('/change-password',
     authenticateToken,
-    authLimiter,
+    profileUpdateLimiter,
     [
         body('oldPassword').notEmpty().withMessage('Vui lòng nhập mật khẩu cũ'),
         body('newPassword').isLength({ min: 6 }).withMessage('Mật khẩu mới tối thiểu 6 ký tự')

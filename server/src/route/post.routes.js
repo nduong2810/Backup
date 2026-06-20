@@ -2,7 +2,7 @@ import express from 'express';
 import postController from '../controller/post.controller.js';
 import { authenticateToken, optionalAuthenticateToken } from '../middleware/auth.middleware.js';
 import { uploadPostMedia, uploadCommentMedia } from '../middleware/upload.middleware.js';
-import { voteLimiter } from '../middleware/rateLimit.middleware.js';
+import { voteLimiter, postCreationLimiter, commentCreationLimiter } from '../middleware/rateLimit.middleware.js';
 import {
   postIdValidation,
   voteValidation,
@@ -21,6 +21,7 @@ router.get('/', optionalAuthenticateToken, postController.getPosts.bind(postCont
 // POST /api/posts — Tạo bài đăng mới (Yêu cầu đăng nhập, multer xử lý file, validation)
 router.post('/',
   authenticateToken,
+  postCreationLimiter,
   uploadPostMedia,
   createPostValidation,
   postController.createPost.bind(postController)
@@ -51,6 +52,7 @@ router.get('/:id',
 // POST /api/posts/:id/comments — Thêm bình luận trong chi tiết bài viết
 router.post('/:id/comments',
   authenticateToken,
+  commentCreationLimiter,
   uploadCommentMedia,
   createCommentValidation,
   postController.createComment.bind(postController)
@@ -59,6 +61,7 @@ router.post('/:id/comments',
 // POST /api/posts/comments/:commentId/react — Like/Dislike bình luận
 router.post('/comments/:commentId/react',
   authenticateToken,
+  voteLimiter,
   commentReactionValidation,
   postController.reactComment.bind(postController)
 );
@@ -66,6 +69,7 @@ router.post('/comments/:commentId/react',
 // POST /api/posts/:id/react — Like/Dislike bài viết, tách riêng với upvote/downvote
 router.post('/:id/react',
   authenticateToken,
+  voteLimiter,
   postReactionValidation,
   postController.reactPost.bind(postController)
 );
