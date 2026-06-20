@@ -173,16 +173,18 @@ const QuestionCard = ({
                     </div>
 
                     <div className="ml-auto flex items-center gap-2">
-                        <img
-                            alt="Author Avatar"
-                            className="w-6 h-6 rounded-DEFAULT object-cover"
-                            src={question.author?.avatar && question.author.avatar !== 'default-avatar.png'
-                                ? question.author.avatar
-                                : `https://ui-avatars.com/api/?name=${encodeURIComponent(question.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
-                        />
-                        <a className="font-body-sm text-body-sm text-primary-container hover:text-primary-container/80" href="#">
-                            {question.author?.fullName || question.author?.username || 'Ẩn danh'}
-                        </a>
+                        <Link to={question.author?._id ? `/users/${question.author._id}` : '#'} className="flex items-center gap-2 text-primary-container hover:text-primary-container/80">
+                            <img
+                                alt="Author Avatar"
+                                className="w-6 h-6 rounded-DEFAULT object-cover"
+                                src={question.author?.avatar && question.author.avatar !== 'default-avatar.png'
+                                    ? question.author.avatar
+                                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(question.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
+                            />
+                            <span className="font-body-sm text-body-sm">
+                                {question.author?.fullName || question.author?.username || 'Ẩn danh'}
+                            </span>
+                        </Link>
                         <span className="font-body-sm text-body-sm text-secondary">
                             đăng {new Date(question.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
                         </span>
@@ -227,7 +229,7 @@ const TrendingCard = ({ post, rank, onTagClick }) => {
                 <span>Hôm nay <span className="font-semibold text-on-surface">{post.viewsToday ?? 0}</span> lượt xem</span>
                 <span>Tổng <span className="font-semibold text-on-surface">{post.views ?? 0}</span></span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-secondary">
+            <Link to={post.author?._id ? `/users/${post.author._id}` : '#'} className="flex items-center gap-2 text-xs text-secondary hover:text-primary-container">
                 <img
                     alt="Author Avatar"
                     className="w-6 h-6 rounded-DEFAULT object-cover"
@@ -236,7 +238,7 @@ const TrendingCard = ({ post, rank, onTagClick }) => {
                         : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
                 />
                 <span className="text-on-surface">{post.author?.fullName || post.author?.username || 'Ẩn danh'}</span>
-            </div>
+            </Link>
         </article>
     );
 };
@@ -268,7 +270,7 @@ const TopUpvotedCard = ({ post, rank, onTagClick }) => {
                 <span>Hôm nay <span className="font-semibold text-on-surface">{upvotesToday}</span> lượt upvote</span>
                 <span>Tổng <span className="font-semibold text-on-surface">{upvotes}</span></span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-secondary">
+            <Link to={post.author?._id ? `/users/${post.author._id}` : '#'} className="flex items-center gap-2 text-xs text-secondary hover:text-primary-container">
                 <img
                     alt="Author Avatar"
                     className="w-6 h-6 rounded-DEFAULT object-cover"
@@ -277,7 +279,7 @@ const TopUpvotedCard = ({ post, rank, onTagClick }) => {
                         : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
                 />
                 <span className="text-on-surface">{post.author?.fullName || post.author?.username || 'Ẩn danh'}</span>
-            </div>
+            </Link>
         </article>
     );
 };

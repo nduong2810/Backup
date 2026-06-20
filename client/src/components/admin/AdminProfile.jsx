@@ -115,7 +115,7 @@ export default function AdminProfile() {
               <h1 className="text-3xl font-extrabold text-slate-800 truncate">
                 {form.fullName || 'Quản trị viên'}
               </h1>
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-semibold text-primary">
+              <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700">
                 <span className="material-symbols-outlined text-xs">shield</span>
                 ADMIN
               </span>

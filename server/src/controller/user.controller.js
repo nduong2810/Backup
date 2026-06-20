@@ -41,7 +41,7 @@ class UserController {
         if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
         try {
-            const profile = await userService.getPublicAuthorProfile(req.params.userId);
+            const profile = await userService.getPublicAuthorProfile(req.params.userId, req.query);
             res.status(200).json({ success: true, data: profile });
         } catch (error) {
             const status = error.status || 500;

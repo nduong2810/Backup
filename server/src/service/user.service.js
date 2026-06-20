@@ -1,6 +1,7 @@
 import User from '../model/user.model.js';
 import bcrypt from 'bcryptjs';
 import donationRepository from '../repository/donation.repository.js';
+import postRepository from '../repository/post.repository.js';
 import { getRankInfo, getTodayStart } from './reputation.service.js';
 import { uploadToCloudinary } from '../util/cloudinary.js';
 import SystemSetting from '../model/systemSetting.model.js';
@@ -62,11 +63,18 @@ class UserService {
         await user.save();
     }
 
-    async getPublicAuthorProfile(userId) {
-        const [user, donations, summary] = await Promise.all([
+    async getPublicAuthorProfile(userId, query = {}) {
+        const pageNum = Math.max(1, parseInt(query.page, 10) || 1);
+        const limitNum = Math.min(10, Math.max(1, parseInt(query.limit, 10) || 5));
+        const skip = (pageNum - 1) * limitNum;
+
+        const [user, donations, summary, posts, totalPosts, postSummary] = await Promise.all([
             User.findById(userId).select('-password'),
             donationRepository.findReceivedByAuthor(userId, 20),
             donationRepository.getReceivedSummary(userId),
+            postRepository.findPublicPostsByAuthor(userId, skip, limitNum),
+            postRepository.countPublicPostsByAuthor(userId),
+            postRepository.getPublicAuthorPostSummary(userId),
         ]);
 
         if (!user) throw { status: 404, message: 'Tác giả không tồn tại' };
@@ -103,6 +111,21 @@ class UserService {
                 donationCount: summary.donationCount || 0,
             },
             donations,
+            postSummary: {
+                totalPosts,
+                questionCount: postSummary.questionCount || 0,
+                adviceCount: postSummary.adviceCount || 0,
+                totalViews: postSummary.totalViews || 0,
+                totalUpvotes: postSummary.totalUpvotes || 0,
+                totalLikes: postSummary.totalLikes || 0,
+            },
+            posts,
+            postsPagination: {
+                total: totalPosts,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.max(1, Math.ceil(totalPosts / limitNum)),
+            },
         };
     }
 }

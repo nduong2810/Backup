@@ -3,7 +3,7 @@ import userController from '../controller/user.controller.js';
 import statisticsController from '../controller/statistics.controller.js';
 import { authenticateToken, authorizeRole } from '../middleware/auth.middleware.js';
 import { profileUpdateLimiter } from '../middleware/rateLimit.middleware.js';
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 
 const router = express.Router();
 
@@ -15,7 +15,9 @@ router.get('/profile', authenticateToken, authorizeRole('user'), userController.
 
 // Route public cho hồ sơ tác giả + lịch sử ủng hộ
 router.get('/public/:userId', [
-    param('userId').isMongoId().withMessage('ID tác giả không hợp lệ')
+    param('userId').isMongoId().withMessage('ID tác giả không hợp lệ'),
+    query('page').optional().isInt({ min: 1 }).withMessage('Trang không hợp lệ'),
+    query('limit').optional().isInt({ min: 1, max: 10 }).withMessage('Số bài viết mỗi trang không hợp lệ')
 ], userController.getPublicAuthorProfile);
 
 // Route sửa Profile (Cần lớp 1, 2, 3, 4) 

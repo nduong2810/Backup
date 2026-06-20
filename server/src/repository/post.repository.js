@@ -1,4 +1,5 @@
 import Post from '../model/post.model.js';
+import mongoose from 'mongoose';
 
 // ====================================================================
 // POST REPOSITORY - Tầng Data Access cho bài viết
@@ -187,7 +188,7 @@ class PostRepository {
             { $limit: limit },
             { $lookup: { from: 'users', localField: 'author', foreignField: '_id', as: 'author' } },
             { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
-            { $project: { _id: 1, title: 1, tags: 1, images: 1, videos: 1, postType: 1, createdAt: 1, viewCount: 1, dailyViewCount: 1, author: { fullName: 1, avatar: 1 } } },
+            { $project: { _id: 1, title: 1, tags: 1, images: 1, videos: 1, postType: 1, createdAt: 1, viewCount: 1, dailyViewCount: 1, author: { _id: 1, fullName: 1, avatar: 1 } } },
         ]);
     }
 
@@ -204,7 +205,7 @@ class PostRepository {
             { $limit: limit },
             { $lookup: { from: 'users', localField: 'author', foreignField: '_id', as: 'author' } },
             { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
-            { $project: { _id: 1, title: 1, tags: 1, images: 1, videos: 1, postType: 1, createdAt: 1, viewCount: 1, dailyUpvoteCount: 1, upvoteCount: 1, downvoteCount: 1, author: { fullName: 1, avatar: 1 } } },
+            { $project: { _id: 1, title: 1, tags: 1, images: 1, videos: 1, postType: 1, createdAt: 1, viewCount: 1, dailyUpvoteCount: 1, upvoteCount: 1, downvoteCount: 1, author: { _id: 1, fullName: 1, avatar: 1 } } },
         ]);
     }
 
@@ -241,6 +242,83 @@ class PostRepository {
             .sort({ deletedAt: -1 })
             .populate('author', '_id fullName avatar email')
             .lean();
+    }
+
+    async findPublicPostsByAuthor(authorId, skip, limit) {
+        const authorObjectId = new mongoose.Types.ObjectId(authorId);
+        return await Post.aggregate([
+            { $match: { ...PUBLIC_POST_MATCH, author: authorObjectId } },
+            {
+                $addFields: {
+                    upvoteCount: { $cond: [{ $isArray: '$upvotes' }, { $size: { $ifNull: ['$upvotes', []] } }, 0] },
+                    downvoteCount: { $cond: [{ $isArray: '$downvotes' }, { $size: { $ifNull: ['$downvotes', []] } }, 0] },
+                    likeCount: { $cond: [{ $isArray: '$likes' }, { $size: { $ifNull: ['$likes', []] } }, 0] },
+                    dislikeCount: { $cond: [{ $isArray: '$dislikes' }, { $size: { $ifNull: ['$dislikes', []] } }, 0] },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'comments',
+                    let: { postId: '$_id' },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ['$post', '$$postId'] } } },
+                        { $count: 'count' },
+                    ],
+                    as: 'commentMeta',
+                },
+            },
+            { $addFields: { answerCount: { $ifNull: [{ $arrayElemAt: ['$commentMeta.count', 0] }, 0] } } },
+            { $project: { commentMeta: 0, author: 0 } },
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+                $project: {
+                    title: 1,
+                    content: 1,
+                    tags: 1,
+                    status: 1,
+                    postType: 1,
+                    viewCount: 1,
+                    upvoteCount: 1,
+                    downvoteCount: 1,
+                    likeCount: 1,
+                    dislikeCount: 1,
+                    answerCount: 1,
+                    createdAt: 1,
+                },
+            },
+        ]);
+    }
+
+    async countPublicPostsByAuthor(authorId) {
+        return await Post.countDocuments({ ...PUBLIC_POST_MATCH, author: authorId });
+    }
+
+    async getPublicAuthorPostSummary(authorId) {
+        const authorObjectId = new mongoose.Types.ObjectId(authorId);
+        const [summary = {}] = await Post.aggregate([
+            { $match: { ...PUBLIC_POST_MATCH, author: authorObjectId } },
+            {
+                $group: {
+                    _id: null,
+                    questionCount: { $sum: { $cond: [{ $eq: ['$postType', 'question'] }, 1, 0] } },
+                    adviceCount: { $sum: { $cond: [{ $eq: ['$postType', 'advice'] }, 1, 0] } },
+                    totalViews: { $sum: { $ifNull: ['$viewCount', 0] } },
+                    totalUpvotes: { $sum: { $cond: [{ $isArray: '$upvotes' }, { $size: { $ifNull: ['$upvotes', []] } }, 0] } },
+                    totalLikes: { $sum: { $cond: [{ $isArray: '$likes' }, { $size: { $ifNull: ['$likes', []] } }, 0] } },
+                },
+            },
+            { $project: { _id: 0 } },
+        ]);
+
+        return {
+            questionCount: summary.questionCount || 0,
+            adviceCount: summary.adviceCount || 0,
+            totalViews: summary.totalViews || 0,
+            totalUpvotes: summary.totalUpvotes || 0,
+            totalLikes: summary.totalLikes || 0,
+        };
     }
 }
 
