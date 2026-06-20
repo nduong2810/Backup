@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { NavLink, useSearchParams, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 
@@ -25,13 +25,33 @@ const LeftSidebar = () => {
     const isAdmin = user?.role === 'admin';
     const location = useLocation();
     const [searchParams] = useSearchParams();
+    const navRef = useRef(null);
 
     const isAdminPage = location.pathname.startsWith('/admin');
     const currentAdminTab = isAdminPage ? (searchParams.get('tab') || 'overview') : null;
 
+    const handleWheel = (event) => {
+        const nav = navRef.current;
+        if (!nav) return;
+
+        const { scrollTop, scrollHeight, clientHeight } = nav;
+        const canScrollDown = scrollTop + clientHeight < scrollHeight - 1;
+        const canScrollUp = scrollTop > 0;
+        const shouldHandleWheel = (event.deltaY > 0 && canScrollDown) || (event.deltaY < 0 && canScrollUp);
+
+        if (!shouldHandleWheel) return;
+
+        nav.scrollTop += event.deltaY;
+        event.preventDefault();
+    };
+
     return (
         <aside className="w-full lg:w-56 flex-shrink-0">
-            <nav className="sticky top-[calc(4rem+1.5rem)] flex flex-col py-stack-lg gap-stack-sm bg-surface dark:bg-background border-r border-outline-variant dark:border-outline h-[calc(100vh-4rem-1.5rem)] hidden lg:flex overflow-y-auto">
+            <nav
+                ref={navRef}
+                onWheel={handleWheel}
+                className="sticky top-[calc(4rem+1.5rem)] flex flex-col py-stack-lg gap-stack-sm bg-surface dark:bg-background border-r border-outline-variant dark:border-outline h-[calc(100vh-4rem-1.5rem)] hidden lg:flex overflow-y-auto overscroll-contain"
+            >
                 <div className="px-4 pb-2">
                     <h2 className="font-label-mono text-label-mono text-outline font-bold tracking-wider mb-1">CỘNG ĐỒNG</h2>
                     <p className="font-body-sm text-body-sm text-secondary">Diễn đàn cộng đồng</p>

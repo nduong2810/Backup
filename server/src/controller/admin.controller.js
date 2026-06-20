@@ -587,11 +587,66 @@ class AdminController {
             }
 
             const userPostIds = await Post.find({ author: userObjectId }).distinct('_id');
-            const [postCount, commentCount, reportCount] = await Promise.all([
+            const [
+                postCount,
+                commentCount,
+                reportCount,
+                reportedPostIds,
+                confirmedViolationsCount,
+                postStats,
+            ] = await Promise.all([
                 Post.countDocuments({ author: userObjectId }),
                 Comment.countDocuments({ author: userObjectId }),
                 ReportTicket.countDocuments({ post: { $in: userPostIds } }),
+                ReportTicket.find({ post: { $in: userPostIds } }).distinct('post'),
+                ReportTicket.countDocuments({ post: { $in: userPostIds }, status: 'action_taken' }),
+                Post.aggregate([
+                    { $match: { author: userObjectId } },
+                    {
+                        $group: {
+                            _id: null,
+                            questionCount: {
+                                $sum: {
+                                    $cond: [{ $eq: ['$postType', 'question'] }, 1, 0],
+                                },
+                            },
+                            adviceCount: {
+                                $sum: {
+                                    $cond: [{ $eq: ['$postType', 'advice'] }, 1, 0],
+                                },
+                            },
+                            activePostCount: {
+                                $sum: {
+                                    $cond: [{ $eq: ['$status', 'active'] }, 1, 0],
+                                },
+                            },
+                            closedPostCount: {
+                                $sum: {
+                                    $cond: [{ $eq: ['$status', 'closed'] }, 1, 0],
+                                },
+                            },
+                            hiddenPostCount: {
+                                $sum: {
+                                    $cond: [{ $eq: ['$status', 'hidden'] }, 1, 0],
+                                },
+                            },
+                            deletedPostCount: {
+                                $sum: {
+                                    $cond: [{ $eq: ['$status', 'deleted'] }, 1, 0],
+                                },
+                            },
+                            totalViews: { $sum: { $ifNull: ['$viewCount', 0] } },
+                            totalUpvotes: { $sum: { $size: { $ifNull: ['$upvotes', []] } } },
+                            totalDownvotes: { $sum: { $size: { $ifNull: ['$downvotes', []] } } },
+                            lastPostAt: { $max: '$createdAt' },
+                        },
+                    },
+                ]),
             ]);
+
+            const stats = postStats?.[0] || {};
+            const reportedPostCount = Array.isArray(reportedPostIds) ? reportedPostIds.length : 0;
+            const reportRate = postCount > 0 ? Math.round((reportedPostCount / postCount) * 100) : 0;
 
             return res.status(200).json({
                 success: true,
@@ -601,6 +656,19 @@ class AdminController {
                         postCount,
                         commentCount,
                         reportCount,
+                        reportedPostCount,
+                        reportRate,
+                        confirmedViolationsCount,
+                        questionCount: stats.questionCount || 0,
+                        adviceCount: stats.adviceCount || 0,
+                        activePostCount: stats.activePostCount || 0,
+                        closedPostCount: stats.closedPostCount || 0,
+                        hiddenPostCount: stats.hiddenPostCount || 0,
+                        deletedPostCount: stats.deletedPostCount || 0,
+                        totalViews: stats.totalViews || 0,
+                        totalUpvotes: stats.totalUpvotes || 0,
+                        totalDownvotes: stats.totalDownvotes || 0,
+                        lastPostAt: stats.lastPostAt || null,
                     },
                 },
             });

@@ -157,7 +157,7 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
           <p className={helpTextClass}>Nhiều tag cách nhau bằng dấu phẩy</p>
           <div
             ref={tagListRef}
-            className={`flex flex-wrap gap-2 pt-1 overflow-y-auto pr-1 ${tagListHeight}`}
+            className={`scrollbar-hide flex flex-wrap gap-2 pt-1 overflow-y-auto pr-1 ${tagListHeight}`}
             onScroll={handleTagScroll}
             role="list"
             aria-live="polite"

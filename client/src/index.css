@@ -23,6 +23,15 @@ body {
     @apply bg-background text-on-background font-body-md text-body-md antialiased min-h-screen flex flex-col;
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes slide-in {
   from {
     transform: translateX(100%);

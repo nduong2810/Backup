@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import { getAdminUsers, getAdminUserDetail, toggleAdminUserStatus } from '../../services/userService';
 
 const STATUS_OPTIONS = [
@@ -9,12 +10,12 @@ const STATUS_OPTIONS = [
 ];
 
 const REPUTATION_RANKS = [
-  { min: 1, max: 49, label: 'Newcomer', color: 'text-slate-500', bg: 'bg-slate-100' },
-  { min: 50, max: 199, label: 'Contributor', color: 'text-sky-600', bg: 'bg-sky-50' },
-  { min: 200, max: 499, label: 'Active Member', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { min: 500, max: 999, label: 'Trusted Member', color: 'text-violet-600', bg: 'bg-violet-50' },
-  { min: 1000, max: 2499, label: 'Expert', color: 'text-amber-600', bg: 'bg-amber-50' },
-  { min: 2500, max: Infinity, label: 'Master', color: 'text-rose-600', bg: 'bg-rose-50' },
+  { min: 1, max: 49, label: 'Newbie', color: 'text-slate-500', bg: 'bg-slate-100' },
+  { min: 50, max: 199, label: 'Member', color: 'text-sky-600', bg: 'bg-sky-50' },
+  { min: 200, max: 499, label: 'Contributor', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { min: 500, max: 999, label: 'Trusted', color: 'text-violet-600', bg: 'bg-violet-50' },
+  { min: 1000, max: 1999, label: 'Expert', color: 'text-amber-600', bg: 'bg-amber-50' },
+  { min: 2000, max: Infinity, label: 'Elite', color: 'text-rose-600', bg: 'bg-rose-50' },
 ];
 
 const getRank = (rep) => {
@@ -36,6 +37,72 @@ const AVATAR_FALLBACK = 'default-avatar.png';
 const getAvatarUrl = (avatar) => {
   if (!avatar || avatar === AVATAR_FALLBACK) return null;
   return avatar;
+};
+
+const getRiskEvaluation = (stats, user) => {
+  const confirmedViolations = stats.confirmedViolationsCount || 0;
+  const deletedPosts = stats.deletedPostCount || 0;
+  const hiddenPosts = stats.hiddenPostCount || 0;
+  const reportRate = stats.reportRate || 0;
+  const totalDownvotes = stats.totalDownvotes || 0;
+  const reputation = user?.reputation || 1;
+  const reportCount = stats.reportCount || 0;
+
+  let score = 0;
+  const reasons = [];
+
+  if (confirmedViolations > 0) {
+    score += confirmedViolations * 3;
+    reasons.push(`Có ${confirmedViolations} báo cáo vi phạm đã được Admin duyệt (action taken).`);
+  }
+  if (deletedPosts > 0) {
+    score += deletedPosts * 2.5;
+    reasons.push(`Có ${deletedPosts} bài đăng đã bị xóa khỏi hệ thống.`);
+  }
+  if (hiddenPosts > 0) {
+    score += hiddenPosts * 1.5;
+    reasons.push(`Có ${hiddenPosts} bài đăng đang bị ẩn.`);
+  }
+  if (reportRate >= 30 && stats.postCount > 1) {
+    score += 2;
+    reasons.push(`Tỷ lệ bài viết bị báo cáo cao (${reportRate}%).`);
+  }
+  if (totalDownvotes > 5) {
+    score += Math.min(3, Math.floor(totalDownvotes / 3));
+    reasons.push(`Nhận ${totalDownvotes} lượt downvote từ cộng đồng.`);
+  }
+  if (reputation <= 5 && reportCount > 3) {
+    score += 2;
+    reasons.push(`Danh tiếng thấp nhưng bị báo cáo nhiều lần (${reportCount} lượt).`);
+  }
+
+  let level = 'safety';
+  let title = 'An toàn';
+  let color = 'text-emerald-700 bg-emerald-50 border-emerald-200';
+  let icon = 'verified_user';
+  let recommendation = 'Thành viên hoạt động bình thường. Không có dấu hiệu vi phạm cần xử lý.';
+
+  if (score >= 7) {
+    level = 'high';
+    title = 'Rủi ro cao (Khuyên khóa)';
+    color = 'text-rose-700 bg-rose-50 border-rose-200';
+    icon = 'gavel';
+    recommendation = 'Hệ thống đề xuất KHÓA TÀI KHOẢN do có nhiều vi phạm hoặc nội dung độc hại liên tục.';
+  } else if (score >= 4) {
+    level = 'medium';
+    title = 'Rủi ro trung bình';
+    color = 'text-amber-700 bg-amber-50 border-amber-200';
+    icon = 'warning';
+    recommendation = 'Cân nhắc gửi cảnh báo hoặc khóa tạm thời nếu phát hiện hành vi cố ý spam/công kích.';
+  } else if (score > 0) {
+    level = 'low';
+    title = 'Rủi ro thấp';
+    color = 'text-sky-700 bg-sky-50 border-sky-200';
+    icon = 'info';
+    recommendation = 'Theo dõi thêm hoạt động. Nhắc nhở nếu nội dung chưa nghiêm trọng.';
+  }
+
+  return { score, level, title, color, icon, recommendation, reasons };
 };
 
 export default function AdminUsersTab({ embedded = false }) {
@@ -272,7 +339,7 @@ export default function AdminUsersTab({ embedded = false }) {
                 <th className="px-5 py-4">Reputation</th>
                 <th className="px-5 py-4">Trạng thái</th>
                 <th className="px-5 py-4">Ngày tham gia</th>
-                <th className="px-6 py-4 text-right">Thao tác</th>
+                <th className="px-6 py-4 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -293,7 +360,7 @@ export default function AdminUsersTab({ embedded = false }) {
                     <td className="px-5 py-4"><div className="mx-auto h-4 w-16 rounded bg-slate-100" /></td>
                     <td className="px-5 py-4"><div className="h-7 w-28 rounded-full bg-slate-100" /></td>
                     <td className="px-5 py-4"><div className="h-4 w-24 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-4"><div className="ml-auto h-9 w-32 rounded-full bg-slate-100" /></td>
+                    <td className="px-5 py-4"><div className="mx-auto h-9 w-32 rounded-full bg-slate-100" /></td>
                   </tr>
                 ))
               }
@@ -341,7 +408,13 @@ export default function AdminUsersTab({ embedded = false }) {
                           <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${user.isActive ? 'bg-emerald-400' : 'bg-slate-300'}`} />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-slate-900 truncate">{user.fullName}</p>
+                          <Link
+                            to={`/users/${user._id}`}
+                            className="text-sm font-bold text-slate-900 truncate hover:text-primary transition-colors"
+                            title={`Mở hồ sơ công khai của ${user.fullName}`}
+                          >
+                            {user.fullName}
+                          </Link>
                           <p className="text-xs text-slate-400 truncate">{user.email}</p>
                         </div>
                       </div>
@@ -382,8 +455,8 @@ export default function AdminUsersTab({ embedded = false }) {
                     </td>
 
                     {/* Actions */}
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex flex-nowrap justify-end gap-2">
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-nowrap justify-center gap-2">
                         {/* View detail */}
                         <button
                           type="button"
@@ -500,8 +573,14 @@ export default function AdminUsersTab({ embedded = false }) {
 
       {/* ===== User Detail Modal ===== */}
       {(detailUser || detailLoading) && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm p-4 animate-fadeIn"
+          onClick={closeDetail}
+        >
+          <div
+            className="scrollbar-hide w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur px-6 py-4">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -599,30 +678,111 @@ export default function AdminUsersTab({ embedded = false }) {
                   </div>
                 </div>
 
+                {/* Risk evaluation panel */}
+                {detailStats && (
+                  (() => {
+                    const risk = getRiskEvaluation(detailStats, detailUser);
+                    return (
+                      <div className={`rounded-2xl border p-4 space-y-3 ${risk.color}`}>
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[18px]">{risk.icon}</span>
+                            Đánh giá rủi ro tài khoản
+                          </h5>
+                          <span className="text-xs font-extrabold px-2 py-0.5 rounded-full border border-current bg-white/50">
+                            {risk.title}
+                          </span>
+                        </div>
+                        
+                        {risk.reasons.length > 0 ? (
+                          <ul className="text-xs font-medium space-y-1 list-disc pl-4 opacity-90">
+                            {risk.reasons.map((reason, index) => (
+                              <li key={index}>{reason}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-xs font-medium opacity-90">Không phát hiện dấu hiệu vi phạm hoặc báo cáo tiêu cực nào.</p>
+                        )}
+                        
+                        <div className="border-t border-current/10 pt-2 text-xs font-extrabold flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[16px]">info</span>
+                          Khuyến nghị: {risk.recommendation}
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
+
                 {/* Activity stats */}
                 {detailStats && (
-                  <div>
-                    <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[14px]">analytics</span>
-                      Thống kê hoạt động
-                    </h5>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm">
-                        <span className="material-symbols-outlined text-primary text-2xl">article</span>
-                        <p className="mt-1 text-xl font-extrabold text-slate-900">{detailStats.postCount}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Bài viết</p>
-                      </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm">
-                        <span className="material-symbols-outlined text-emerald-500 text-2xl">chat_bubble</span>
-                        <p className="mt-1 text-xl font-extrabold text-slate-900">{detailStats.commentCount}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Bình luận</p>
-                      </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm">
-                        <span className="material-symbols-outlined text-amber-500 text-2xl">flag</span>
-                        <p className="mt-1 text-xl font-extrabold text-slate-900">{detailStats.reportCount}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Bị báo cáo</p>
+                  <div className="space-y-4">
+                    <div>
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[14px]">analytics</span>
+                        Thống kê hoạt động
+                      </h5>
+                      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                          <span className="material-symbols-outlined text-primary text-xl">article</span>
+                          <p className="mt-1 text-base font-extrabold text-slate-900">{detailStats.postCount}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Tổng bài</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                          <span className="material-symbols-outlined text-emerald-500 text-xl">chat_bubble</span>
+                          <p className="mt-1 text-base font-extrabold text-slate-900">{detailStats.commentCount}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Bình luận</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                          <span className="material-symbols-outlined text-amber-500 text-xl">thumb_up</span>
+                          <p className="mt-1 text-sm font-extrabold text-slate-900">
+                            👍{detailStats.totalUpvotes || 0} / 👎{detailStats.totalDownvotes || 0}
+                          </p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Upvotes / Downvotes</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                          <span className="material-symbols-outlined text-indigo-500 text-xl">workspace_premium</span>
+                          <p className="mt-1 text-base font-extrabold text-slate-900">{detailUser.reputation || 1}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Danh tiếng</p>
+                        </div>
                       </div>
                     </div>
+
+                    <div>
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[14px]">policy</span>
+                        Chỉ số kiểm duyệt nội dung
+                      </h5>
+                      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                          <span className="material-symbols-outlined text-rose-500 text-xl">flag</span>
+                          <p className="mt-1 text-base font-extrabold text-slate-900">{detailStats.reportCount}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Lượt bị báo cáo</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                          <span className="material-symbols-outlined text-amber-600 text-xl">gavel</span>
+                          <p className="mt-1 text-base font-extrabold text-slate-900">{detailStats.confirmedViolationsCount || 0}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Vi phạm đã xử lý</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                          <span className="material-symbols-outlined text-slate-500 text-xl">visibility_off</span>
+                          <p className="mt-1 text-sm font-extrabold text-slate-900">
+                            {detailStats.hiddenPostCount || 0} ẩn / {detailStats.deletedPostCount || 0} xóa
+                          </p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Bài bị ẩn & xóa</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+                          <span className="material-symbols-outlined text-violet-500 text-xl">percent</span>
+                          <p className="mt-1 text-base font-extrabold text-slate-900">{detailStats.reportRate || 0}%</p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">Tỷ lệ bị báo cáo</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {detailStats.lastPostAt && (
+                      <p className="text-xs text-slate-400 italic">
+                        Bài viết gần nhất đăng lúc: {formatDate(detailStats.lastPostAt)}
+                      </p>
+                    )}
                   </div>
                 )}
 
