@@ -334,6 +334,54 @@ class PostController {
         }
     }
 
+    async updatePost(req, res) {
+        const validationError = this.checkValidationErrors(req, res);
+        if (validationError) return validationError;
+
+        try {
+            const { id } = req.params;
+            if (typeof req.body.tags === 'string') {
+                try { req.body.tags = JSON.parse(req.body.tags); } catch { req.body.tags = []; }
+            }
+
+            const files = {
+                images: req.files?.images || [],
+                videos: req.files?.videos || [],
+            };
+
+            const updatedPost = await postService.updatePost(id, req.user.userId, req.body, files);
+            emitToPostRoom(id, 'post:updated', { postId: id, post: updatedPost });
+
+            return res.status(200).json({ success: true, message: 'Cập nhật bài viết thành công', data: updatedPost });
+        } catch (error) {
+            const status = error.status || 500;
+            return res.status(status).json({ success: false, message: error.message || 'Lỗi server khi cập nhật bài viết' });
+        }
+    }
+
+    async updateComment(req, res) {
+        const validationError = this.checkValidationErrors(req, res);
+        if (validationError) return validationError;
+
+        try {
+            const { commentId } = req.params;
+            const files = {
+                images: req.files?.images || [],
+                videos: req.files?.videos || [],
+            };
+
+            const updatedComment = await postService.updateComment(commentId, req.user.userId, req.body, files);
+            const postId = normalizeObjectId(updatedComment.post?._id || updatedComment.post);
+
+            emitToPostRoom(postId, 'comment:updated', { postId, comment: updatedComment });
+
+            return res.status(200).json({ success: true, message: 'Cập nhật bình luận thành công', data: updatedComment });
+        } catch (error) {
+            const status = error.status || 500;
+            return res.status(status).json({ success: false, message: error.message || 'Lỗi server khi cập nhật bình luận' });
+        }
+    }
+
     async deleteComment(req, res) {
         try {
             const { commentId } = req.params;

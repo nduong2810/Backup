@@ -4,6 +4,8 @@ import SaveIconButton from '../ui/SaveIconButton';
 import ReputationBadge from '../ui/ReputationBadge';
 import { softDeletePost } from '../../services/postService';
 import { useToast } from '../../context/ToastContext';
+import EditPostModal from './EditPostModal';
+import EditHistoryModal from '../common/EditHistoryModal';
 
 function timeAgo(dateString) {
   const now = new Date();
@@ -49,10 +51,13 @@ export default function PostContent({
   reactionLoading = false,
   onPostReaction,
   currentUserId = '',
+  onPostUpdated,
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const menuRef = useRef(null);
   
   const navigate = useNavigate();
@@ -118,10 +123,23 @@ export default function PostContent({
               
               {showMenu && (
                 <div className="absolute right-0 mt-1 w-36 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
+                  {(post.status === 'active' || post.status === 'unresolved') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMenu(false);
+                        setIsEditModalOpen(true);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 border-b border-slate-100 whitespace-nowrap"
+                    >
+                      <span className="material-symbols-outlined text-base text-slate-500">edit</span>
+                      Sửa bài viết
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={handleDeleteClick}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 whitespace-nowrap"
                   >
                     <span className="material-symbols-outlined text-base">delete</span>
                     Xóa bài viết
@@ -154,7 +172,19 @@ export default function PostContent({
           )}
         </div>
 
-        <span className="text-outline">· {timeAgo(post.createdAt)}</span>
+        <span className="text-outline flex items-center gap-1.5 flex-wrap">
+          · {timeAgo(post.createdAt)}
+          {post.editHistory && post.editHistory.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsHistoryModalOpen(true)}
+              className="text-primary hover:underline font-semibold text-xs flex items-center gap-0.5 ml-1 transition"
+            >
+              <span className="material-symbols-outlined text-[14px]">history</span>
+              (Đã chỉnh sửa)
+            </button>
+          )}
+        </span>
 
         <div className="flex items-center gap-1">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -256,6 +286,21 @@ export default function PostContent({
           </div>
         </div>
       )}
+
+      <EditPostModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        post={post}
+        onUpdateSuccess={onPostUpdated}
+      />
+
+      <EditHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        history={post.editHistory || []}
+        type="post"
+        title="Lịch sử chỉnh sửa bài viết"
+      />
     </article>
   );
 }

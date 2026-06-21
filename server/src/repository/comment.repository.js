@@ -39,6 +39,18 @@ class CommentRepository {
     async countByPostId(postId) {
         return await Comment.countDocuments({ post: postId, isAuthorActive: { $ne: false } });
     }
+
+    async updateComment(commentId, updateData, editHistoryItem) {
+        const updateQuery = {
+            $set: updateData
+        };
+        if (editHistoryItem) {
+            updateQuery.$push = { editHistory: editHistoryItem };
+        }
+        return await Comment.findByIdAndUpdate(commentId, updateQuery, { new: true })
+            .populate('author', 'fullName avatar major email reputation')
+            .populate('post', 'title author');
+    }
 }
 
 export default new CommentRepository();

@@ -179,11 +179,6 @@ export default function usePostDetail(postId) {
   const submitComment = useCallback(async (payload) => {
     if (submittingComment) return false;
 
-    if (isAdmin) {
-      toast.warning(ADMIN_INTERACTION_MESSAGE);
-      return false;
-    }
-
     if (isPostLocked) {
       setCommentError(LOCKED_POST_MESSAGE);
       return false;
@@ -280,11 +275,27 @@ export default function usePostDetail(postId) {
       }
     };
 
+    const handlePostUpdated = (payload) => {
+      if (String(payload?.postId) === String(postId)) {
+        fetchPostDetail(false);
+      }
+    };
+
+    const handleCommentUpdated = (payload) => {
+      if (String(payload?.postId) === String(postId)) {
+        fetchPostDetail(false);
+      }
+    };
+
     socket.emit('post:join', postId);
     socket.on('comment:new', handleNewComment);
+    socket.on('post:updated', handlePostUpdated);
+    socket.on('comment:updated', handleCommentUpdated);
 
     return () => {
       socket.off('comment:new', handleNewComment);
+      socket.off('post:updated', handlePostUpdated);
+      socket.off('comment:updated', handleCommentUpdated);
       socket.emit('post:leave', postId);
     };
   }, [postId, fetchPostDetail]);

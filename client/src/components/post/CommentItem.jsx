@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ReputationBadge from '../ui/ReputationBadge';
+import { updateCommentApi } from '../../services/postService';
+import { useToast } from '../../context/ToastContext';
+import EditHistoryModal from '../common/EditHistoryModal';
 
 function timeAgo(dateString) {
   const now = new Date();
@@ -37,10 +40,20 @@ export default function CommentItem({
   onSubmitReply,
   submittingReply = false,
   onDeleteComment,
+  postStatus = 'active',
+  onCommentUpdated,
 }) {
+  const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [updating, setUpdating] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [images, setImages] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [mediaError, setMediaError] = useState('');
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -52,6 +65,99 @@ export default function CommentItem({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const getNewFilesSize = (newImages, newVideos) => {
+    const imagesSize = newImages.filter(x => x.type === 'new').reduce((acc, x) => acc + (x.file?.size || 0), 0);
+    const videosSize = newVideos.filter(x => x.type === 'new').reduce((acc, x) => acc + (x.file?.size || 0), 0);
+    return imagesSize + videosSize;
+  };
+
+  const handleImageChange = (e) => {
+    setMediaError('');
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const currentNewFilesSize = getNewFilesSize(images, videos);
+    const incomingFilesSize = files.reduce((acc, f) => acc + f.size, 0);
+
+    if (currentNewFilesSize + incomingFilesSize > 50 * 1024 * 1024) {
+      setMediaError('Tổng dung lượng các hình ảnh và video tải lên mới vượt quá giới hạn 50MB.');
+      return;
+    }
+
+    files.forEach((file) => {
+      if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+        setMediaError('Định dạng hình ảnh không hợp lệ (chỉ chấp nhận JPEG, PNG, GIF, WEBP).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImages((prev) => [
+          ...prev,
+          {
+            id: `new-img-${Date.now()}-${Math.random()}`,
+            src: reader.result,
+            type: 'new',
+            file: file
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const handleVideoChange = (e) => {
+    setMediaError('');
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const currentNewFilesSize = getNewFilesSize(images, videos);
+    const incomingFilesSize = files.reduce((acc, f) => acc + f.size, 0);
+
+    if (currentNewFilesSize + incomingFilesSize > 50 * 1024 * 1024) {
+      setMediaError('Tổng dung lượng các hình ảnh và video tải lên mới vượt quá giới hạn 50MB.');
+      return;
+    }
+
+    files.forEach((file) => {
+      const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/x-matroska'];
+      const allowedVideoExts = ['.mp4', '.webm', '.ogg', '.mkv'];
+      const fileExt = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+      const isValidVideo = allowedVideoTypes.includes(file.type) || allowedVideoExts.includes(fileExt);
+      if (!isValidVideo) {
+        setMediaError('Định dạng video không hợp lệ (chỉ nhận MP4, WEBM, OGG, MKV).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setVideos((prev) => [
+          ...prev,
+          {
+            id: `new-vid-${Date.now()}-${Math.random()}`,
+            src: reader.result,
+            type: 'new',
+            file: file
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = (id) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const handleRemoveVideo = (id) => {
+    setVideos((prev) => prev.filter((vid) => vid.id !== id));
+  };
+
   const isAuthor = comment.author?._id === postAuthorId;
   const isCommentOwner = currentUserId && comment.author?._id && String(currentUserId) === String(comment.author._id);
   const maxDepth = 3;
@@ -87,6 +193,50 @@ export default function CommentItem({
     onSubmitReply?.(comment);
   };
 
+  const handleUpdateComment = async (event) => {
+    event.preventDefault();
+    if (!editContent.trim()) {
+      toast.error('Nội dung bình luận không được để trống.');
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const formData = new FormData();
+      formData.append('content', editContent.trim());
+
+      // Append images
+      images.forEach((img) => {
+        if (img.type === 'old') {
+          formData.append('images', img.src);
+        } else if (img.type === 'new' && img.file) {
+          formData.append('images', img.file);
+        }
+      });
+
+      // Append videos
+      videos.forEach((vid) => {
+        if (vid.type === 'old') {
+          formData.append('videos', vid.src);
+        } else if (vid.type === 'new' && vid.file) {
+          formData.append('videos', vid.file);
+        }
+      });
+
+      await updateCommentApi(comment._id, formData);
+      toast.success('Cập nhật bình luận thành công!');
+      setIsEditing(false);
+      if (onCommentUpdated) {
+        onCommentUpdated();
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật bình luận.';
+      toast.error(errMsg);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   return (
     <div
       className={`flex gap-3 pb-4 ${depth > 0 ? 'border-l-2 border-outline-variant pl-4' : 'border-b border-outline-variant'}`}
@@ -115,7 +265,19 @@ export default function CommentItem({
             {comment.author?.reputation !== undefined && (
               <ReputationBadge reputation={comment.author.reputation} size="sm" />
             )}
-            <span className="text-outline text-xs">· {timeAgo(comment.createdAt)}</span>
+            <span className="text-outline text-xs flex items-center gap-1">
+              · {timeAgo(comment.createdAt)}
+              {comment.editHistory && comment.editHistory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryModalOpen(true)}
+                  className="text-primary hover:underline font-semibold text-[10px] flex items-center gap-0.5 ml-1 transition"
+                >
+                  <span className="material-symbols-outlined text-[12px]">history</span>
+                  (Đã chỉnh sửa)
+                </button>
+              )}
+            </span>
           </div>
 
           {isCommentOwner && (
@@ -130,11 +292,28 @@ export default function CommentItem({
               </button>
 
               {showMenu && (
-                <div className="absolute right-0 mt-0.5 w-32 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
+                <div className="absolute right-0 mt-0.5 w-36 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
+                  {(postStatus === 'active' || postStatus === 'unresolved') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMenu(false);
+                        setEditContent(comment.content || '');
+                        setImages((comment.images || []).map((url, idx) => ({ id: `old-img-${idx}`, src: url, type: 'old' })));
+                        setVideos((comment.videos || []).map((url, idx) => ({ id: `old-vid-${idx}`, src: url, type: 'old' })));
+                        setMediaError('');
+                        setIsEditing(true);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 border-b border-slate-100 whitespace-nowrap"
+                    >
+                      <span className="material-symbols-outlined text-base text-slate-500">edit</span>
+                      Sửa bình luận
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => { setShowMenu(false); setShowConfirm(true); }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 whitespace-nowrap"
                   >
                     <span className="material-symbols-outlined text-base">delete</span>
                     Xóa bình luận
@@ -145,11 +324,127 @@ export default function CommentItem({
           )}
         </div>
 
-        <p className="text-on-surface font-body-sm text-body-sm leading-relaxed whitespace-pre-wrap">
-          {comment.content}
-        </p>
+        {isEditing ? (
+          <form onSubmit={handleUpdateComment} className="mt-2 rounded-xl border border-outline-variant bg-surface-container-low p-3 space-y-3">
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              placeholder="Nhập nội dung bình luận cần chỉnh sửa..."
+              disabled={updating}
+              className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100 font-body-sm"
+              required
+            />
 
-        {comment.images && comment.images.length > 0 && (
+            {/* Media previews list with delete buttons */}
+            {(images.length > 0 || videos.length > 0) && (
+              <div className="space-y-2 pt-1">
+                {/* Images list */}
+                {images.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {images.map((img) => (
+                      <div key={img.id} className="relative w-16 h-16 rounded-lg overflow-hidden border border-outline-variant group">
+                        <img src={img.src} alt="Preview" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(img.id)}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-black text-white rounded-full p-0.5"
+                        >
+                          <span className="material-symbols-outlined text-[12px] block">close</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Videos list */}
+                {videos.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {videos.map((vid) => (
+                      <div key={vid.id} className="relative w-32 rounded-lg overflow-hidden border border-outline-variant bg-black flex items-center justify-center group">
+                        <video src={vid.src} className="w-full h-20 object-contain" controls={false} muted />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVideo(vid.id)}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-black text-white rounded-full p-0.5 z-10"
+                        >
+                          <span className="material-symbols-outlined text-[12px] block">close</span>
+                        </button>
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                          <span className="material-symbols-outlined text-white text-2xl">play_circle</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {mediaError && (
+              <p className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg px-2.5 py-1">
+                {mediaError}
+              </p>
+            )}
+
+            {/* Media attachment triggers */}
+            <div className="flex items-center gap-2 pt-1">
+              <label className="flex h-7 items-center gap-1 rounded-full border border-outline-variant px-3 text-[11px] font-semibold text-secondary hover:bg-surface-container-high transition cursor-pointer">
+                <span className="material-symbols-outlined text-[14px]">image</span>
+                <span>Thêm ảnh</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageChange}
+                  className="hidden"
+                  disabled={updating}
+                />
+              </label>
+
+              <label className="flex h-7 items-center gap-1 rounded-full border border-outline-variant px-3 text-[11px] font-semibold text-secondary hover:bg-surface-container-high transition cursor-pointer">
+                <span className="material-symbols-outlined text-[14px]">videocam</span>
+                <span>Thêm video</span>
+                <input
+                  type="file"
+                  accept="video/*"
+                  multiple
+                  onChange={handleVideoChange}
+                  className="hidden"
+                  disabled={updating}
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-outline-variant/60 pt-2">
+              <span className="text-[11px] text-secondary">{editContent.length}/2000 ký tự</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  disabled={updating}
+                  className="rounded-lg border border-outline-variant px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-surface-container-high transition"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={updating || !editContent.trim()}
+                  className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/95 disabled:cursor-not-allowed disabled:opacity-60 flex items-center gap-1"
+                >
+                  {updating && <div className="w-3 h-3 rounded-full border border-white/30 border-t-white animate-spin" />}
+                  Cập nhật
+                </button>
+              </div>
+            </div>
+          </form>
+        ) : (
+          <p className="text-on-surface font-body-sm text-body-sm leading-relaxed whitespace-pre-wrap">
+            {comment.content}
+          </p>
+        )}
+
+        {!isEditing && comment.images && comment.images.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {comment.images.map((imgUrl, idx) => (
               <a key={idx} href={imgUrl} target="_blank" rel="noopener noreferrer" className="block max-w-[200px] max-h-[140px] overflow-hidden rounded-lg border border-outline-variant hover:opacity-90 transition-opacity">
@@ -159,19 +454,21 @@ export default function CommentItem({
           </div>
         )}
 
-        {comment.videos && comment.videos.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {comment.videos.map((vidUrl, index) => (
-              <div key={index} className="rounded-lg overflow-hidden border border-outline-variant bg-black max-w-[320px] max-h-[200px] flex items-center justify-center">
-                <video src={vidUrl} controls className="max-w-full max-h-[200px] object-contain" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          comment.video && (
-            <div className="mt-3 rounded-lg overflow-hidden border border-outline-variant bg-black max-w-[320px] max-h-[200px] flex items-center justify-center">
-              <video src={comment.video} controls className="max-w-full max-h-[200px] object-contain" />
+        {!isEditing && (
+          comment.videos && comment.videos.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {comment.videos.map((vidUrl, index) => (
+                <div key={index} className="rounded-lg overflow-hidden border border-outline-variant bg-black max-w-[320px] max-h-[200px] flex items-center justify-center">
+                  <video src={vidUrl} controls className="max-w-full max-h-[200px] object-contain" />
+                </div>
+              ))}
             </div>
+          ) : (
+            comment.video && (
+              <div className="mt-3 rounded-lg overflow-hidden border border-outline-variant bg-black max-w-[320px] max-h-[200px] flex items-center justify-center">
+                <video src={comment.video} controls className="max-w-full max-h-[200px] object-contain" />
+              </div>
+            )
           )
         )}
 
@@ -320,6 +617,8 @@ export default function CommentItem({
                 onSubmitReply={onSubmitReply}
                 submittingReply={submittingReply}
                 onDeleteComment={onDeleteComment}
+                postStatus={postStatus}
+                onCommentUpdated={onCommentUpdated}
               />
             ))}
           </div>
@@ -374,6 +673,14 @@ export default function CommentItem({
           </div>
         </div>
       )}
+
+      <EditHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        history={comment.editHistory || []}
+        type="comment"
+        title="Lịch sử chỉnh sửa bình luận"
+      />
     </div>
   );
 }

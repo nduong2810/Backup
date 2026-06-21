@@ -20,6 +20,8 @@ export default function CommentSection({
   onReactComment,
   reactingCommentId = '',
   onDeleteComment,
+  postStatus = 'active',
+  onCommentUpdated,
 }) {
   const [content, setContent] = useState('');
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -292,6 +294,8 @@ export default function CommentSection({
               onSubmitReply={handleSubmitReply}
               submittingReply={submittingReply || submittingComment}
               onDeleteComment={onDeleteComment}
+              postStatus={postStatus}
+              onCommentUpdated={onCommentUpdated}
             />
           ))}
         </div>

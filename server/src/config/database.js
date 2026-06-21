@@ -18,31 +18,25 @@ const syncAuthorActiveStatus = async () => {
     const inactiveUsers = await User.find({ isActive: false }).select('_id');
     const inactiveUserIds = inactiveUsers.map(u => u._id);
 
-    console.log(`[Sync] Đang đồng bộ trạng thái hoạt động cho tác giả. Tìm thấy ${inactiveUserIds.length} người dùng inactive.`);
-
     // Cập nhật các bài viết/bình luận của user bị inactive thành isAuthorActive = false
-    const postInactiveResult = await Post.updateMany(
+    await Post.updateMany(
       { author: { $in: inactiveUserIds }, isAuthorActive: { $ne: false } },
       { $set: { isAuthorActive: false } }
     );
-    const commentInactiveResult = await Comment.updateMany(
+    await Comment.updateMany(
       { author: { $in: inactiveUserIds }, isAuthorActive: { $ne: false } },
       { $set: { isAuthorActive: false } }
     );
 
     // Cập nhật các bài viết/bình luận còn lại thành isAuthorActive = true
-    const postActiveResult = await Post.updateMany(
+    await Post.updateMany(
       { author: { $nin: inactiveUserIds }, isAuthorActive: { $ne: true } },
       { $set: { isAuthorActive: true } }
     );
-    const commentActiveResult = await Comment.updateMany(
+    await Comment.updateMany(
       { author: { $nin: inactiveUserIds }, isAuthorActive: { $ne: true } },
       { $set: { isAuthorActive: true } }
     );
-
-    console.log(`[Sync] Đồng bộ hoàn tất:`);
-    console.log(`   - Bài viết: Inactive: ${postInactiveResult.modifiedCount}, Active: ${postActiveResult.modifiedCount}`);
-    console.log(`   - Bình luận: Inactive: ${commentInactiveResult.modifiedCount}, Active: ${commentActiveResult.modifiedCount}`);
   } catch (error) {
     console.error('❌ Lỗi khi đồng bộ trạng thái hoạt động của tác giả:', error);
   }

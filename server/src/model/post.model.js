@@ -126,6 +126,14 @@ const postSchema = new mongoose.Schema({
         default: true,
         index: true
     },
+    editHistory: [{
+        title: { type: String, required: true },
+        content: { type: String, required: true },
+        tags: [{ type: String }],
+        images: [{ type: String }],
+        videos: [{ type: String }],
+        editedAt: { type: Date, default: Date.now }
+    }],
 }, { 
     timestamps: true,
     toJSON: { virtuals: true },

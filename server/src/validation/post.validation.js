@@ -80,3 +80,33 @@ export const createPostValidation = [
     body('tags')
         .optional()
 ];
+
+export const updatePostValidation = [
+    param('id')
+        .isMongoId()
+        .withMessage('ID bài viết không hợp lệ'),
+    body('title')
+        .trim()
+        .notEmpty()
+        .withMessage('Tiêu đề không được để trống')
+        .isLength({ max: 200 })
+        .withMessage('Tiêu đề tối đa 200 ký tự'),
+    body('content')
+        .trim()
+        .notEmpty()
+        .withMessage('Nội dung không được để trống'),
+    body('tags')
+        .optional()
+];
+
+export const updateCommentValidation = [
+    param('commentId')
+        .isMongoId()
+        .withMessage('ID bình luận không hợp lệ'),
+    body('content')
+        .trim()
+        .notEmpty()
+        .withMessage('Nội dung bình luận không được để trống')
+        .isLength({ max: 2000 })
+        .withMessage('Nội dung bình luận tối đa 2000 ký tự')
+];

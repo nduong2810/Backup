@@ -11,6 +11,8 @@ import {
   createCommentValidation,
   commentReactionValidation,
   createPostValidation,
+  updatePostValidation,
+  updateCommentValidation,
 } from '../validation/post.validation.js';
 
 const router = express.Router();
@@ -25,6 +27,14 @@ router.post('/',
   uploadPostMedia,
   createPostValidation,
   postController.createPost.bind(postController)
+);
+
+// PUT /api/posts/:id — Chỉnh sửa bài đăng (Yêu cầu đăng nhập, multer xử lý file, validation)
+router.put('/:id',
+  authenticateToken,
+  uploadPostMedia,
+  updatePostValidation,
+  postController.updatePost.bind(postController)
 );
 
 // GET /api/posts/related/:tag — Bài viết liên quan (Public)
@@ -89,6 +99,14 @@ router.post('/:id/vote',
 router.delete('/comments/:commentId',
   authenticateToken,
   postController.deleteComment.bind(postController)
+);
+
+// PUT /api/posts/comments/:commentId — Chỉnh sửa bình luận (Yêu cầu đăng nhập, multer xử lý file, validation)
+router.put('/comments/:commentId',
+  authenticateToken,
+  uploadCommentMedia,
+  updateCommentValidation,
+  postController.updateComment.bind(postController)
 );
 
 // DELETE /api/posts/:id — Xóa mềm bài viết (đưa vào thùng rác) (Yêu cầu đăng nhập)

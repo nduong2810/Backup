@@ -321,6 +321,17 @@ class PostRepository {
             totalLikes: summary.totalLikes || 0,
         };
     }
+
+    async updatePost(postId, updateData, editHistoryItem) {
+        const updateQuery = {
+            $set: updateData
+        };
+        if (editHistoryItem) {
+            updateQuery.$push = { editHistory: editHistoryItem };
+        }
+        return await Post.findByIdAndUpdate(postId, updateQuery, { new: true })
+            .populate('author', '_id fullName avatar major email reputation');
+    }
 }
 
 export default new PostRepository();
