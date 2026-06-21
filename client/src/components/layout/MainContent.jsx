@@ -475,7 +475,24 @@ const MainContent = () => {
     const currentPage = pagination.page || 1;
     const totalPages = pagination.totalPages || 1;
     const paginationItems = buildPaginationItems(currentPage, totalPages);
-    const hasAppliedSearchOrFilters = searchParams.toString().length > 0;
+    const hasAppliedSearchOrFilters = useMemo(() => {
+        const keyword = searchParams.get('keyword') || searchParams.get('q');
+        if (keyword && keyword.trim().length > 0) return true;
+
+        const tags = searchParams.get('tags');
+        if (tags && tags.trim().length > 0) return true;
+
+        const status = searchParams.get('status');
+        if (status && status !== 'All') return true;
+
+        const minViews = searchParams.get('minViews');
+        if (minViews && minViews !== '0' && minViews !== '') return true;
+
+        const minUpvotes = searchParams.get('minUpvotes');
+        if (minUpvotes && minUpvotes !== '0' && minUpvotes !== '') return true;
+
+        return false;
+    }, [searchParams]);
 
     const renderPagerButton = (enabled, onClick, icon, label) => (
         <button
