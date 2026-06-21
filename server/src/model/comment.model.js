@@ -46,6 +46,11 @@ const commentSchema = new mongoose.Schema({
         ref: 'User',
         default: []
     }],
+    isAuthorActive: {
+        type: Boolean,
+        default: true,
+        index: true
+    },
 }, {
     timestamps: true,
     toJSON: { virtuals: true },

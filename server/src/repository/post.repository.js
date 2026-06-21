@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 // POST REPOSITORY - Tầng Data Access cho bài viết
 // ====================================================================
 
-const PUBLIC_POST_MATCH = { status: { $nin: ['hidden', 'deleted'] } };
+const PUBLIC_POST_MATCH = { status: { $nin: ['hidden', 'deleted'] }, isAuthorActive: { $ne: false } };
 
 class PostRepository {
     async create(postData) {
@@ -63,18 +63,19 @@ class PostRepository {
     }
 
     async setHiddenStatus(postId) {
-        return await Post.findByIdAndUpdate(postId, { $set: { status: 'hidden' } }, { new: true });
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'hidden' }, $unset: { deletedAt: "" } }, { new: true });
     }
 
     async setDeletedStatus(postId) {
-        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted' } }, { new: true });
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted', deletedAt: new Date() } }, { new: true });
     }
 
     async findRelatedByTag(tag, excludePostId, limit = 5) {
         return await Post.find({
             tags: tag,
             _id: { $ne: excludePostId },
-            status: 'active'
+            status: 'active',
+            isAuthorActive: { $ne: false }
         })
         .populate('author', '_id fullName avatar email')
         .sort({ createdAt: -1 })

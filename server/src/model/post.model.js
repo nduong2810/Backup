@@ -121,6 +121,11 @@ const postSchema = new mongoose.Schema({
         default: null,
         index: { expires: '7d' }
     },
+    isAuthorActive: {
+        type: Boolean,
+        default: true,
+        index: true
+    },
 }, { 
     timestamps: true,
     toJSON: { virtuals: true },

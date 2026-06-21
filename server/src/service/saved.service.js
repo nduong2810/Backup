@@ -1,4 +1,4 @@
-﻿import postRepository from '../repository/post.repository.js';
+import postRepository from '../repository/post.repository.js';
 import savedCollectionRepository from '../repository/savedCollection.repository.js';
 import savedPostRepository from '../repository/savedPost.repository.js';
 import { getRedisClient } from '../config/redis.js';
@@ -125,12 +125,14 @@ class SavedService {
         }
 
         const savedPosts = await savedPostRepository.findSavedPostsByUser(userId, collectionId);
-        return savedPosts.map((item) => ({
-            id: item._id,
-            collection: item.collection,
-            post: item.post,
-            savedAt: item.createdAt,
-        }));
+        return savedPosts
+            .filter((item) => item.post !== null && item.post !== undefined)
+            .map((item) => ({
+                id: item._id,
+                collection: item.collection,
+                post: item.post,
+                savedAt: item.createdAt,
+            }));
     }
 
     async getSavedPostIds(userId) {

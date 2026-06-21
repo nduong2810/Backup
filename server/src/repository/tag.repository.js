@@ -30,7 +30,7 @@ class TagRepository {
                     from: 'posts',
                     let: { tag: '$slug', startOfToday },
                     pipeline: [
-                        { $match: { status: { $nin: ['hidden', 'deleted'] } } },
+                        { $match: { status: { $nin: ['hidden', 'deleted'] }, isAuthorActive: { $ne: false } } },
                         { $match: { $expr: { $in: ['$$tag', '$tags'] } } },
                         {
                             $group: {

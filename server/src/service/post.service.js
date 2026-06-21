@@ -47,7 +47,7 @@ const getUserReaction = (post, userId) => {
 class PostService {
     async getPosts(query, userId = null) {
         const { keyword = '', tags = '', status = 'All', sortBy = 'Newest', minViews = '', minUpvotes = '', page = 1, limit = 15 } = query;
-        const filter = { status: PUBLIC_POST_STATUS_FILTER };
+        const filter = { status: PUBLIC_POST_STATUS_FILTER, isAuthorActive: { $ne: false } };
 
         if (keyword.trim()) {
             const regex = new RegExp(keyword.trim(), 'i');
@@ -108,6 +108,7 @@ class PostService {
         if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
         if (post.status === 'hidden') throw { status: 403, message: 'Bài viết đang bị ẩn' };
         if (post.status === 'deleted') throw { status: 410, message: 'Bài viết đã bị xóa' };
+        if (post.isAuthorActive === false) throw { status: 404, message: 'Bài viết không tồn tại hoặc tác giả đã bị khóa' };
 
         if (incrementView) {
             const todayStart = getTodayStart();

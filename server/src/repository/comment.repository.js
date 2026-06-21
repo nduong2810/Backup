@@ -9,7 +9,7 @@ class CommentRepository {
     // Lấy tất cả comment của 1 bài viết (hỗ trợ nested reply)
     // Populate author info + sắp xếp cũ nhất trước (dòng thời gian)
     async findByPostId(postId) {
-        return await Comment.find({ post: postId })
+        return await Comment.find({ post: postId, isAuthorActive: { $ne: false } })
             .populate('author', 'fullName avatar major email reputation')
             .sort({ createdAt: 1 });  // Comment cũ nhất lên trước
     }
@@ -37,7 +37,7 @@ class CommentRepository {
 
     // Đếm tổng số comment của 1 bài viết
     async countByPostId(postId) {
-        return await Comment.countDocuments({ post: postId });
+        return await Comment.countDocuments({ post: postId, isAuthorActive: { $ne: false } });
     }
 }
 

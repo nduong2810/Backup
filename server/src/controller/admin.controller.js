@@ -362,9 +362,16 @@ class AdminController {
                 return res.status(400).json({ success: false, message: 'Trạng thái bài viết không hợp lệ' });
             }
 
+            const updateFields = { $set: { status } };
+            if (status === 'deleted') {
+                updateFields.$set.deletedAt = new Date();
+            } else {
+                updateFields.$unset = { deletedAt: "" };
+            }
+
             const post = await Post.findByIdAndUpdate(
                 postObjectId,
-                { $set: { status } },
+                updateFields,
                 { new: true },
             )
                 .select('title status updatedAt')
@@ -708,6 +715,12 @@ class AdminController {
 
             targetUser.isActive = isActive;
             await targetUser.save();
+
+            // Đồng bộ trạng thái hoạt động của tác giả cho bài viết và bình luận
+            await Promise.all([
+                Post.updateMany({ author: userObjectId }, { $set: { isAuthorActive: isActive } }),
+                Comment.updateMany({ author: userObjectId }, { $set: { isAuthorActive: isActive } })
+            ]);
 
             const statusMessage = isActive
                 ? `Đã mở khóa tài khoản "${targetUser.fullName}"`

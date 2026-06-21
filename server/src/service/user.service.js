@@ -77,7 +77,7 @@ class UserService {
             postRepository.getPublicAuthorPostSummary(userId),
         ]);
 
-        if (!user) throw { status: 404, message: 'Tác giả không tồn tại' };
+        if (!user || !user.isActive) throw { status: 404, message: 'Tác giả không tồn tại hoặc tài khoản đã bị khóa' };
 
         const rep = user.reputation || 1;
 
