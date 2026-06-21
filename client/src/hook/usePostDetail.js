@@ -42,7 +42,7 @@ export default function usePostDetail(postId) {
   const isAdmin = currentUser?.role === 'admin';
   const { toast } = useToast();
 
-  const isPostLocked = post?.status === 'closed';
+  const isPostLocked = post?.status === 'resolved';
 
   const fetchPostDetail = useCallback(async (showLoading = true) => {
     if (!postId) return;
@@ -70,7 +70,7 @@ export default function usePostDetail(postId) {
       setLikeCount(postData.likeCount || postData.likes?.length || 0);
       setDislikeCount(postData.dislikeCount || postData.dislikes?.length || 0);
       setUserReaction(postData.userReaction || null);
-      setCommentError(postData.status === 'closed' ? LOCKED_POST_MESSAGE : '');
+      setCommentError(postData.status === 'resolved' ? LOCKED_POST_MESSAGE : '');
     } catch (err) {
       const message = err.response?.data?.message || 'Không thể tải bài viết.';
       setError(message);
@@ -102,7 +102,7 @@ export default function usePostDetail(postId) {
     }
 
     if (isPostLocked) {
-      alert(LOCKED_POST_MESSAGE);
+      toast.warning(LOCKED_POST_MESSAGE);
       return;
     }
 
@@ -121,9 +121,9 @@ export default function usePostDetail(postId) {
       setUserVote(vote);
     } catch (err) {
       if (err.response?.status === 401) {
-        alert('Bạn cần đăng nhập để vote bài viết.');
+        toast.warning('Bạn cần đăng nhập để vote bài viết.');
       } else {
-        alert(err.response?.data?.message || 'Không thể vote bài viết.');
+        toast.error(err.response?.data?.message || 'Không thể vote bài viết.');
       }
     } finally {
       setVoteLoading(false);
@@ -139,7 +139,7 @@ export default function usePostDetail(postId) {
     }
 
     if (isPostLocked) {
-      alert(LOCKED_POST_MESSAGE);
+      toast.warning(LOCKED_POST_MESSAGE);
       return;
     }
 
@@ -167,9 +167,9 @@ export default function usePostDetail(postId) {
         : currentPost);
     } catch (err) {
       if (err.response?.status === 401) {
-        alert('Bạn cần đăng nhập để like/dislike bài viết.');
+        toast.warning('Bạn cần đăng nhập để like/dislike bài viết.');
       } else {
-        alert(err.response?.data?.message || 'Không thể like/dislike bài viết.');
+        toast.error(err.response?.data?.message || 'Không thể like/dislike bài viết.');
       }
     } finally {
       setReactionLoading(false);
@@ -209,7 +209,7 @@ export default function usePostDetail(postId) {
     }
 
     if (isPostLocked) {
-      alert(LOCKED_POST_MESSAGE);
+      toast.warning(LOCKED_POST_MESSAGE);
       return false;
     }
 
@@ -221,9 +221,9 @@ export default function usePostDetail(postId) {
       return true;
     } catch (err) {
       if (err.response?.status === 401) {
-        alert('Bạn cần đăng nhập để like/dislike bình luận.');
+        toast.warning('Bạn cần đăng nhập để like/dislike bình luận.');
       } else {
-        alert(err.response?.data?.message || 'Không thể cập nhật like/dislike bình luận.');
+        toast.error(err.response?.data?.message || 'Không thể cập nhật like/dislike bình luận.');
       }
 
       return false;

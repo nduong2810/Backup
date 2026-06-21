@@ -128,6 +128,8 @@ const loginSlice = createSlice({
           if (state.user && action.payload) {
             state.user.fullName = action.payload.fullName || state.user.fullName;
             state.user.avatar = action.payload.avatar || state.user.avatar;
+            state.user.reputation = action.payload.reputation ?? state.user.reputation;
+            state.user.reputationInfo = action.payload.reputationInfo || state.user.reputationInfo;
             saveUserToLocalStorage(state.user);
           }
         })

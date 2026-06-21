@@ -170,6 +170,11 @@ class PostController {
             const comment = await commentRepository.findById(commentId);
             if (!comment) return res.status(404).json({ success: false, message: 'Bình luận không tồn tại' });
 
+            const commentAuthorId = comment.author?._id?.toString() || comment.author?.toString();
+            if (commentAuthorId && commentAuthorId === userId) {
+                return res.status(400).json({ success: false, message: 'Bạn không thể tự bày tỏ cảm xúc trên bình luận của chính mình.' });
+            }
+
             const likes = Array.isArray(comment.likes) ? comment.likes.map((id) => id.toString()) : [];
             const dislikes = Array.isArray(comment.dislikes) ? comment.dislikes.map((id) => id.toString()) : [];
             const hasLiked = likes.includes(userId);

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { searchAuthorsApi } from '../../services/userService';
+import { getTagsApi } from '../../services/postService';
 
 function SearchBar({
   placeholder = 'Tìm kiếm câu hỏi, tag, chủ đề...',
@@ -12,7 +14,122 @@ function SearchBar({
   showIcon = true,
 }) {
   const [showHelper, setShowHelper] = useState(false);
+  const [authorSuggestions, setAuthorSuggestions] = useState([]);
+  const [authorLoading, setAuthorLoading] = useState(false);
+  const [authorQuery, setAuthorQuery] = useState(null);
   const containerRef = useRef(null);
+
+  const detectAuthorQuery = (text) => {
+    const match = text.match(/\[author:\s*([^\]]*)$/i);
+    if (match) {
+      return match[1];
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    const q = detectAuthorQuery(value);
+    setAuthorQuery(q);
+
+    if (q === null || q.trim().length < 2) {
+      setAuthorSuggestions([]);
+      setAuthorLoading(false);
+      return;
+    }
+
+    const keyword = q.trim();
+    let ignore = false;
+    setAuthorLoading(true);
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const response = await searchAuthorsApi(keyword);
+        if (!ignore) {
+          setAuthorSuggestions(response.data?.data || []);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setAuthorSuggestions([]);
+        }
+      } finally {
+        if (!ignore) {
+          setAuthorLoading(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      ignore = true;
+      clearTimeout(timeoutId);
+    };
+  }, [value]);
+
+  const handleSelectAuthor = (authorName) => {
+    const lastIndex = value.lastIndexOf('[author:');
+    if (lastIndex !== -1) {
+      const before = value.substring(0, lastIndex);
+      const newValue = `${before}[author:${authorName}] `;
+      onChange?.(newValue);
+    }
+  };
+
+  const [tagSuggestions, setTagSuggestions] = useState([]);
+  const [tagLoading, setTagLoading] = useState(false);
+  const [tagQuery, setTagQuery] = useState(null);
+
+  const detectTagQuery = (text) => {
+    const match = text.match(/\[tag:\s*([^\]]*)$/i);
+    if (match) {
+      return match[1];
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    const q = detectTagQuery(value);
+    setTagQuery(q);
+
+    if (q === null) {
+      setTagSuggestions([]);
+      setTagLoading(false);
+      return;
+    }
+
+    const keyword = q.trim();
+    let ignore = false;
+    setTagLoading(true);
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const response = await getTagsApi({ search: keyword, limit: 8 });
+        if (!ignore) {
+          setTagSuggestions(response.data?.data || []);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setTagSuggestions([]);
+        }
+      } finally {
+        if (!ignore) {
+          setTagLoading(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      ignore = true;
+      clearTimeout(timeoutId);
+    };
+  }, [value]);
+
+  const handleSelectTag = (tagName) => {
+    const lastIndex = value.lastIndexOf('[tag:');
+    if (lastIndex !== -1) {
+      const before = value.substring(0, lastIndex);
+      const newValue = `${before}[tag:${tagName}] `;
+      onChange?.(newValue);
+    }
+  };
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -101,12 +218,71 @@ function SearchBar({
         </button>
       )}
 
-      {showHelper && (
+      {/* Gợi ý tác giả */}
+      {authorQuery !== null && (
+        <div className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-60 overflow-y-auto border border-slate-200 bg-white rounded-lg shadow-lg">
+          {authorLoading && (
+            <div className="px-3 py-2 text-xs text-slate-500">Đang tìm tác giả...</div>
+          )}
+          {!authorLoading && authorSuggestions.length === 0 && (
+            <div className="px-3 py-2 text-xs text-slate-500">Không tìm thấy tài khoản phù hợp.</div>
+          )}
+          {!authorLoading && authorSuggestions.map((author) => (
+            <button
+              key={author._id}
+              type="button"
+              onClick={() => handleSelectAuthor(author.fullName)}
+              className="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5 text-left transition-colors last:border-b-0 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+            >
+              <span className="min-w-0 truncate text-sm font-semibold text-slate-700">
+                {author.fullName}
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-slate-400" title={`${Number(author.reputation || 1).toLocaleString('vi-VN')} điểm uy tín`}>
+                <span className="material-symbols-outlined text-[16px] leading-none text-amber-500">military_tech</span>
+                <span>{Number(author.reputation || 1).toLocaleString('vi-VN')}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Gợi ý tag */}
+      {tagQuery !== null && (
+        <div className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-60 overflow-y-auto border border-slate-200 bg-white rounded-lg shadow-lg">
+          {tagLoading && (
+            <div className="px-3 py-2 text-xs text-slate-500">Đang tìm tag...</div>
+          )}
+          {!tagLoading && tagSuggestions.length === 0 && (
+            <div className="px-3 py-2 text-xs text-slate-500">Không tìm thấy tag phù hợp.</div>
+          )}
+          {!tagLoading && tagSuggestions.map((tag) => (
+            <button
+              key={tag._id || tag.name}
+              type="button"
+              onClick={() => handleSelectTag(tag.name)}
+              className="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5 text-left transition-colors last:border-b-0 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+            >
+              <span className="min-w-0 truncate text-sm font-semibold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-md border border-sky-100/50">
+                {tag.name}
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs text-slate-400">
+                {tag.totalCount || 0} bài đăng
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showHelper && authorQuery === null && tagQuery === null && (
         <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-lg p-4 z-50">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-600">
             <div className="flex items-start gap-2">
-              <span className="font-mono text-slate-900">[tag]</span>
+              <span className="font-mono text-slate-900">[tag:tên]</span>
               <span>Tìm trong tag cụ thể</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="font-mono text-slate-900">[author:tên]</span>
+              <span>Lọc bài viết theo tác giả</span>
             </div>
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-slate-400">

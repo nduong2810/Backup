@@ -27,6 +27,7 @@ class StatisticsService {
             recentPosts,
             recentComments,
             votesGiven,
+            reactionsGiven,
             reputationChanges,
         ] = await Promise.all([
             User.findById(userId).select('reputation createdAt fullName'),
@@ -40,6 +41,7 @@ class StatisticsService {
             statisticsRepository.getRecentPosts(userId, 10),
             statisticsRepository.getRecentComments(userId, 10),
             statisticsRepository.getVotesGiven(userId),
+            statisticsRepository.getReactionsGiven(userId),
             statisticsRepository.getReputationChanges(userId, 5),
         ]);
 
@@ -78,6 +80,7 @@ class StatisticsService {
             recentPosts,
             recentComments,
             votesGiven,
+            reactionsGiven,
             reputationChanges,
         };
     }
@@ -113,6 +116,92 @@ class StatisticsService {
 
         return result;
     }
+
+    async getUserPostsPaginated(userId, page = 1, limit = 10, sortBy = 'newest', timeRange = 'all') {
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
+        const skip = (pageNum - 1) * limitNum;
+
+        const [posts, total] = await Promise.all([
+            statisticsRepository.getRecentPosts(userId, limitNum, skip, sortBy, timeRange),
+            statisticsRepository.countUserPosts(userId, timeRange),
+        ]);
+
+        return {
+            posts,
+            pagination: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum),
+            }
+        };
+    }
+
+    async getUserCommentsPaginated(userId, page = 1, limit = 10, sortBy = 'newest', timeRange = 'all') {
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
+        const skip = (pageNum - 1) * limitNum;
+
+        const [comments, total] = await Promise.all([
+            statisticsRepository.getRecentComments(userId, limitNum, skip, sortBy, timeRange),
+            statisticsRepository.countUserComments(userId, timeRange),
+        ]);
+
+        return {
+            comments,
+            pagination: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum),
+            }
+        };
+    }
+
+    async getUserVotesPaginated(userId, page = 1, limit = 10, sortBy = 'newest', timeRange = 'all') {
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
+        const skip = (pageNum - 1) * limitNum;
+
+        const [votes, total] = await Promise.all([
+            statisticsRepository.getRecentVotes(userId, limitNum, skip, sortBy, timeRange),
+            statisticsRepository.countUserVotes(userId, timeRange),
+        ]);
+
+        return {
+            votes,
+            pagination: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum),
+            }
+        };
+    }
+
+
+    async getUserReputationPaginated(userId, page = 1, limit = 10) {
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
+        const skip = (pageNum - 1) * limitNum;
+
+        const [changes, total] = await Promise.all([
+            statisticsRepository.getReputationChangesPaginated(userId, limitNum, skip),
+            statisticsRepository.countReputationChanges(userId),
+        ]);
+
+        return {
+            changes,
+            pagination: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum),
+            }
+        };
+    }
+
 }
 
 export default new StatisticsService();

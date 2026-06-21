@@ -6,6 +6,7 @@ import DonationTransaction from '../model/donationTransaction.model.js';
 import ReportTicket from '../model/reportTicket.model.js';
 import SystemSetting from '../model/systemSetting.model.js';
 import Tag from '../model/tag.model.js';
+import { slugify } from '../util/slugify.js';
 
 const FLAG_LABELS = {
     spam: 'Spam',
@@ -28,12 +29,12 @@ const STATUS_LABELS = {
     retracted: 'Đã rút cờ',
 };
 
-const POST_STATUS_VALUES = ['active', 'closed', 'hidden', 'deleted'];
+const POST_STATUS_VALUES = ['unresolved', 'resolved', 'hidden', 'deleted'];
 const PUBLIC_POST_MATCH = { status: { $nin: ['hidden', 'deleted'] } };
 
 const POST_STATUS_MESSAGES = {
-    active: 'Bài viết đang hiển thị',
-    closed: 'Bài viết đã bị khóa',
+    unresolved: 'Bài viết đang hiển thị',
+    resolved: 'Bài viết đã bị khóa/giải quyết',
     hidden: 'Bài viết đang bị ẩn',
     deleted: 'Bài viết đã bị xóa',
 };
@@ -362,19 +363,27 @@ class AdminController {
                 return res.status(400).json({ success: false, message: 'Trạng thái bài viết không hợp lệ' });
             }
 
-            const updateFields = { $set: { status } };
+            const updateFields = { status };
+            const unsetFields = {};
             if (status === 'deleted') {
-                updateFields.$set.deletedAt = new Date();
+                updateFields.deletedAt = new Date();
+                updateFields.deletedBy = 'admin';
             } else {
-                updateFields.$unset = { deletedAt: "" };
+                unsetFields.deletedAt = '';
+                unsetFields.deletedBy = '';
+            }
+
+            const updateQuery = { $set: updateFields };
+            if (Object.keys(unsetFields).length > 0) {
+                updateQuery.$unset = unsetFields;
             }
 
             const post = await Post.findByIdAndUpdate(
                 postObjectId,
-                updateFields,
+                updateQuery,
                 { new: true },
             )
-                .select('title status updatedAt')
+                .select('title status updatedAt deletedAt deletedBy')
                 .lean();
 
             if (!post) {
@@ -401,7 +410,7 @@ class AdminController {
                 return res.status(400).json({ success: false, message: 'Tên thẻ tag không được để trống' });
             }
 
-            const slug = name.trim().toLowerCase();
+            const slug = slugify(name);
             const existingTag = await Tag.findOne({ slug });
             if (existingTag) {
                 return res.status(400).json({ success: false, message: 'Thẻ tag này đã tồn tại' });
@@ -436,7 +445,7 @@ class AdminController {
                 return res.status(400).json({ success: false, message: 'Tên thẻ tag không được để trống' });
             }
 
-            const slug = name.trim().toLowerCase();
+            const slug = slugify(name);
             const existingTag = await Tag.findOne({ slug, _id: { $ne: tagObjectId } });
             if (existingTag) {
                 return res.status(400).json({ success: false, message: 'Tên thẻ tag đã được sử dụng bởi thẻ khác' });
@@ -622,14 +631,14 @@ class AdminController {
                                     $cond: [{ $eq: ['$postType', 'advice'] }, 1, 0],
                                 },
                             },
-                            activePostCount: {
+                            unresolvedPostCount: {
                                 $sum: {
-                                    $cond: [{ $eq: ['$status', 'active'] }, 1, 0],
+                                    $cond: [{ $eq: ['$status', 'unresolved'] }, 1, 0],
                                 },
                             },
-                            closedPostCount: {
+                            resolvedPostCount: {
                                 $sum: {
-                                    $cond: [{ $eq: ['$status', 'closed'] }, 1, 0],
+                                    $cond: [{ $eq: ['$status', 'resolved'] }, 1, 0],
                                 },
                             },
                             hiddenPostCount: {
@@ -668,8 +677,8 @@ class AdminController {
                         confirmedViolationsCount,
                         questionCount: stats.questionCount || 0,
                         adviceCount: stats.adviceCount || 0,
-                        activePostCount: stats.activePostCount || 0,
-                        closedPostCount: stats.closedPostCount || 0,
+                        unresolvedPostCount: stats.unresolvedPostCount || 0,
+                        resolvedPostCount: stats.resolvedPostCount || 0,
                         hiddenPostCount: stats.hiddenPostCount || 0,
                         deletedPostCount: stats.deletedPostCount || 0,
                         totalViews: stats.totalViews || 0,

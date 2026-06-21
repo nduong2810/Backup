@@ -51,7 +51,7 @@ const cardConfigs = [
   },
   {
     key: 'reputation',
-    label: 'Điểm Reputation',
+    label: 'Điểm uy tín',
     icon: 'military_tech',
     gradient: 'from-rose-500 to-pink-600',
     bgLight: 'bg-rose-50',

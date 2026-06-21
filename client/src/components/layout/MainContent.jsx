@@ -346,7 +346,7 @@ const MainContent = () => {
             const data = response?.data?.data || {};
             dispatch(updatePostVoteInList({ postId, upvoteCount: data.upvoteCount ?? 0, downvoteCount: data.downvoteCount ?? 0, userVote: data.userVote ?? null }));
         } catch (voteError) {
-            alert(voteError?.response?.data?.message || 'Không thể upvote/downvote bài viết.');
+            toast.error(voteError?.response?.data?.message || 'Không thể upvote/downvote bài viết.');
         } finally {
             setVotingPostId('');
         }
@@ -362,7 +362,7 @@ const MainContent = () => {
             const data = response?.data?.data || {};
             dispatch(updatePostReactionInList({ postId, likeCount: data.likeCount ?? 0, dislikeCount: data.dislikeCount ?? 0, userReaction: data.userReaction ?? null }));
         } catch (reactionError) {
-            alert(reactionError?.response?.data?.message || 'Không thể like/dislike bài viết.');
+            toast.error(reactionError?.response?.data?.message || 'Không thể like/dislike bài viết.');
         } finally {
             setReactingPostId('');
         }

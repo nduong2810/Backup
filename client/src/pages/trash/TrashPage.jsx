@@ -150,19 +150,31 @@ export default function TrashPage() {
                       </span>
                       <span className={`flex items-center gap-1 font-bold ${daysLeft <= 2 ? 'text-rose-500' : 'text-amber-600'}`}>
                         <span className="material-symbols-outlined text-xs">hourglass_empty</span>
-                        Còn {daysLeft} ngày để khôi phục
+                        {post.deletedBy && post.deletedBy !== 'owner' 
+                          ? `Sẽ bị xóa vĩnh viễn sau ${daysLeft} ngày` 
+                          : `Còn ${daysLeft} ngày để khôi phục`}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
-                    <button
-                      onClick={() => openConfirmModal(post._id, 'restore')}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-250 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-100/80"
-                    >
-                      <span className="material-symbols-outlined text-base">settings_backup_restore</span>
-                      Khôi phục
-                    </button>
+                    {post.deletedBy && post.deletedBy !== 'owner' ? (
+                      <span 
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 shadow-sm cursor-help"
+                        title={post.deletedBy === 'report' ? 'Bài viết tự động bị ẩn/xóa do nhận đủ số cờ báo cáo vi phạm từ cộng đồng.' : 'Bài viết bị xóa theo quyết định của quản trị viên.'}
+                      >
+                        <span className="material-symbols-outlined text-base text-rose-500">warning</span>
+                        {post.deletedBy === 'report' ? 'Bị báo cáo' : 'Admin đã xóa'}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => openConfirmModal(post._id, 'restore')}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-250 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-100/80"
+                      >
+                        <span className="material-symbols-outlined text-base">settings_backup_restore</span>
+                        Khôi phục
+                      </button>
+                    )}
                     <button
                       onClick={() => openConfirmModal(post._id, 'delete')}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-rose-250 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-700 shadow-sm transition hover:bg-rose-100/80"

@@ -67,14 +67,14 @@ class PostRepository {
     }
 
     async setDeletedStatus(postId) {
-        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted', deletedAt: new Date() } }, { new: true });
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted', deletedAt: new Date(), deletedBy: 'report' } }, { new: true });
     }
 
     async findRelatedByTag(tag, excludePostId, limit = 5) {
         return await Post.find({
             tags: tag,
             _id: { $ne: excludePostId },
-            status: 'active',
+            status: 'unresolved',
             isAuthorActive: { $ne: false }
         })
         .populate('author', '_id fullName avatar email')
@@ -226,12 +226,12 @@ class PostRepository {
         ]);
     }
 
-    async softDelete(postId) {
-        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted', deletedAt: new Date() } }, { new: true });
+    async softDelete(postId, deletedBy = 'owner') {
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted', deletedAt: new Date(), deletedBy } }, { new: true });
     }
 
     async restore(postId) {
-        return await Post.findByIdAndUpdate(postId, { $set: { status: 'active' }, $unset: { deletedAt: "" } }, { new: true });
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'unresolved' }, $unset: { deletedAt: "", deletedBy: "" } }, { new: true });
     }
 
     async permanentlyDelete(postId) {

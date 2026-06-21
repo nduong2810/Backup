@@ -2,11 +2,10 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchStatisticsThunk } from '../../../store/slices/statisticsSlice';
 import StatsSummaryCards from './StatsSummaryCards';
-import StatsPosts from './StatsPosts';
-import StatsComments from './StatsComments';
 import StatsTags from './StatsTags';
 import StatsReputation from './StatsReputation';
 import StatsVotes from './StatsVotes';
+import StatsReactions from './StatsReactions';
 
 // ====================================================================
 // USER STATISTICS - Component chính tổng hợp tất cả thống kê
@@ -65,11 +64,9 @@ export default function UserStatistics() {
 
   const {
     summary,
-    recentPosts = [],
-    recentComments = [],
     topTags = [],
-    reputationChanges = [],
     votesGiven = { upvoted: 0, downvoted: 0, total: 0 },
+    reactionsGiven = { liked: 0, disliked: 0, total: 0 },
   } = data;
 
   return (
@@ -98,19 +95,13 @@ export default function UserStatistics() {
       {/* KPI Summary Cards */}
       <StatsSummaryCards summary={summary} />
 
-      {/* StackOverflow activity style 2-column layout */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left Column (Wide) - Posts and Comments */}
-        <div className="space-y-6 lg:col-span-2">
-          <StatsPosts posts={recentPosts} />
-          <StatsComments comments={recentComments} />
-        </div>
-
-        {/* Right Column (Narrow) - Tags, Rep History, Votes Cast */}
-        <div className="space-y-6 lg:col-span-1">
-          <StatsTags topTags={topTags} />
-          <StatsReputation reputationChanges={reputationChanges} />
+      {/* 3-column metrics layout */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <StatsReputation />
+        <StatsTags topTags={topTags} />
+        <div className="space-y-6">
           <StatsVotes votesGiven={votesGiven} />
+          <StatsReactions reactionsGiven={reactionsGiven} />
         </div>
       </div>
     </div>

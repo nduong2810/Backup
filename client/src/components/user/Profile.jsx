@@ -13,6 +13,7 @@ import {
 } from '../../store/slices/profileSlice';
 import { useToast } from '../../context/ToastContext';
 import UserStatistics from './statistics/UserStatistics';
+import UserActivity from './statistics/UserActivity';
 import { fetchStatisticsThunk } from '../../store/slices/statisticsSlice';
 
 // ====================================================================
@@ -225,6 +226,20 @@ export default function Profile() {
           </button>
           <button
             onClick={() => {
+              setActiveTab('activity');
+              dispatch(fetchProfileThunk());
+              dispatch(fetchStatisticsThunk(12));
+            }}
+            className={`rounded-full px-5 py-2 text-xs font-bold transition-all ${
+              activeTab === 'activity'
+                ? 'bg-orange-500 text-white shadow-sm'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Hoạt động
+          </button>
+          <button
+            onClick={() => {
               setActiveTab('statistics');
               dispatch(fetchProfileThunk());
               dispatch(fetchStatisticsThunk(12));
@@ -340,7 +355,10 @@ export default function Profile() {
         </div>
       )}
 
-      {/* 3b. Tab Thống kê (Activity Lists) */}
+      {/* 3b. Tab Hoạt động (Activity Lists) */}
+      {activeTab === 'activity' && <UserActivity />}
+
+      {/* 3c. Tab Thống kê (Metrics & KPI Cards) */}
       {activeTab === 'statistics' && <UserStatistics />}
 
       {/* 3c. View Edit (Form chỉnh sửa hồ sơ) */}

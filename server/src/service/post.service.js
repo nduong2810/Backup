@@ -1,16 +1,16 @@
 import postRepository from '../repository/post.repository.js';
 import commentRepository from '../repository/comment.repository.js';
 import Comment from '../model/comment.model.js';
+import User from '../model/user.model.js';
+import mongoose from 'mongoose';
 import reputationService from './reputation.service.js';
 import { uploadToCloudinary } from '../util/cloudinary.js';
+import { slugify } from '../util/slugify.js';
 
 const PUBLIC_POST_STATUS_FILTER = { $nin: ['hidden', 'deleted'] };
 
 const mapStatusFilter = (status) => {
-    const normalized = status.toLowerCase();
-    if (normalized === 'resolved') return 'closed';
-    if (normalized === 'unresolved') return 'active';
-    return normalized;
+    return status.toLowerCase();
 };
 
 const VN_TZ_OFFSET_MIN = 7 * 60;
@@ -46,7 +46,21 @@ const getUserReaction = (post, userId) => {
 
 class PostService {
     async getPosts(query, userId = null) {
-        const { keyword = '', tags = '', status = 'All', sortBy = 'Newest', minViews = '', minUpvotes = '', page = 1, limit = 15 } = query;
+        const {
+            keyword = '',
+            tags = '',
+            status = 'All',
+            sortBy = 'Newest',
+            minViews = '',
+            minUpvotes = '',
+            author = '',
+            authorId = '',
+            postType = 'All',
+            startDate = '',
+            endDate = '',
+            page = 1,
+            limit = 15
+        } = query;
         const filter = { status: PUBLIC_POST_STATUS_FILTER, isAuthorActive: { $ne: false } };
 
         if (keyword.trim()) {
@@ -55,7 +69,7 @@ class PostService {
         }
 
         if (tags.trim()) {
-            const tagArray = tags.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
+            const tagArray = tags.split(',').map((t) => slugify(t)).filter(Boolean);
             if (tagArray.length > 0) filter.tags = { $in: tagArray };
         }
 
@@ -71,6 +85,30 @@ class PostService {
             };
         }
 
+        if (authorId && mongoose.Types.ObjectId.isValid(authorId)) {
+            filter.author = new mongoose.Types.ObjectId(authorId);
+        } else if (author.trim()) {
+            const users = await User.find({ fullName: new RegExp(author.trim(), 'i') }).select('_id');
+            const userIds = users.map(u => u._id);
+            filter.author = { $in: userIds };
+        }
+
+        if (postType && postType !== 'All') {
+            filter.postType = postType;
+        }
+
+        if (startDate || endDate) {
+            filter.createdAt = {};
+            if (startDate) {
+                filter.createdAt.$gte = new Date(startDate);
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                filter.createdAt.$lte = end;
+            }
+        }
+
         const pageNum = Math.max(1, parseInt(page, 10) || 1);
         const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 15));
         const skip = (pageNum - 1) * limitNum;
@@ -82,7 +120,7 @@ class PostService {
 
         const normalizedPosts = posts.map((post) => ({
             ...post,
-            status: post.status === 'closed' ? 'resolved' : post.status === 'active' ? 'unresolved' : post.status,
+            status: post.status,
             views: post.viewCount ?? 0,
             upvotes: post.upvoteCount ?? 0,
             downvotes: post.downvoteCount ?? 0,
@@ -140,8 +178,8 @@ class PostService {
 
         const post = await postRepository.findById(postId);
         if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
-        if (post.status === 'closed') throw { status: 423, message: 'Bài viết đang bị khóa' };
-        if (post.status !== 'active') throw { status: 400, message: 'Không thể bình luận trên bài viết này' };
+        if (post.status === 'resolved') throw { status: 423, message: 'Bài viết đang bị khóa' };
+        if (post.status !== 'unresolved') throw { status: 400, message: 'Không thể bình luận trên bài viết này' };
 
         if (parentComment) {
             const parent = await commentRepository.findById(parentComment);
@@ -224,7 +262,7 @@ class PostService {
         const content = String(payload.content || '').trim();
         const postType = payload.postType || 'question';
         const tags = Array.isArray(payload.tags)
-            ? payload.tags.map(t => String(t).trim().toLowerCase()).filter(Boolean)
+            ? payload.tags.map(t => slugify(t)).filter(Boolean)
             : [];
 
         if (!title) throw { status: 400, message: 'Tiêu đề không được để trống' };
@@ -300,7 +338,7 @@ class PostService {
             images: imageUrls,
             videos: videoUrls,
             author: userId,
-            status: 'active'
+            status: 'unresolved'
         });
 
         return await postRepository.findById(post._id);
@@ -309,8 +347,14 @@ class PostService {
     async toggleVote(postId, userId, voteType) {
         const post = await postRepository.findById(postId);
         if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
-        if (post.status === 'closed') throw { status: 423, message: 'Bài viết đang bị khóa' };
-        if (post.status !== 'active') throw { status: 400, message: 'Không thể vote bài viết này' };
+        if (post.status === 'resolved') throw { status: 423, message: 'Bài viết đang bị khóa' };
+        if (post.status !== 'unresolved') throw { status: 400, message: 'Không thể vote bài viết này' };
+
+        const authorId = post.author?._id?.toString() || post.author?.toString();
+        const isSelfVote = authorId && authorId === userId;
+        if (isSelfVote) {
+            throw { status: 400, message: 'Bạn không thể tự bình chọn cho bài viết của chính mình.' };
+        }
 
         const hasUpvoted = includesUserId(post.upvotes, userId);
         const hasDownvoted = includesUserId(post.downvotes, userId);
@@ -331,8 +375,7 @@ class PostService {
             }
         };
 
-        const authorId = post.author?._id?.toString() || post.author?.toString();
-        const isSelfVote = authorId && authorId === userId;
+
 
         if (voteType === 'upvote') {
             if (hasUpvoted) {
@@ -341,8 +384,6 @@ class PostService {
 
                 // Rút upvote → trừ điểm tác giả
                 if (!isSelfVote) await reputationService.award(authorId, 'post_upvote_removed', postId, userId);
-
-                if (!isSelfVote) await reputationService.award(authorId, 'post_upvote_removed');
             } else {
                 if (hasDownvoted) {
                     await postRepository.removeDownvote(postId, userId);
@@ -350,8 +391,6 @@ class PostService {
                     // Rút downvote → hoàn điểm tác giả và voter
                     if (!isSelfVote) await reputationService.award(authorId, 'post_downvote_removed', postId, userId);
                     await reputationService.award(userId, 'downvote_given_removed', postId, userId);
-                    if (!isSelfVote) await reputationService.award(authorId, 'post_downvote_removed');
-                    await reputationService.award(userId, 'downvote_given_removed');
                 }
                 await postRepository.addUpvote(postId, userId);
                 userVote = 'upvote';
@@ -396,8 +435,14 @@ class PostService {
     async toggleReaction(postId, userId, reactionType) {
         const post = await postRepository.findById(postId);
         if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
-        if (post.status === 'closed') throw { status: 423, message: 'Bài viết đang bị khóa' };
-        if (post.status !== 'active') throw { status: 400, message: 'Không thể like/dislike bài viết này' };
+        if (post.status === 'resolved') throw { status: 423, message: 'Bài viết đang bị khóa' };
+        if (post.status !== 'unresolved') throw { status: 400, message: 'Không thể like/dislike bài viết này' };
+
+        const authorId = post.author?._id?.toString() || post.author?.toString();
+        const isSelfReaction = authorId && authorId === userId;
+        if (isSelfReaction) {
+            throw { status: 400, message: 'Bạn không thể tự bày tỏ cảm xúc trên bài viết của chính mình.' };
+        }
 
         const hasLiked = includesUserId(post.likes, userId);
         const hasDisliked = includesUserId(post.dislikes, userId);
@@ -428,7 +473,7 @@ class PostService {
 
     async getRelatedPosts(tag, excludePostId) {
         if (!tag || tag.trim() === '') throw { status: 400, message: 'Tag không được để trống' };
-        return await postRepository.findRelatedByTag(tag.toLowerCase().trim(), excludePostId, 5);
+        return await postRepository.findRelatedByTag(slugify(tag), excludePostId, 5);
     }
 
     async getPostDetailSidebarData() {
@@ -677,7 +722,7 @@ class PostService {
             throw { status: 403, message: 'Bạn không có quyền xóa bài viết này' };
         }
 
-        return await postRepository.softDelete(postId);
+        return await postRepository.softDelete(postId, 'owner');
     }
 
     async restorePost(postId, userId) {
@@ -690,6 +735,10 @@ class PostService {
 
         if (post.status !== 'deleted') {
             throw { status: 400, message: 'Bài viết không nằm trong thùng rác' };
+        }
+
+        if (post.deletedBy && post.deletedBy !== 'owner') {
+            throw { status: 403, message: 'Bài viết bị ẩn/xóa do vi phạm chính sách cộng đồng hoặc do admin ẩn, bạn không thể tự khôi phục.' };
         }
 
         return await postRepository.restore(postId);

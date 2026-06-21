@@ -5,6 +5,11 @@ export const DEFAULT_FILTERS = {
   sortBy: 'Newest',
   minViews: '',
   minUpvotes: '',
+  author: '',
+  authorId: '',
+  postType: 'All',
+  startDate: '',
+  endDate: '',
   page: 1,
   limit: 15,
 };
@@ -16,6 +21,11 @@ export const parseFiltersFromSearchParams = (searchParams) => ({
   sortBy: searchParams.get('sortBy') ?? 'Newest',
   minViews: searchParams.get('minViews') ?? '',
   minUpvotes: searchParams.get('minUpvotes') ?? '',
+  author: searchParams.get('author') ?? '',
+  authorId: searchParams.get('authorId') ?? '',
+  postType: searchParams.get('postType') ?? 'All',
+  startDate: searchParams.get('startDate') ?? '',
+  endDate: searchParams.get('endDate') ?? '',
   page: Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1),
   limit: Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '15', 10) || 15)),
 });
@@ -23,9 +33,18 @@ export const parseFiltersFromSearchParams = (searchParams) => ({
 export const parseSearchQuery = (query) => {
   const value = query || '';
   const tags = [];
+  let author = '';
 
   let remaining = value;
 
+  // 1. Parse [author:...] first
+  const authorRegex = /\[author:\s*([^\]]+)\]/gi;
+  remaining = remaining.replace(authorRegex, (_, authorName) => {
+    if (authorName?.trim()) author = authorName.trim();
+    return ' ';
+  });
+
+  // 2. Parse regular [tag]
   const tagRegex = /\[([^\]]+)\]/g;
   remaining = remaining.replace(tagRegex, (_, tagName) => {
     if (tagName?.trim()) tags.push(tagName.trim());
@@ -35,6 +54,7 @@ export const parseSearchQuery = (query) => {
   return {
     keyword: remaining.replace(/\s+/g, ' ').trim(),
     tags: tags.join(', '),
+    author,
   };
 };
 
@@ -53,8 +73,31 @@ export const buildSearchParams = (filters) => {
   if (filters.minUpvotes !== '' && filters.minUpvotes !== null && filters.minUpvotes !== undefined) {
     params.minUpvotes = String(filters.minUpvotes);
   }
+  if (filters.author?.trim()) params.author = filters.author.trim();
+  if (filters.authorId?.trim()) params.authorId = filters.authorId.trim();
+  if (filters.postType && filters.postType !== 'All') params.postType = filters.postType;
+  if (filters.startDate) params.startDate = filters.startDate;
+  if (filters.endDate) params.endDate = filters.endDate;
+  
   if (filters.page && Number(filters.page) > 1) params.page = String(filters.page);
   if (filters.limit && Number(filters.limit) !== 15) params.limit = String(filters.limit);
 
   return params;
+};
+
+export const getSearchStringFromFilters = (filters) => {
+  const parts = [];
+  if (filters.tags) {
+    filters.tags.split(',').forEach((t) => {
+      const cleaned = t.trim();
+      if (cleaned) parts.push(`[${cleaned}]`);
+    });
+  }
+  if (filters.author) {
+    parts.push(`[author:${filters.author.trim()}]`);
+  }
+  if (filters.keyword) {
+    parts.push(filters.keyword.trim());
+  }
+  return parts.join(' ');
 };

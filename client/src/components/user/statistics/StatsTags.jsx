@@ -20,7 +20,7 @@ export default function StatsTags({ topTags = [] }) {
   ];
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col h-[480px] lg:h-full">
       {/* Header section with sort tabs */}
       <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
         <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
@@ -32,11 +32,10 @@ export default function StatsTags({ topTags = [] }) {
             <button
               key={tab.key}
               onClick={() => setSortBy(tab.key)}
-              className={`rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all ${
-                sortBy === tab.key
+              className={`rounded-md px-2 py-0.5 text-[10px] font-semibold transition-all ${sortBy === tab.key
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
-              }`}
+                }`}
             >
               {tab.label}
             </button>
@@ -51,18 +50,22 @@ export default function StatsTags({ topTags = [] }) {
           Chưa gắn thẻ bài viết nào
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
-          {sortedTags.map((tag) => (
-            <div
-              key={tag.name}
-              className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-1.5 transition-colors hover:bg-slate-100/50"
-            >
-              <span className="rounded bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700 hover:bg-sky-100 transition-colors cursor-pointer select-none">
-                {tag.name}
-              </span>
-              <span className="text-[10px] font-bold text-slate-400">x {tag.count}</span>
+        <div className="flex-1 min-h-0 relative">
+          <div className="absolute inset-0 overflow-y-auto pr-1 scrollbar-thin">
+            <div className="grid grid-cols-2 gap-2">
+              {sortedTags.map((tag) => (
+                <div
+                  key={tag.name}
+                  className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-1.5 transition-colors hover:bg-slate-100/50"
+                >
+                  <span className="rounded bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700 hover:bg-sky-100 transition-colors cursor-pointer select-none">
+                    {tag.name}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">x {tag.count}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       )}
     </div>

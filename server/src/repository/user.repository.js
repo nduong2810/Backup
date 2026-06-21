@@ -25,6 +25,20 @@ class UserRepository {
         }).select('-password');
     }
 
+    async searchAuthorsByName(query, limit = 8) {
+        const keyword = query?.trim();
+        if (!keyword) return [];
+
+        return await User.find({
+            role: 'user',
+            fullName: new RegExp(escapeRegex(keyword), 'i'),
+        })
+            .select('_id fullName avatar reputation')
+            .sort({ reputation: -1, fullName: 1 })
+            .limit(limit)
+            .lean();
+    }
+
     updateUserByEmail(email, updateData) {
         return User.findOneAndUpdate({ email }, updateData, { new: true });
     }

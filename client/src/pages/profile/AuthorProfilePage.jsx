@@ -313,7 +313,7 @@ export default function AuthorProfilePage() {
               <StatBox label="Câu hỏi" value={formatNumber(postSummary.questionCount)} tone="blue" icon="help_center" />
               <StatBox label="Lời khuyên" value={formatNumber(postSummary.adviceCount)} tone="emerald" icon="tips_and_updates" />
               <StatBox label="Tổng donate" value={`${formatNumber(donationSummary.totalAmount)}đ`} tone="amber" icon="volunteer_activism" />
-              <StatBox label="Reputation" value={formatNumber(user.reputationInfo?.reputation || user.reputation || 1)} tone="slate" icon="workspace_premium" />
+              <StatBox label="Uy tín" value={formatNumber(user.reputationInfo?.reputation || user.reputation || 1)} tone="slate" icon="workspace_premium" />
             </div>
           </div>
         </section>

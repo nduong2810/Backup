@@ -4,6 +4,22 @@ import Comment from '../model/comment.model.js';
 import DonationTransaction from '../model/donationTransaction.model.js';
 import ReputationHistory from '../model/reputationHistory.model.js';
 
+const getDateFilter = (timeRange) => {
+    if (!timeRange || timeRange === 'all') return null;
+    const now = new Date();
+    if (timeRange === '7days') {
+        return new Date(now.setDate(now.getDate() - 7));
+    }
+    if (timeRange === '30days') {
+        return new Date(now.setDate(now.getDate() - 30));
+    }
+    if (timeRange === '12months') {
+        return new Date(now.setMonth(now.getMonth() - 12));
+    }
+    return null;
+};
+
+
 // ====================================================================
 // STATISTICS REPOSITORY - Tầng Data Access cho thống kê hoạt động user
 // ====================================================================
@@ -61,7 +77,7 @@ class StatisticsRepository {
                 return acc;
             }, {}),
             byStatus: byStatus.reduce((acc, item) => {
-                acc[item._id || 'active'] = item.count;
+                acc[item._id || 'unresolved'] = item.count;
                 return acc;
             }, {}),
             totalViews: totalViews[0]?.total || 0,
@@ -249,11 +265,24 @@ class StatisticsRepository {
     /**
      * Danh sách bài viết gần đây của user (cho section Bài viết kiểu StackOverflow)
      */
-    async getRecentPosts(userId, limit = 10) {
+    async getRecentPosts(userId, limit = 10, skip = 0, sortBy = 'newest', timeRange = 'all') {
         const objectId = new mongoose.Types.ObjectId(userId);
 
-        return await Post.aggregate([
-            { $match: { author: objectId, status: { $ne: 'deleted' } } },
+        let sortStage = { createdAt: -1 };
+        if (sortBy === 'score') {
+            sortStage = { upvoteCount: -1, createdAt: -1 };
+        } else if (sortBy === 'views') {
+            sortStage = { viewCount: -1, createdAt: -1 };
+        }
+
+        const matchStage = { author: objectId, status: { $ne: 'deleted' } };
+        const dateLimit = getDateFilter(timeRange);
+        if (dateLimit) {
+            matchStage.createdAt = { $gte: dateLimit };
+        }
+
+        const pipeline = [
+            { $match: matchStage },
             {
                 $addFields: {
                     upvoteCount: {
@@ -277,33 +306,60 @@ class StatisticsRepository {
                     commentCount: { $ifNull: [{ $arrayElemAt: ['$commentMeta.count', 0] }, 0] },
                 },
             },
-            { $sort: { createdAt: -1 } },
-            { $limit: limit },
-            {
-                $project: {
-                    _id: 1,
-                    title: 1,
-                    postType: 1,
-                    status: 1,
-                    viewCount: 1,
-                    upvoteCount: 1,
-                    commentCount: 1,
-                    createdAt: 1,
-                    updatedAt: 1,
-                    tags: 1,
-                },
+            { $sort: sortStage },
+        ];
+
+        if (skip > 0) {
+            pipeline.push({ $skip: skip });
+        }
+        pipeline.push({ $limit: limit });
+        pipeline.push({
+            $project: {
+                _id: 1,
+                title: 1,
+                postType: 1,
+                status: 1,
+                viewCount: 1,
+                upvoteCount: 1,
+                commentCount: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                tags: 1,
             },
-        ]);
+        });
+
+        return await Post.aggregate(pipeline);
     }
 
-    /**
-     * Danh sách bình luận gần đây của user (cho section Bình luận kiểu StackOverflow)
-     */
-    async getRecentComments(userId, limit = 10) {
+    async countUserPosts(userId, timeRange = 'all') {
+        const objectId = new mongoose.Types.ObjectId(userId);
+        const query = { author: objectId, status: { $ne: 'deleted' } };
+        const dateLimit = getDateFilter(timeRange);
+        if (dateLimit) {
+            query.createdAt = { $gte: dateLimit };
+        }
+        return await Post.countDocuments(query);
+    }
+
+
+    async getRecentComments(userId, limit = 10, skip = 0, sortBy = 'newest', timeRange = 'all') {
         const objectId = new mongoose.Types.ObjectId(userId);
 
-        return await Comment.aggregate([
-            { $match: { author: objectId } },
+        let sortStage = { createdAt: -1 };
+        if (sortBy === 'score') {
+            sortStage = { likeCount: -1, createdAt: -1 };
+        } else if (sortBy === 'views') {
+            sortStage = { 'postInfo.viewCount': -1, createdAt: -1 };
+        }
+
+        const matchStage = { author: objectId };
+        const dateLimit = getDateFilter(timeRange);
+        if (dateLimit) {
+            matchStage.createdAt = { $gte: dateLimit };
+        }
+
+        const pipeline = [
+            { $match: matchStage },
             {
                 $addFields: {
                     likeCount: {
@@ -320,25 +376,40 @@ class StatisticsRepository {
                 },
             },
             { $unwind: { path: '$postInfo', preserveNullAndEmptyArrays: true } },
-            { $sort: { createdAt: -1 } },
-            { $limit: limit },
-            {
-                $project: {
-                    _id: 1,
-                    content: 1,
-                    likeCount: 1,
-                    createdAt: 1,
-                    updatedAt: 1,
-                    postId: '$post',
-                    postTitle: '$postInfo.title',
-                },
+            { $sort: sortStage },
+        ];
+
+        if (skip > 0) {
+            pipeline.push({ $skip: skip });
+        }
+        pipeline.push({ $limit: limit });
+        pipeline.push({
+            $project: {
+                _id: 1,
+                content: 1,
+                likeCount: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                postId: '$post',
+                postTitle: '$postInfo.title',
+                postViewCount: '$postInfo.viewCount',
             },
-        ]);
+        });
+
+        return await Comment.aggregate(pipeline);
     }
 
-    /**
-     * Thống kê votes user đã cast cho bài viết khác
-     */
+    async countUserComments(userId, timeRange = 'all') {
+        const objectId = new mongoose.Types.ObjectId(userId);
+        const query = { author: objectId };
+        const dateLimit = getDateFilter(timeRange);
+        if (dateLimit) {
+            query.createdAt = { $gte: dateLimit };
+        }
+        return await Comment.countDocuments(query);
+    }
+
+
     async getVotesGiven(userId) {
         const objectId = new mongoose.Types.ObjectId(userId);
 
@@ -348,6 +419,25 @@ class StatisticsRepository {
         ]);
 
         return { upvoted, downvoted, total: upvoted + downvoted };
+    }
+
+    /**
+     * Thống kê reactions user đã cast cho bài viết và bình luận khác
+     */
+    async getReactionsGiven(userId) {
+        const objectId = new mongoose.Types.ObjectId(userId);
+
+        const [likedPosts, dislikedPosts, likedComments, dislikedComments] = await Promise.all([
+            Post.countDocuments({ likes: objectId }),
+            Post.countDocuments({ dislikes: objectId }),
+            Comment.countDocuments({ likes: objectId }),
+            Comment.countDocuments({ dislikes: objectId }),
+        ]);
+
+        const liked = likedPosts + likedComments;
+        const disliked = dislikedPosts + dislikedComments;
+
+        return { liked, disliked, total: liked + disliked };
     }
 
     /**
@@ -369,6 +459,138 @@ class StatisticsRepository {
             createdAt: log.createdAt,
         }));
     }
+
+    async getReputationChangesPaginated(userId, limit = 10, skip = 0) {
+        const objectId = new mongoose.Types.ObjectId(userId);
+
+        const logs = await ReputationHistory.find({ user: objectId })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+        return logs.map(log => ({
+            _id: log.targetId ? `${log.targetId.toString()}_${log.type}` : `${log._id.toString()}_reputation`,
+            title: log.title,
+            type: log.type,
+            reputationEarned: log.reputationEarned,
+            createdAt: log.createdAt,
+        }));
+    }
+
+    async countReputationChanges(userId) {
+        const objectId = new mongoose.Types.ObjectId(userId);
+        return await ReputationHistory.countDocuments({ user: objectId });
+    }
+
+    async getRecentVotes(userId, limit = 10, skip = 0, sortBy = 'newest', timeRange = 'all') {
+        const objectId = new mongoose.Types.ObjectId(userId);
+
+        const matchStage = {
+            $or: [
+                { upvotes: objectId },
+                { downvotes: objectId },
+                { likes: objectId },
+                { dislikes: objectId }
+            ],
+            status: 'unresolved'
+        };
+        const dateLimit = getDateFilter(timeRange);
+        if (dateLimit) {
+            matchStage.createdAt = { $gte: dateLimit };
+        }
+
+        const pipeline = [
+            {
+                $match: matchStage
+            }
+        ];
+
+        // Sort
+        if (sortBy === 'score') {
+            pipeline.push({
+                $addFields: {
+                    score: {
+                        $subtract: [
+                            { $cond: [{ $isArray: '$upvotes' }, { $size: '$upvotes' }, 0] },
+                            { $cond: [{ $isArray: '$downvotes' }, { $size: '$downvotes' }, 0] }
+                        ]
+                    }
+                }
+            });
+            pipeline.push({ $sort: { score: -1, createdAt: -1 } });
+        } else if (sortBy === 'views') {
+            pipeline.push({ $sort: { viewCount: -1, createdAt: -1 } });
+        } else {
+            pipeline.push({ $sort: { createdAt: -1 } });
+        }
+
+        // Pagination
+        if (skip > 0) {
+            pipeline.push({ $skip: skip });
+        }
+        pipeline.push({ $limit: limit });
+
+        pipeline.push({
+            $project: {
+                _id: 1,
+                title: 1,
+                postType: 1,
+                upvotes: 1,
+                downvotes: 1,
+                likes: 1,
+                dislikes: 1,
+                viewCount: 1,
+                createdAt: 1,
+            }
+        });
+
+        const posts = await Post.aggregate(pipeline);
+
+        return posts.map(post => {
+            let userAction = '';
+            if (Array.isArray(post.upvotes) && post.upvotes.map(id => id.toString()).includes(userId)) {
+                userAction = 'upvote';
+            } else if (Array.isArray(post.downvotes) && post.downvotes.map(id => id.toString()).includes(userId)) {
+                userAction = 'downvote';
+            } else if (Array.isArray(post.likes) && post.likes.map(id => id.toString()).includes(userId)) {
+                userAction = 'like';
+            } else if (Array.isArray(post.dislikes) && post.dislikes.map(id => id.toString()).includes(userId)) {
+                userAction = 'dislike';
+            }
+
+            return {
+                _id: post._id,
+                title: post.title,
+                postType: post.postType,
+                viewCount: post.viewCount,
+                createdAt: post.createdAt,
+                userAction,
+                score: (post.upvotes?.length || 0) - (post.downvotes?.length || 0),
+                likeCount: post.likes?.length || 0,
+                dislikeCount: post.dislikes?.length || 0
+            };
+        });
+    }
+
+    async countUserVotes(userId, timeRange = 'all') {
+        const objectId = new mongoose.Types.ObjectId(userId);
+        const query = {
+            $or: [
+                { upvotes: objectId },
+                { downvotes: objectId },
+                { likes: objectId },
+                { dislikes: objectId }
+            ],
+            status: 'unresolved'
+        };
+        const dateLimit = getDateFilter(timeRange);
+        if (dateLimit) {
+            query.createdAt = { $gte: dateLimit };
+        }
+        return await Post.countDocuments(query);
+    }
+
 
     /**
      * Thống kê donation nhận được và đã gửi
