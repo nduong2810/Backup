@@ -7,6 +7,7 @@ import {
   parseFiltersFromSearchParams,
   parseSearchQuery,
   buildSearchParams,
+  getSearchStringFromFilters,
 } from '../util/filterUtils';
 
 export const usePostFilters = () => {
@@ -25,7 +26,7 @@ export const usePostFilters = () => {
 
     const timer = setTimeout(() => {
       setFilters((prev) => ({ ...prev, ...appliedFilters }));
-      setSearchInput(searchParams.get('q') ?? appliedFilters.keyword ?? '');
+      setSearchInput(getSearchStringFromFilters(appliedFilters));
     }, 0);
     dispatch(fetchPostsThunk(appliedFilters));
     return () => clearTimeout(timer);
@@ -48,27 +49,14 @@ export const usePostFilters = () => {
     }
 
     const parsed = parseSearchQuery(searchInput);
-    const mergedTags = Array.from(
-      new Set(
-        [appliedFilters.tags, parsed.tags]
-          .filter(Boolean)
-          .join(',')
-          .split(',')
-          .map((tag) => tag.trim().toLowerCase())
-          .filter(Boolean)
-      )
-    ).join(', ');
-
     const next = {
       ...appliedFilters,
       keyword: parsed.keyword,
-      tags: mergedTags,
+      tags: parsed.tags,
+      author: parsed.author,
       page: 1,
     };
     const nextParams = buildSearchParams(next);
-    if (searchInput.trim()) {
-      nextParams.q = searchInput.trim();
-    }
     setSearchParams(nextParams);
   };
 

@@ -33,9 +33,18 @@ export const parseFiltersFromSearchParams = (searchParams) => ({
 export const parseSearchQuery = (query) => {
   const value = query || '';
   const tags = [];
+  let author = '';
 
   let remaining = value;
 
+  // 1. Parse [author:...] first
+  const authorRegex = /\[author:\s*([^\]]+)\]/gi;
+  remaining = remaining.replace(authorRegex, (_, authorName) => {
+    if (authorName?.trim()) author = authorName.trim();
+    return ' ';
+  });
+
+  // 2. Parse regular [tag]
   const tagRegex = /\[([^\]]+)\]/g;
   remaining = remaining.replace(tagRegex, (_, tagName) => {
     if (tagName?.trim()) tags.push(tagName.trim());
@@ -45,6 +54,7 @@ export const parseSearchQuery = (query) => {
   return {
     keyword: remaining.replace(/\s+/g, ' ').trim(),
     tags: tags.join(', '),
+    author,
   };
 };
 
@@ -73,4 +83,21 @@ export const buildSearchParams = (filters) => {
   if (filters.limit && Number(filters.limit) !== 15) params.limit = String(filters.limit);
 
   return params;
+};
+
+export const getSearchStringFromFilters = (filters) => {
+  const parts = [];
+  if (filters.tags) {
+    filters.tags.split(',').forEach((t) => {
+      const cleaned = t.trim();
+      if (cleaned) parts.push(`[${cleaned}]`);
+    });
+  }
+  if (filters.author) {
+    parts.push(`[author:${filters.author.trim()}]`);
+  }
+  if (filters.keyword) {
+    parts.push(filters.keyword.trim());
+  }
+  return parts.join(' ');
 };
