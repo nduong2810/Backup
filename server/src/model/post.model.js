@@ -107,14 +107,14 @@ const postSchema = new mongoose.Schema({
     }],
 
     // Trạng thái bài viết
-    // active: đang hiển thị
-    // closed: đã khóa, vẫn hiển thị nhưng không cho tương tác
+    // unresolved: đang hiển thị, chưa giải quyết
+    // resolved: đã khóa, vẫn hiển thị nhưng không cho tương tác
     // hidden: đang bị ẩn khỏi trang public
     // deleted: đã bị xóa mềm
     status: { 
         type: String, 
-        enum: ['active', 'closed', 'hidden', 'deleted'], 
-        default: 'active' 
+        enum: ['unresolved', 'resolved', 'hidden', 'deleted'], 
+        default: 'unresolved' 
     },
     deletedAt: {
         type: Date,

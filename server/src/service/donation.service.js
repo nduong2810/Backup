@@ -241,7 +241,7 @@ class DonationService {
 
     if (!donor) throw { status: 404, message: 'Người donate không tồn tại' };
     if (!currentPost) throw { status: 404, message: 'Bài viết không tồn tại' };
-    if (currentPost.status === 'closed') throw { status: 423, message: 'Bài viết đang bị khóa' };
+    if (currentPost.status === 'resolved') throw { status: 423, message: 'Bài viết đang bị khóa' };
     if (currentPost.status === 'hidden') throw { status: 403, message: 'Bài viết đang bị ẩn' };
     if (currentPost.status === 'deleted') throw { status: 410, message: 'Bài viết đã bị xóa' };
 

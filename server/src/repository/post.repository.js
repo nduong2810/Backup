@@ -74,7 +74,7 @@ class PostRepository {
         return await Post.find({
             tags: tag,
             _id: { $ne: excludePostId },
-            status: 'active'
+            status: 'unresolved'
         })
         .populate('author', '_id fullName avatar email')
         .sort({ createdAt: -1 })
@@ -230,7 +230,7 @@ class PostRepository {
     }
 
     async restore(postId) {
-        return await Post.findByIdAndUpdate(postId, { $set: { status: 'active' }, $unset: { deletedAt: "", deletedBy: "" } }, { new: true });
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'unresolved' }, $unset: { deletedAt: "", deletedBy: "" } }, { new: true });
     }
 
     async permanentlyDelete(postId) {

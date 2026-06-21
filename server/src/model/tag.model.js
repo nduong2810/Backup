@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { slugify } from '../util/slugify.js';
 
 const tagSchema = new mongoose.Schema({
     name: {
@@ -25,7 +26,7 @@ const tagSchema = new mongoose.Schema({
 
 tagSchema.pre('validate', function() {
     if (!this.slug && this.name) {
-        this.slug = this.name.trim().toLowerCase();
+        this.slug = slugify(this.name);
     }
 });
 

@@ -77,7 +77,7 @@ class StatisticsRepository {
                 return acc;
             }, {}),
             byStatus: byStatus.reduce((acc, item) => {
-                acc[item._id || 'active'] = item.count;
+                acc[item._id || 'unresolved'] = item.count;
                 return acc;
             }, {}),
             totalViews: totalViews[0]?.total || 0,
@@ -493,7 +493,7 @@ class StatisticsRepository {
                 { likes: objectId },
                 { dislikes: objectId }
             ],
-            status: 'active'
+            status: 'unresolved'
         };
         const dateLimit = getDateFilter(timeRange);
         if (dateLimit) {
@@ -582,7 +582,7 @@ class StatisticsRepository {
                 { likes: objectId },
                 { dislikes: objectId }
             ],
-            status: 'active'
+            status: 'unresolved'
         };
         const dateLimit = getDateFilter(timeRange);
         if (dateLimit) {

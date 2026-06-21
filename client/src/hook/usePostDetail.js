@@ -42,7 +42,7 @@ export default function usePostDetail(postId) {
   const isAdmin = currentUser?.role === 'admin';
   const { toast } = useToast();
 
-  const isPostLocked = post?.status === 'closed';
+  const isPostLocked = post?.status === 'resolved';
 
   const fetchPostDetail = useCallback(async (showLoading = true) => {
     if (!postId) return;
@@ -70,7 +70,7 @@ export default function usePostDetail(postId) {
       setLikeCount(postData.likeCount || postData.likes?.length || 0);
       setDislikeCount(postData.dislikeCount || postData.dislikes?.length || 0);
       setUserReaction(postData.userReaction || null);
-      setCommentError(postData.status === 'closed' ? LOCKED_POST_MESSAGE : '');
+      setCommentError(postData.status === 'resolved' ? LOCKED_POST_MESSAGE : '');
     } catch (err) {
       const message = err.response?.data?.message || 'Không thể tải bài viết.';
       setError(message);
