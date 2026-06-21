@@ -121,6 +121,11 @@ const postSchema = new mongoose.Schema({
         default: null,
         index: { expires: '7d' }
     },
+    deletedBy: {
+        type: String,
+        enum: ['owner', 'report', 'admin'],
+        default: null
+    },
 }, { 
     timestamps: true,
     toJSON: { virtuals: true },

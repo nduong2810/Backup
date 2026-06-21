@@ -67,7 +67,7 @@ class PostRepository {
     }
 
     async setDeletedStatus(postId) {
-        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted' } }, { new: true });
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted', deletedAt: new Date(), deletedBy: 'report' } }, { new: true });
     }
 
     async findRelatedByTag(tag, excludePostId, limit = 5) {
@@ -225,12 +225,12 @@ class PostRepository {
         ]);
     }
 
-    async softDelete(postId) {
-        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted', deletedAt: new Date() } }, { new: true });
+    async softDelete(postId, deletedBy = 'owner') {
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted', deletedAt: new Date(), deletedBy } }, { new: true });
     }
 
     async restore(postId) {
-        return await Post.findByIdAndUpdate(postId, { $set: { status: 'active' }, $unset: { deletedAt: "" } }, { new: true });
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'active' }, $unset: { deletedAt: "", deletedBy: "" } }, { new: true });
     }
 
     async permanentlyDelete(postId) {

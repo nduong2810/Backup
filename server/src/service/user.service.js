@@ -2,6 +2,7 @@ import User from '../model/user.model.js';
 import bcrypt from 'bcryptjs';
 import donationRepository from '../repository/donation.repository.js';
 import postRepository from '../repository/post.repository.js';
+import userRepository from '../repository/user.repository.js';
 import { getRankInfo, getTodayStart } from './reputation.service.js';
 import { uploadToCloudinary } from '../util/cloudinary.js';
 import SystemSetting from '../model/systemSetting.model.js';
@@ -61,6 +62,14 @@ class UserService {
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(newPassword, salt);
         await user.save();
+    }
+
+    async searchAuthors(query = {}) {
+        const keyword = String(query.q || '').trim();
+        const limit = Math.min(10, Math.max(1, parseInt(query.limit, 10) || 8));
+        if (keyword.length < 2) return [];
+
+        return await userRepository.searchAuthorsByName(keyword, limit);
     }
 
     async getPublicAuthorProfile(userId, query = {}) {

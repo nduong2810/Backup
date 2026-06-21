@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTagsThunk } from '../../store/slices/tagSlice';
+import { searchAuthorsApi } from '../../services/userService';
 
 const DEFAULT_TAG_COLLECTION = {
   items: [],
@@ -29,6 +30,10 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
     ? tagPagination.page < tagPagination.totalPages
     : false;
   const tagListRef = useRef(null);
+  const authorBoxRef = useRef(null);
+  const [authorSuggestions, setAuthorSuggestions] = useState([]);
+  const [authorLoading, setAuthorLoading] = useState(false);
+  const [authorDropdownOpen, setAuthorDropdownOpen] = useState(false);
   const tagLimit = 12;
   const tagListHeight = embed ? 'h-32' : 'h-40';
 
@@ -53,6 +58,18 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
     onFilterChange?.(name, value);
   };
 
+  const handleAuthorChange = (e) => {
+    handleChange(e);
+    onFilterChange?.('authorId', '');
+    setAuthorDropdownOpen(true);
+  };
+
+  const handleSelectAuthor = (author) => {
+    onFilterChange?.('author', author.fullName || '');
+    onFilterChange?.('authorId', author._id || '');
+    setAuthorDropdownOpen(false);
+  };
+
   const handleToggleTag = (tag) => {
     const normalized = normalizeTag(tag);
     const next = new Set(selectedTags);
@@ -75,6 +92,50 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
       );
     }
   }, [dispatch, loadingTags, tagLimit, tagOptions.length]);
+
+  useEffect(() => {
+    const keyword = (filters.author || '').trim();
+    if (keyword.length < 2) {
+      setAuthorSuggestions([]);
+      setAuthorLoading(false);
+      return;
+    }
+
+    let ignore = false;
+    setAuthorLoading(true);
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await searchAuthorsApi(keyword);
+        if (!ignore) {
+          setAuthorSuggestions(response.data?.data || []);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setAuthorSuggestions([]);
+        }
+      } finally {
+        if (!ignore) {
+          setAuthorLoading(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      ignore = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [filters.author]);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!authorBoxRef.current?.contains(event.target)) {
+        setAuthorDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, []);
 
   useEffect(() => {
     if (loadingTags || !hasMoreTags) return;
@@ -137,6 +198,74 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
             <option value="resolved">Đã có câu trả lời</option>
             <option value="unresolved">Chưa có câu trả lời</option>
           </select>
+        </div>
+
+        {/* Post Type */}
+        <div className="flex flex-col gap-1">
+          <label htmlFor="filter-posttype" className={labelClass}>
+            Loại bài viết
+          </label>
+          <select
+            id="filter-posttype"
+            name="postType"
+            value={filters.postType || 'All'}
+            onChange={handleChange}
+            className={controlClass}
+          >
+            <option value="All">Tất cả</option>
+            <option value="question">Hỏi đáp</option>
+            <option value="advice">Chia sẻ</option>
+          </select>
+        </div>
+
+        {/* Author */}
+        <div ref={authorBoxRef} className="relative flex flex-col gap-1">
+          <label htmlFor="filter-author" className={labelClass}>
+            Tác giả
+          </label>
+          <input
+            id="filter-author"
+            type="text"
+            name="author"
+            value={filters.author || ''}
+            onChange={handleAuthorChange}
+            onFocus={() => setAuthorDropdownOpen(true)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') setAuthorDropdownOpen(false);
+            }}
+            autoComplete="off"
+            placeholder="Tên tác giả..."
+            className={`${controlClass} placeholder:text-outline`}
+          />
+          {authorDropdownOpen && (filters.author || '').trim().length >= 2 && (
+            <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 overflow-y-auto border border-outline-variant bg-surface-container-lowest shadow-lg shadow-slate-900/10">
+              {authorLoading && (
+                <div className="px-3 py-2 font-body-sm text-body-sm text-secondary">Đang tìm tác giả...</div>
+              )}
+              {!authorLoading && authorSuggestions.length === 0 && (
+                <div className="px-3 py-2 font-body-sm text-body-sm text-secondary">Không tìm thấy tài khoản phù hợp.</div>
+              )}
+              {!authorLoading && authorSuggestions.map((author) => (
+                <button
+                  key={author._id}
+                  type="button"
+                  onClick={() => handleSelectAuthor(author)}
+                  className="flex w-full items-center justify-between gap-3 border-b border-outline-variant/70 px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-container-low focus:bg-surface-container-low focus:outline-none"
+                >
+                  <span className="min-w-0 truncate font-body-sm text-body-sm font-semibold text-on-surface">
+                    {author.fullName}
+                  </span>
+                  <span
+                    className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-primary-container"
+                    title={`${Number(author.reputation || 1).toLocaleString('vi-VN')} điểm uy tín`}
+                  >
+                    <span className="material-symbols-outlined text-[16px] leading-none">military_tech</span>
+                    <span>{Number(author.reputation || 1).toLocaleString('vi-VN')}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Tags */}
@@ -254,6 +383,29 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
               placeholder="0"
               min="0"
               className={`${controlClass} placeholder:text-outline`}
+            />
+          </div>
+        </div>
+
+        {/* Date Range */}
+        <div className="flex flex-col gap-1">
+          <label className={labelClass}>Khoảng thời gian</label>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="date"
+              name="startDate"
+              value={filters.startDate || ''}
+              onChange={handleChange}
+              aria-label="Từ ngày"
+              className={controlClass}
+            />
+            <input
+              type="date"
+              name="endDate"
+              value={filters.endDate || ''}
+              onChange={handleChange}
+              aria-label="Đến ngày"
+              className={controlClass}
             />
           </div>
         </div>

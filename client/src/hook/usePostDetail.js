@@ -102,7 +102,7 @@ export default function usePostDetail(postId) {
     }
 
     if (isPostLocked) {
-      alert(LOCKED_POST_MESSAGE);
+      toast.warning(LOCKED_POST_MESSAGE);
       return;
     }
 
@@ -121,9 +121,9 @@ export default function usePostDetail(postId) {
       setUserVote(vote);
     } catch (err) {
       if (err.response?.status === 401) {
-        alert('Bạn cần đăng nhập để vote bài viết.');
+        toast.warning('Bạn cần đăng nhập để vote bài viết.');
       } else {
-        alert(err.response?.data?.message || 'Không thể vote bài viết.');
+        toast.error(err.response?.data?.message || 'Không thể vote bài viết.');
       }
     } finally {
       setVoteLoading(false);
@@ -139,7 +139,7 @@ export default function usePostDetail(postId) {
     }
 
     if (isPostLocked) {
-      alert(LOCKED_POST_MESSAGE);
+      toast.warning(LOCKED_POST_MESSAGE);
       return;
     }
 
@@ -167,9 +167,9 @@ export default function usePostDetail(postId) {
         : currentPost);
     } catch (err) {
       if (err.response?.status === 401) {
-        alert('Bạn cần đăng nhập để like/dislike bài viết.');
+        toast.warning('Bạn cần đăng nhập để like/dislike bài viết.');
       } else {
-        alert(err.response?.data?.message || 'Không thể like/dislike bài viết.');
+        toast.error(err.response?.data?.message || 'Không thể like/dislike bài viết.');
       }
     } finally {
       setReactionLoading(false);
@@ -214,7 +214,7 @@ export default function usePostDetail(postId) {
     }
 
     if (isPostLocked) {
-      alert(LOCKED_POST_MESSAGE);
+      toast.warning(LOCKED_POST_MESSAGE);
       return false;
     }
 
@@ -226,9 +226,9 @@ export default function usePostDetail(postId) {
       return true;
     } catch (err) {
       if (err.response?.status === 401) {
-        alert('Bạn cần đăng nhập để like/dislike bình luận.');
+        toast.warning('Bạn cần đăng nhập để like/dislike bình luận.');
       } else {
-        alert(err.response?.data?.message || 'Không thể cập nhật like/dislike bình luận.');
+        toast.error(err.response?.data?.message || 'Không thể cập nhật like/dislike bình luận.');
       }
 
       return false;

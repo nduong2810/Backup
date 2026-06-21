@@ -8,6 +8,9 @@ export const updateMyProfile = (payload) =>
 export const getMyStatistics = (months = 12) =>
   apiClient.get('/user/statistics', { params: { months } });
 
+export const searchAuthorsApi = (q, limit = 8) =>
+  apiClient.get('/user/search-authors', { params: { q, limit } });
+
 export const getAdminProfile = () => apiClient.get('/admin/profile');
 
 export const getAdminDashboardStats = () => apiClient.get('/admin/dashboard-stats');

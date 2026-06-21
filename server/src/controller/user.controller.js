@@ -36,6 +36,18 @@ class UserController {
         }
     }
 
+    async searchAuthors(req, res) {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+        try {
+            const authors = await userService.searchAuthors(req.query);
+            res.status(200).json({ success: true, data: authors });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
     async getPublicAuthorProfile(req, res) {
         const errors = validationResult(req);
         if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });

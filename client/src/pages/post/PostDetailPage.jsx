@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import usePostDetail from '../../hook/usePostDetail';
@@ -17,6 +17,8 @@ import {
   savePostToCollectionThunk,
   toggleSaveThunk,
 } from '../../store/slices/savedSlice';
+import { fetchProfileThunk } from '../../store/slices/profileSlice';
+import { useToast } from '../../context/ToastContext';
 
 const flagOptions = [
   { value: 'spam', label: 'Xóa vì spam quảng cáo hàng loạt' },
@@ -66,6 +68,7 @@ const normalizeId = (value) => {
 
 export default function PostDetailPage() {
   const { id } = useParams();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -84,6 +87,12 @@ export default function PostDetailPage() {
   const [showOwnerSummary, setShowOwnerSummary] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState('');
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchProfileThunk());
+    }
+  }, [isAuthenticated, dispatch]);
 
   const {
     post,
@@ -147,11 +156,11 @@ export default function PostDetailPage() {
   const handleSubmitReport = async (event) => {
     event.preventDefault();
     if (!user?._id) {
-      alert('Bạn cần đăng nhập để gửi cờ báo cáo.');
+      toast.warning('Bạn cần đăng nhập để gửi cờ báo cáo.');
       return;
     }
     if (isReportLockedByRep) {
-      alert(`Bạn cần tối thiểu ${minReportReputation} điểm reputation để gửi cờ báo cáo.`);
+      toast.warning(`Bạn cần tối thiểu ${minReportReputation} điểm uy tín để gửi cờ báo cáo.`);
       return;
     }
     if (!flagType) return;
@@ -211,7 +220,7 @@ export default function PostDetailPage() {
     const targetAuthorId = normalizeId(targetAuthorCandidate);
 
     if (!realPostId) {
-      alert('Thiếu dữ liệu bài viết. Vui lòng tải lại trang rồi thử lại.');
+      toast.error('Thiếu dữ liệu bài viết. Vui lòng tải lại trang rồi thử lại.');
       return;
     }
 
@@ -382,9 +391,14 @@ export default function PostDetailPage() {
           </button>
 
           {isReportLockedByRep && (
-            <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              <span className="mt-0.5 text-rose-700">!</span>
-              <p className="leading-5">Bạn cần tối thiểu {minReportReputation} điểm reputation để gửi cờ báo cáo.</p>
+            <div className="flex items-start gap-3 rounded-xl border border-rose-200/80 bg-gradient-to-r from-rose-50/90 to-red-50/50 p-4 text-rose-900 shadow-sm backdrop-blur-sm">
+              <span className="material-symbols-outlined text-rose-500 shrink-0 text-xl mt-0.5">shield_lock</span>
+              <div className="text-sm leading-relaxed">
+                <p className="font-bold text-rose-800">Hạn chế quyền báo cáo</p>
+                <p className="mt-0.5 text-rose-700">
+                  Bạn cần có tối thiểu <strong className="font-semibold text-rose-950">{minReportReputation} điểm uy tín</strong> để thực hiện báo cáo bài viết này. Điểm uy tín hiện tại của bạn là <strong className="font-semibold text-rose-950">{userReputation}</strong>.
+                </p>
+              </div>
             </div>
           )}
 

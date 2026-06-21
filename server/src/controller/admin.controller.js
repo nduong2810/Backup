@@ -362,12 +362,27 @@ class AdminController {
                 return res.status(400).json({ success: false, message: 'Trạng thái bài viết không hợp lệ' });
             }
 
+            const updateFields = { status };
+            const unsetFields = {};
+            if (status === 'deleted') {
+                updateFields.deletedAt = new Date();
+                updateFields.deletedBy = 'admin';
+            } else {
+                unsetFields.deletedAt = '';
+                unsetFields.deletedBy = '';
+            }
+
+            const updateQuery = { $set: updateFields };
+            if (Object.keys(unsetFields).length > 0) {
+                updateQuery.$unset = unsetFields;
+            }
+
             const post = await Post.findByIdAndUpdate(
                 postObjectId,
-                { $set: { status } },
+                updateQuery,
                 { new: true },
             )
-                .select('title status updatedAt')
+                .select('title status updatedAt deletedAt deletedBy')
                 .lean();
 
             if (!post) {

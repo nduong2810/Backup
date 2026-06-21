@@ -9,9 +9,19 @@ const router = express.Router();
 
 // Route thống kê hoạt động user (Cần lớp 3, 4)
 router.get('/statistics', authenticateToken, authorizeRole('user'), statisticsController.getMyStatistics);
+router.get('/statistics/posts', authenticateToken, authorizeRole('user'), statisticsController.getMyPostsPaginated.bind(statisticsController));
+router.get('/statistics/comments', authenticateToken, authorizeRole('user'), statisticsController.getMyCommentsPaginated.bind(statisticsController));
+router.get('/statistics/votes', authenticateToken, authorizeRole('user'), statisticsController.getMyVotesPaginated.bind(statisticsController));
+router.get('/statistics/reputation', authenticateToken, authorizeRole('user'), statisticsController.getMyReputationPaginated.bind(statisticsController));
+
 
 // Route xem Profile (Cần lớp 3, 4)
 router.get('/profile', authenticateToken, authorizeRole('user'), userController.getMyProfile);
+
+router.get('/search-authors', [
+    query('q').optional().trim().isLength({ min: 2, max: 80 }).withMessage('Từ khóa tìm kiếm phải có 2-80 ký tự'),
+    query('limit').optional().isInt({ min: 1, max: 10 }).withMessage('Số lượng gợi ý không hợp lệ')
+], userController.searchAuthors);
 
 // Route public cho hồ sơ tác giả + lịch sử ủng hộ
 router.get('/public/:userId', [
@@ -21,9 +31,9 @@ router.get('/public/:userId', [
 ], userController.getPublicAuthorProfile);
 
 // Route sửa Profile (Cần lớp 1, 2, 3, 4) 
-router.put('/profile', 
-    authenticateToken, 
-    authorizeRole('user'), 
+router.put('/profile',
+    authenticateToken,
+    authorizeRole('user'),
     profileUpdateLimiter, // Lớp 2
     [
         body('fullName').optional().notEmpty().withMessage('Tên không được để trống'), // Lớp 1 
