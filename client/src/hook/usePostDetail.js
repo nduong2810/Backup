@@ -285,8 +285,7 @@ export default function usePostDetail(postId) {
   useEffect(() => {
     if (!postId) return undefined;
 
-    const token = localStorage.getItem('accessToken');
-    const socket = token ? connectSocket(token) : getSocket();
+    const socket = currentUser ? connectSocket() : getSocket();
 
     if (!socket) return undefined;
 

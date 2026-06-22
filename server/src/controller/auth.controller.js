@@ -68,9 +68,17 @@ class AuthController {
 
         try {
             const { email, password } = req.body;
-            const { user, token } = await authService.login(email, password);
+            const { user, accessToken, refreshToken } = await authService.login(email, password);
 
-            res.cookie('token', token, {
+            // Thiết lập cookie cho Access Token (15 phút) và Refresh Token (7 ngày)
+            res.cookie('accessToken', accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 15 * 60 * 1000,
+            });
+
+            res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
@@ -82,7 +90,6 @@ class AuthController {
             res.status(200).json({
                 message: 'Đăng nhập thành công',
                 user,
-                accessToken: token,
                 redirectUrl,
             });
         } catch (error) {
@@ -97,11 +104,16 @@ class AuthController {
 
     async logout(req, res) {
         try {
-            res.clearCookie('token', {
+            const cookieOptions = {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
-            });
+            };
+
+            // Xóa toàn bộ các cookie liên quan đến phiên đăng nhập
+            res.clearCookie('token', cookieOptions);
+            res.clearCookie('accessToken', cookieOptions);
+            res.clearCookie('refreshToken', cookieOptions);
 
             res.status(200).json({
                 success: true,

@@ -5,6 +5,18 @@ import corsOptions from '../config/cors.js';
 
 let ioInstance = null;
 
+const parseCookie = (cookieString, cookieName) => {
+  if (!cookieString) return '';
+  const cookies = cookieString.split(';').reduce((acc, cookie) => {
+    const [name, ...value] = cookie.trim().split('=');
+    if (name && value.length) {
+      acc[name] = value.join('=');
+    }
+    return acc;
+  }, {});
+  return cookies[cookieName] || '';
+};
+
 const getTokenFromSocket = (socket) => {
   const authToken = socket.handshake.auth?.token;
   if (authToken) return authToken;
@@ -27,20 +39,40 @@ export const initSocket = (httpServer) => {
   });
 
   ioInstance.use((socket, next) => {
-    const token = getTokenFromSocket(socket);
-    if (!token) return next(new Error('UNAUTHORIZED'));
-
+    const cookieHeader = socket.handshake.headers?.cookie;
+    const accessToken = parseCookie(cookieHeader, 'accessToken') || parseCookie(cookieHeader, 'token') || getTokenFromSocket(socket);
     const secret = env.ACCESS_TOKEN_SECRET || env.JWT_SECRET;
-    jwt.verify(token, secret, (error, decoded) => {
-      if (error || !decoded) return next(new Error('UNAUTHORIZED'));
 
-      socket.user = {
-        userId: decoded.id || decoded.userId,
-        email: decoded.email,
-        role: decoded.role,
-      };
-      next();
-    });
+    if (accessToken) {
+      try {
+        const decoded = jwt.verify(accessToken, secret);
+        socket.user = {
+          userId: decoded.id || decoded.userId,
+          email: decoded.email,
+          role: decoded.role,
+        };
+        return next();
+      } catch (error) {
+        // Thử xác thực bằng Refresh Token nếu Access Token hết hạn
+      }
+    }
+
+    const refreshToken = parseCookie(cookieHeader, 'refreshToken');
+    if (refreshToken) {
+      try {
+        const decodedRefresh = jwt.verify(refreshToken, secret + '_refresh');
+        socket.user = {
+          userId: decodedRefresh.id || decodedRefresh.userId,
+          email: decodedRefresh.email,
+          role: decodedRefresh.role,
+        };
+        return next();
+      } catch (error) {
+        // Cả 2 đều thất bại
+      }
+    }
+
+    return next(new Error('UNAUTHORIZED'));
   });
 
   ioInstance.on('connection', (socket) => {

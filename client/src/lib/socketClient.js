@@ -4,12 +4,11 @@ let socket = null;
 
 const getSocketUrl = () => {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+  // Lấy base URL của backend (bỏ phần /api)
   return apiBaseUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
 };
 
-export const connectSocket = (token) => {
-  if (!token) return null;
-
+export const connectSocket = () => {
   if (socket?.connected) return socket;
 
   if (socket) {
@@ -19,8 +18,17 @@ export const connectSocket = (token) => {
 
   socket = io(getSocketUrl(), {
     transports: ['websocket', 'polling'],
-    auth: { token },
     withCredentials: true,
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 3000,
+  });
+
+  // Ngừng reconnect nếu server từ chối do chưa đăng nhập (UNAUTHORIZED)
+  socket.on('connect_error', (err) => {
+    if (err?.message === 'UNAUTHORIZED') {
+      socket.disconnect();
+    }
   });
 
   return socket;

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { logout } from '../../store/slices/loginSlice';
+import { logoutThunk } from '../../store/slices/loginSlice';
 import SearchBar from '../common/SearchBar';
 import CreatePostModal from '../post/CreatePostModal';
 import NotificationBell from '../notification/NotificationBell';
@@ -24,7 +24,7 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
   };
 
   const handleLogout = () => {
-    dispatch(logout());
+    dispatch(logoutThunk());
     navigate('/auth/login');
   };
 

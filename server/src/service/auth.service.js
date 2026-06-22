@@ -166,18 +166,24 @@ class AuthService {
             throw { status: 403, message: 'Tài khoản của bạn đã bị vô hiệu hóa, vui lòng liên hệ với quản trị viên để mở lại!' };
         }
 
-        // Tạo JWT token (chứa id và role)
-        const token = jwt.sign(
-            { id: user._id, role: user.role },
+        // Tạo Access Token (15 phút) và Refresh Token (7 ngày)
+        const accessToken = jwt.sign(
+            { id: user._id, role: user.role, email: user.email },
             env.JWT_SECRET,
-            { expiresIn: env.JWT_EXPIRES_IN }
+            { expiresIn: '15m' }
+        );
+
+        const refreshToken = jwt.sign(
+            { id: user._id, role: user.role, email: user.email },
+            env.JWT_SECRET + '_refresh',
+            { expiresIn: '7d' }
         );
 
         // Ẩn password trước khi trả về
         const userObj = user.toObject();
         delete userObj.password;
 
-        return { user: userObj, token };
+        return { user: userObj, accessToken, refreshToken };
     }
 
     async requestPasswordReset(email) {

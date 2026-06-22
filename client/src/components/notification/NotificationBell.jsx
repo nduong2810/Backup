@@ -32,7 +32,7 @@ const getAvatarUrl = (user) => {
 export default function NotificationBell() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { accessToken, user } = useSelector((state) => state.login);
+  const { user } = useSelector((state) => state.login);
   const { items, unreadCount, loading } = useSelector((state) => state.notifications);
   const [open, setOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
@@ -75,13 +75,13 @@ export default function NotificationBell() {
   };
 
   useEffect(() => {
-    if (!accessToken || !user) return undefined;
+    if (!user) return undefined;
 
     dispatch(fetchNotificationsThunk()).unwrap().then((data) => {
       syncKnownNotifications(data?.notifications || []);
     }).catch(() => {});
 
-    const socket = connectSocket(accessToken);
+    const socket = connectSocket();
 
     const handleConnect = () => {
       socketConnectedRef.current = true;
@@ -134,7 +134,7 @@ export default function NotificationBell() {
       toastTimersRef.current = {};
       disconnectSocket();
     };
-  }, [accessToken, user, dispatch]);
+  }, [user, dispatch]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

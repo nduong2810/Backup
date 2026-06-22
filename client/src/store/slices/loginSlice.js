@@ -1,8 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { loginUser } from '../../services/authService';
+import { loginUser, logoutUser } from '../../services/authService';
 
 const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
-const storedToken = localStorage.getItem('accessToken');
 
 const initialState = {
   form: {
@@ -13,9 +12,8 @@ const initialState = {
   successMessage: '',
   errorMessage: '',
   user: storedUser,
-  accessToken: storedToken || null,
   redirectUrl: '',
-  isAuthenticated: !!(storedToken || storedUser),
+  isAuthenticated: !!storedUser,
 };
 
 const extractError = (error) => {
@@ -57,6 +55,18 @@ export const loginThunk = createAsyncThunk(
     },
 );
 
+export const logoutThunk = createAsyncThunk(
+  'login/logout',
+  async (_, { dispatch }) => {
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error('Lỗi khi gọi API đăng xuất phía server:', error);
+    }
+    dispatch(logout());
+  }
+);
+
 const loginSlice = createSlice({
   name: 'login',
   initialState,
@@ -72,7 +82,6 @@ const loginSlice = createSlice({
     resetLoginState: () => initialState,
     logout: (state) => {
       state.user = null;
-      state.accessToken = null;
       state.isAuthenticated = false;
       state.redirectUrl = '';
       state.loading = false;
@@ -80,7 +89,6 @@ const loginSlice = createSlice({
       state.errorMessage = '';
       state.form = { email: '', password: '' };
       localStorage.removeItem('user');
-      localStorage.removeItem('accessToken');
     },
     updateUser: (state, action) => {
       state.user = { ...state.user, ...action.payload };
@@ -99,17 +107,13 @@ const loginSlice = createSlice({
           state.successMessage = action.payload.message || 'Đăng nhập thành công.';
 
           const loggedUser = action.payload.user || action.payload.data?.user || null;
-          const token = action.payload.accessToken || action.payload.token || action.payload.data?.accessToken || action.payload.data?.token || null;
 
           state.user = loggedUser;
-          state.accessToken = token;
           state.redirectUrl = action.payload.redirectUrl || '/';
-          state.isAuthenticated = !!(token || loggedUser);
+          state.isAuthenticated = !!loggedUser;
 
           localStorage.removeItem('user');
-          localStorage.removeItem('accessToken');
           if (loggedUser) saveUserToLocalStorage(loggedUser);
-          if (token) localStorage.setItem('accessToken', token);
         })
         .addCase(loginThunk.rejected, (state, action) => {
           state.loading = false;
@@ -119,10 +123,8 @@ const loginSlice = createSlice({
             state.errorMessage = action.payload || 'Đăng nhập thất bại.';
           }
           state.user = null;
-          state.accessToken = null;
           state.isAuthenticated = false;
           localStorage.removeItem('user');
-          localStorage.removeItem('accessToken');
         })
         .addCase('profile/fetch/fulfilled', (state, action) => {
           if (state.user && action.payload) {
