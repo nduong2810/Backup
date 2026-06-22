@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import reputationService, { getThisWeekStart } from './reputation.service.js';
 import { uploadToCloudinary } from '../util/cloudinary.js';
 import { slugify } from '../util/slugify.js';
+import * as moderation from '../util/moderation.js';
 
 const PUBLIC_POST_STATUS_FILTER = { $nin: ['hidden', 'deleted'] };
 
@@ -173,8 +174,7 @@ class PostService {
         const content = String(payload.content || '').trim();
         const parentComment = payload.parentComment || null;
 
-        if (!content) throw { status: 400, message: 'Nội dung bình luận không được để trống' };
-        if (content.length > 2000) throw { status: 400, message: 'Nội dung bình luận tối đa 2000 ký tự' };
+        moderation.validateComment(content);
 
         const post = await postRepository.findById(postId);
         if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
@@ -265,9 +265,7 @@ class PostService {
             ? payload.tags.map(t => slugify(t)).filter(Boolean)
             : [];
 
-        if (!title) throw { status: 400, message: 'Tiêu đề không được để trống' };
-        if (title.length > 200) throw { status: 400, message: 'Tiêu đề tối đa 200 ký tự' };
-        if (!content) throw { status: 400, message: 'Nội dung không được để trống' };
+        moderation.validatePost(title, content);
         if (!['question', 'advice'].includes(postType)) throw { status: 400, message: 'Loại bài viết không hợp lệ' };
 
         let totalMediaSize = 0;
@@ -565,9 +563,7 @@ class PostService {
             ? payload.tags.map(t => String(t).trim().toLowerCase()).filter(Boolean)
             : [];
 
-        if (!title) throw { status: 400, message: 'Tiêu đề không được để trống' };
-        if (title.length > 200) throw { status: 400, message: 'Tiêu đề tối đa 200 ký tự' };
-        if (!content) throw { status: 400, message: 'Nội dung không được để trống' };
+        moderation.validatePost(title, content);
 
         // Xử lý media cũ và mới
         const reqImages = payload.images ? (Array.isArray(payload.images) ? payload.images : [payload.images]) : [];
@@ -664,8 +660,7 @@ class PostService {
         if (post.status === 'hidden') throw { status: 400, message: 'Không thể chỉnh sửa bình luận trong bài viết đã bị ẩn' };
 
         const content = String(payload.content || '').trim();
-        if (!content) throw { status: 400, message: 'Nội dung bình luận không được để trống' };
-        if (content.length > 2000) throw { status: 400, message: 'Nội dung bình luận tối đa 2000 ký tự' };
+        moderation.validateComment(content);
 
         // Xử lý media cũ và mới
         const reqImages = payload.images ? (Array.isArray(payload.images) ? payload.images : [payload.images]) : [];

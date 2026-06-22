@@ -139,12 +139,12 @@ export default function EditPostModal({ isOpen, onClose, post, onUpdateSuccess }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim()) {
-      toast.error('Tiêu đề không được để trống.');
+    if (title.trim().length < 10) {
+      toast.error('Tiêu đề bài viết phải có độ dài từ 10 đến 200 ký tự.');
       return;
     }
-    if (!content.trim()) {
-      toast.error('Nội dung không được để trống.');
+    if (content.trim().length < 20) {
+      toast.error('Nội dung chi tiết bài viết phải có độ dài từ 20 đến 10000 ký tự.');
       return;
     }
 
