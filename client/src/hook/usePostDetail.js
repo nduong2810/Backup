@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { updateUser } from '../store/slices/loginSlice';
 import {
   getPostDetail,
   votePost,
@@ -41,6 +42,8 @@ export default function usePostDetail(postId) {
   const { user: currentUser } = useSelector((state) => state.login);
   const isAdmin = currentUser?.role === 'admin';
   const { toast } = useToast();
+  const dispatch = useDispatch();
+  const [showFreeVotesModal, setShowFreeVotesModal] = useState(false);
 
   const isPostLocked = post?.status === 'resolved';
 
@@ -110,15 +113,33 @@ export default function usePostDetail(postId) {
 
     try {
       const response = await votePost(postId, voteType);
+      const data = response.data.data || {};
       const {
         upvoteCount: up,
         downvoteCount: down,
         userVote: vote,
-      } = response.data.data;
+      } = data;
 
       setUpvoteCount(up);
       setDownvoteCount(down);
       setUserVote(vote);
+
+      // Đồng bộ thông tin Free vote
+      if (data.weeklyFreeVotesUsed !== undefined) {
+        dispatch(updateUser({
+          reputationInfo: {
+            ...(currentUser?.reputationInfo || {}),
+            weeklyFreeVotesUsed: data.weeklyFreeVotesUsed,
+            weeklyFreeVotesLimit: data.weeklyFreeVotesLimit || 5,
+            reputation: data.userReputation
+          },
+          reputation: data.userReputation
+        }));
+      }
+
+      if (data.showFreeVotesModal) {
+        setShowFreeVotesModal(true);
+      }
     } catch (err) {
       if (err.response?.status === 401) {
         toast.warning('Bạn cần đăng nhập để vote bài viết.');
@@ -128,7 +149,7 @@ export default function usePostDetail(postId) {
     } finally {
       setVoteLoading(false);
     }
-  }, [postId, voteLoading, isPostLocked, isAdmin, toast]);
+  }, [postId, voteLoading, isPostLocked, isAdmin, toast, dispatch, currentUser]);
 
   const handlePostReaction = useCallback(async (reactionType) => {
     if (reactionLoading) return;
@@ -324,5 +345,7 @@ export default function usePostDetail(postId) {
     relatedPosts,
     refreshPost: fetchPostDetail,
     deleteComment,
+    showFreeVotesModal,
+    setShowFreeVotesModal,
   };
 }

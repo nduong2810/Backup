@@ -52,6 +52,9 @@ export default function PostContent({
   onPostReaction,
   currentUserId = '',
   onPostUpdated,
+  isAuthenticated = false,
+  userReputation = 1,
+  onReportPost,
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -105,49 +108,74 @@ export default function PostContent({
           {post.title}
         </h1>
         <div className="flex items-center gap-2 mt-1 shrink-0">
-          <SaveIconButton
-            saved={isSaved}
-            onClick={onToggleSave}
-            title={isSaved ? 'Đã lưu' : 'Lưu'}
-          />
-          {isOwner && (
-            <div className="relative" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setShowMenu(!showMenu)}
-                className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-surface-container-low transition-colors"
-                title="Tùy chọn"
-              >
-                <span className="material-symbols-outlined text-xl text-slate-500">more_vert</span>
-              </button>
-              
-              {showMenu && (
-                <div className="absolute right-0 mt-1 w-36 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
-                  {(post.status === 'active' || post.status === 'unresolved') && (
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setShowMenu(!showMenu)}
+              className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-surface-container-low transition-colors"
+              title="Tùy chọn"
+            >
+              <span className="material-symbols-outlined text-xl text-slate-500">more_vert</span>
+            </button>
+            
+            {showMenu && (
+              <div className="absolute right-0 mt-1 w-40 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMenu(false);
+                    onToggleSave();
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                >
+                  <span className="material-symbols-outlined text-base text-slate-550">
+                    {isSaved ? 'bookmark_added' : 'bookmark'}
+                  </span>
+                  {isSaved ? 'Bỏ lưu bài viết' : 'Lưu bài viết'}
+                </button>
+
+                {isOwner ? (
+                  <>
+                    {(post.status === 'active' || post.status === 'unresolved') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowMenu(false);
+                          setIsEditModalOpen(true);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 border-t border-slate-100 whitespace-nowrap"
+                      >
+                        <span className="material-symbols-outlined text-base text-slate-500">edit</span>
+                        Sửa bài viết
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleDeleteClick}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 border-t border-slate-100 whitespace-nowrap"
+                    >
+                      <span className="material-symbols-outlined text-base">delete</span>
+                      Xóa bài viết
+                    </button>
+                  </>
+                ) : (
+                  isAuthenticated && userReputation >= 15 && (
                     <button
                       type="button"
                       onClick={() => {
                         setShowMenu(false);
-                        setIsEditModalOpen(true);
+                        onReportPost();
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 border-b border-slate-100 whitespace-nowrap"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 border-t border-slate-100 whitespace-nowrap"
                     >
-                      <span className="material-symbols-outlined text-base text-slate-500">edit</span>
-                      Sửa bài viết
+                      <span className="material-symbols-outlined text-base text-rose-500 font-semibold">report</span>
+                      Báo cáo bài viết
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleDeleteClick}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 whitespace-nowrap"
-                  >
-                    <span className="material-symbols-outlined text-base">delete</span>
-                    Xóa bài viết
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+                  )
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

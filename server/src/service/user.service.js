@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import donationRepository from '../repository/donation.repository.js';
 import postRepository from '../repository/post.repository.js';
 import userRepository from '../repository/user.repository.js';
-import { getRankInfo, getTodayStart } from './reputation.service.js';
+import { getRankInfo, getTodayStart, getThisWeekStart } from './reputation.service.js';
 import { uploadToCloudinary } from '../util/cloudinary.js';
 import SystemSetting from '../model/systemSetting.model.js';
 
@@ -28,13 +28,32 @@ class UserService {
             new Date(user.reputationDailyDate).getTime() === todayStart.getTime();
         const dailyEarned = sameDay ? (user.reputationDailyEarned || 0) : 0;
 
+        // Xử lý kiểm tra và reset tuần của free votes
+        const weekStart = getThisWeekStart();
+        const sameWeek = user.weeklyFreeVotesDate &&
+            new Date(user.weeklyFreeVotesDate).getTime() === weekStart.getTime();
+        
+        let weeklyFreeVotesUsed = user.weeklyFreeVotesUsed || 0;
+        if (!sameWeek) {
+            weeklyFreeVotesUsed = 0;
+            await User.findByIdAndUpdate(userId, {
+                $set: {
+                    weeklyFreeVotesUsed: 0,
+                    weeklyFreeVotesDate: weekStart
+                }
+            });
+        }
+
         return { 
             ...user.toObject(), 
             reputationInfo: { 
                 reputation: rep, 
                 dailyCap,
                 dailyEarned,
-                ...getRankInfo(rep) 
+                ...getRankInfo(rep),
+                weeklyFreeVotesUsed,
+                weeklyFreeVotesLimit: 5,
+                hasSeenFreeVotesModal: user.hasSeenFreeVotesModal || false,
             } 
         };
     }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AppCard from '../ui/AppCard';
 import AppButton from '../ui/AppButton';
 import InputField from '../ui/InputField';
@@ -15,6 +15,7 @@ import { useToast } from '../../context/ToastContext';
 import UserStatistics from './statistics/UserStatistics';
 import UserActivity from './statistics/UserActivity';
 import { fetchStatisticsThunk } from '../../store/slices/statisticsSlice';
+import { fetchPostsApi } from '../../services/postService';
 
 // ====================================================================
 // PROFILE COMPONENT - Trang hồ sơ cá nhân phong cách StackOverflow
@@ -36,8 +37,12 @@ export default function Profile() {
     errorStatus,
   } = useSelector((state) => state.profile);
 
+  const { user } = useSelector((state) => state.login);
   const statsData = useSelector((state) => state.statistics.data);
   const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'statistics' | 'edit'
+  const [userPosts, setUserPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(null);
 
   const bioCount = useMemo(() => `${form.bio.length}/500`, [form.bio]);
 
@@ -46,6 +51,64 @@ export default function Profile() {
     dispatch(fetchProfileThunk());
     dispatch(fetchStatisticsThunk(12));
   }, [dispatch]);
+
+  // Fetch all posts of user
+  useEffect(() => {
+    if (user?._id || user?.id) {
+      const authorId = user._id || user.id;
+      setLoadingPosts(true);
+      fetchPostsApi({ authorId, limit: 1000 })
+        .then((response) => {
+          setUserPosts(response.data?.data || []);
+        })
+        .catch((err) => console.error('[Profile] Error loading user posts:', err))
+        .finally(() => setLoadingPosts(false));
+    }
+  }, [user?._id, user?.id]);
+
+  const postsByYear = useMemo(() => {
+    const groups = {};
+    userPosts.forEach((post) => {
+      const d = new Date(post.createdAt);
+      const year = d.getFullYear();
+      if (!groups[year]) groups[year] = [];
+      groups[year].push(post);
+    });
+    return groups;
+  }, [userPosts]);
+
+  const years = useMemo(() => {
+    return Object.keys(postsByYear).sort((a, b) => b - a);
+  }, [postsByYear]);
+
+  // Set default selected year
+  useEffect(() => {
+    if (years.length > 0 && !selectedYear) {
+      setSelectedYear(years[0]);
+    }
+  }, [years, selectedYear]);
+
+  const groupedMonthPosts = useMemo(() => {
+    if (!selectedYear || !postsByYear[selectedYear]) return [];
+    
+    const monthsData = {};
+    postsByYear[selectedYear].forEach((post) => {
+      const d = new Date(post.createdAt);
+      const monthName = d.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+      const monthKey = d.getMonth(); // 0-11
+      if (!monthsData[monthKey]) {
+        monthsData[monthKey] = {
+          name: monthName.charAt(0).toUpperCase() + monthName.slice(1),
+          posts: []
+        };
+      }
+      monthsData[monthKey].posts.push(post);
+    });
+
+    return Object.keys(monthsData)
+      .sort((a, b) => b - a)
+      .map((key) => monthsData[key]);
+  }, [selectedYear, postsByYear]);
 
   useEffect(() => {
     if (errorStatus === 401) {
@@ -258,98 +321,151 @@ export default function Profile() {
       {/* 3. Render Tab Content */}
 
       {/* 3a. Tab Hồ sơ (Profile Summary) */}
+      {/* 3a. Tab Hồ sơ (Profile Summary) */}
       {activeTab === 'profile' && (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 mt-2">
-          {/* Cột Trái - Stats Widget */}
+          {/* Cột Trái - Giới thiệu & Stats Widget */}
           <div className="lg:col-span-1 space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3.5 mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-xl text-slate-500">query_stats</span>
-                Chỉ số nhanh
-              </h3>
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-2xl font-extrabold text-slate-800">{reputation}</div>
-                  <div className="text-[11px] text-slate-400 font-semibold uppercase mt-0.5">Uy tín</div>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-2xl font-extrabold text-slate-800">
-                    {statsData?.summary?.totalViews?.toLocaleString('vi-VN') || 0}
-                  </div>
-                  <div className="text-[11px] text-slate-400 font-semibold uppercase mt-0.5">Lượt xem</div>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-2xl font-extrabold text-slate-800">
-                    {statsData?.summary?.totalPosts || 0}
-                  </div>
-                  <div className="text-[11px] text-slate-400 font-semibold uppercase mt-0.5">Bài viết</div>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="text-2xl font-extrabold text-slate-800">
-                    {statsData?.summary?.totalComments || 0}
-                  </div>
-                  <div className="text-[11px] text-slate-400 font-semibold uppercase mt-0.5">Bình luận</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Cột Phải - About & Badge info */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Hộp About me */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3.5 mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-xl text-slate-500">person_search</span>
+            {/* Hộp Giới thiệu */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm animate-fadeIn">
+              <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2.5 mb-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg text-slate-500">person_search</span>
                 Giới thiệu
               </h3>
               {form.bio ? (
-                <p className="text-[15px] text-slate-600 whitespace-pre-wrap leading-relaxed">
+                <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
                   {form.bio}
                 </p>
               ) : (
-                <div className="text-[15px] text-slate-400 leading-relaxed py-6 text-center">
-                  Mục giới thiệu của bạn đang trống.{' '}
+                <div className="text-xs text-slate-450 leading-relaxed py-3 text-center italic">
+                  Chưa có giới thiệu.{' '}
                   <button
                     onClick={() => setActiveTab('edit')}
                     className="text-primary font-bold hover:underline"
                   >
-                    Cập nhật ngay
+                    Thêm
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Hộp Rank & Badges */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3.5 mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-xl text-slate-500">military_tech</span>
-                Cấp bậc hiện tại
+            {/* Hộp Chỉ số nhanh */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2.5 mb-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg text-slate-500">query_stats</span>
+                Chỉ số nhanh
               </h3>
-              <div className="flex items-center gap-5">
-                <div className="shrink-0 bg-slate-50 border border-slate-100 rounded-2xl p-3.5 flex items-center justify-center">
-                  <ReputationBadge reputation={reputation} size="lg" showLabel={false} />
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-xl font-extrabold text-slate-800">{reputation}</div>
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Uy tín</div>
                 </div>
-                <div>
-                  <div className="font-bold text-slate-800 text-base">Cấp bậc: {rank.name}</div>
-                  <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-                    Bạn hiện đang tích lũy được{' '}
-                    <span className="font-semibold text-slate-700">{reputation} điểm uy tín</span>.
-                    {nextRank ? (
-                      <>
-                        {' '}
-                        Chỉ cần thêm{' '}
-                        <span className="font-semibold text-slate-700">
-                          {nextRank.minRep - reputation} điểm
-                        </span>{' '}
-                        nữa để lên thứ hạng:{' '}
-                        <span className="font-semibold text-slate-700">{nextRank.name}</span>.
-                      </>
-                    ) : (
-                      <> Bạn đã đạt tới cấp độ uy tín cao nhất trên hệ thống!</>
-                    )}
-                  </p>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-xl font-extrabold text-slate-800">
+                    {statsData?.summary?.totalViews?.toLocaleString('vi-VN') || 0}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Lượt xem</div>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-xl font-extrabold text-slate-800">
+                    {statsData?.summary?.totalPosts || 0}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Bài viết</div>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-xl font-extrabold text-slate-800">
+                    {statsData?.summary?.totalComments || 0}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Bình luận</div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Cột Phải - Github-style Contribution Activity */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm animate-fadeIn">
+              <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg text-slate-500">history_edu</span>
+                Lịch sử đóng góp (Bài viết)
+              </h3>
+
+              {loadingPosts ? (
+                <div className="space-y-3 py-6">
+                  <div className="h-4 w-1/3 bg-slate-100 animate-pulse rounded" />
+                  <div className="h-10 w-full bg-slate-50 animate-pulse rounded-lg" />
+                  <div className="h-10 w-full bg-slate-50 animate-pulse rounded-lg" />
+                </div>
+              ) : !userPosts.length ? (
+                <div className="text-center py-12 text-slate-400">
+                  <span className="material-symbols-outlined text-4xl text-slate-350">edit_note</span>
+                  <p className="mt-2 text-sm">Chưa có bài viết nào được đăng tải.</p>
+                </div>
+              ) : (
+                <div className="flex gap-6">
+                  {/* Timeline content (left side) */}
+                  <div className="flex-1 space-y-6">
+                    {groupedMonthPosts.map((group, gIdx) => (
+                      <div key={gIdx} className="relative pl-6 last:pb-0">
+                        {/* Vertical line */}
+                        <div className="absolute left-2 top-2.5 bottom-0 w-0.5 bg-slate-100" />
+
+                        {/* Month header */}
+                        <h4 className="text-xs font-bold text-slate-500 mb-3 flex items-center gap-2">
+                          <span className="h-3.5 w-3.5 rounded-full bg-white border-2 border-slate-300 -ml-[22px] shrink-0" />
+                          {group.name}
+                        </h4>
+
+                        {/* Posts under this month */}
+                        <div className="space-y-3.5">
+                          {group.posts.map((post) => {
+                            const postDate = new Date(post.createdAt);
+                            const formattedDay = postDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+                            
+                            return (
+                              <div key={post._id} className="flex items-start gap-2 text-sm">
+                                <span className="material-symbols-outlined text-[16px] text-slate-450 mt-0.5 shrink-0">
+                                  {post.postType === 'question' ? 'help' : 'rate_review'}
+                                </span>
+                                <div className="flex-1 leading-snug">
+                                  <span className="text-slate-400 text-xs mr-2 font-mono">[{formattedDay}]</span>
+                                  <span className="text-slate-500">Đăng {post.postType === 'question' ? 'câu hỏi' : 'bài chia sẻ'}: </span>
+                                  <Link
+                                    to={`/posts/${post._id}`}
+                                    className="font-bold text-blue-600 hover:text-blue-800 hover:underline break-words"
+                                  >
+                                    {post.title}
+                                  </Link>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Year selector (right side) */}
+                  {years.length >= 1 && (
+                    <div className="w-20 flex flex-col gap-1.5 shrink-0 border-l border-slate-100 pl-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block text-center">Năm</span>
+                      {years.map((yr) => (
+                        <button
+                          key={yr}
+                          onClick={() => setSelectedYear(yr)}
+                          className={`w-full py-1.5 rounded-md text-xs font-bold transition-all border ${
+                            selectedYear === yr
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                              : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                          }`}
+                        >
+                          {yr}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

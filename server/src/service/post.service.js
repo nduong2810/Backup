@@ -3,7 +3,7 @@ import commentRepository from '../repository/comment.repository.js';
 import Comment from '../model/comment.model.js';
 import User from '../model/user.model.js';
 import mongoose from 'mongoose';
-import reputationService from './reputation.service.js';
+import reputationService, { getThisWeekStart } from './reputation.service.js';
 import { uploadToCloudinary } from '../util/cloudinary.js';
 import { slugify } from '../util/slugify.js';
 
@@ -358,6 +358,52 @@ class PostService {
 
         const hasUpvoted = includesUserId(post.upvotes, userId);
         const hasDownvoted = includesUserId(post.downvotes, userId);
+        const voter = await User.findById(userId);
+        if (!voter) throw { status: 404, message: 'Người dùng không tồn tại' };
+
+        const voterRep = voter.reputation || 1;
+        const isFreeVote = voterRep < 15;
+        let showFreeVotesModal = false;
+
+        // Chặn Downvote thật đối với nhóm trung gian từ 15 đến 99 reputation (chỉ chặn vote mới)
+        if (voteType === 'downvote' && !isFreeVote && voterRep < 100 && !hasDownvoted) {
+            throw { status: 403, message: 'Bạn cần tối thiểu 100 điểm uy tín để Downvote bài viết.' };
+        }
+
+        if (isFreeVote) {
+            // Kiểm tra reset tuần
+            const weekStart = getThisWeekStart();
+            const sameWeek = voter.weeklyFreeVotesDate &&
+                new Date(voter.weeklyFreeVotesDate).getTime() === weekStart.getTime();
+            
+            if (!sameWeek) {
+                voter.weeklyFreeVotesUsed = 0;
+                voter.weeklyFreeVotesDate = weekStart;
+            }
+
+            // Kiểm tra xem đây có phải vote mới hoàn toàn (chưa upvoted và chưa downvoted)
+            const isNewVote = !hasUpvoted && !hasDownvoted;
+            if (isNewVote) {
+                if ((voter.weeklyFreeVotesUsed || 0) >= 5) {
+                    throw { status: 403, message: 'Bạn đã sử dụng hết 5 lượt bình chọn miễn phí của tuần này. Hãy đóng góp tích cực để nhận upvote và mở khóa toàn bộ quyền bình chọn!' };
+                }
+                voter.weeklyFreeVotesUsed = (voter.weeklyFreeVotesUsed || 0) + 1;
+                
+                // Nếu chưa từng xem popup giới thiệu, bật cờ và lưu lại
+                if (!voter.hasSeenFreeVotesModal) {
+                    showFreeVotesModal = true;
+                    voter.hasSeenFreeVotesModal = true;
+                }
+            }
+            await voter.save();
+        }
+
+        // Tạo hàm wrapper cho reputationService.award
+        const awardRep = async (targetUserId, reason, targetPostId = null, currentVoterId = null) => {
+            if (isFreeVote) return;
+            await reputationService.award(targetUserId, reason, targetPostId, currentVoterId);
+        };
+
         let userVote = null;
         const todayStart = getTodayStart();
         const dailyUpdates = {};
@@ -375,61 +421,63 @@ class PostService {
             }
         };
 
-
-
         if (voteType === 'upvote') {
             if (hasUpvoted) {
                 await postRepository.removeUpvote(postId, userId);
                 applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', -1, post.dailyUpvoteDate, post.dailyUpvoteCount);
 
                 // Rút upvote → trừ điểm tác giả
-                if (!isSelfVote) await reputationService.award(authorId, 'post_upvote_removed', postId, userId);
+                if (!isSelfVote) await awardRep(authorId, 'post_upvote_removed', postId, userId);
             } else {
                 if (hasDownvoted) {
                     await postRepository.removeDownvote(postId, userId);
                     applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', -1, post.dailyDownvoteDate, post.dailyDownvoteCount);
                     // Rút downvote → hoàn điểm tác giả và voter
-                    if (!isSelfVote) await reputationService.award(authorId, 'post_downvote_removed', postId, userId);
-                    await reputationService.award(userId, 'downvote_given_removed', postId, userId);
+                    if (!isSelfVote) await awardRep(authorId, 'post_downvote_removed', postId, userId);
+                    await awardRep(userId, 'downvote_given_removed', postId, userId);
                 }
                 await postRepository.addUpvote(postId, userId);
                 userVote = 'upvote';
                 applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', 1, post.dailyUpvoteDate, post.dailyUpvoteCount);
                 // Upvote mới → cộng điểm tác giả
-                if (!isSelfVote) await reputationService.award(authorId, 'post_upvoted', postId, userId);
-                if (!isSelfVote) await reputationService.award(authorId, 'post_upvoted');
+                if (!isSelfVote) await awardRep(authorId, 'post_upvoted', postId, userId);
             }
         } else if (voteType === 'downvote') {
             if (hasDownvoted) {
                 await postRepository.removeDownvote(postId, userId);
                 applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', -1, post.dailyDownvoteDate, post.dailyDownvoteCount);
                 // Rút downvote → hoàn điểm tác giả và voter
-                if (!isSelfVote) await reputationService.award(authorId, 'post_downvote_removed', postId, userId);
-                await reputationService.award(userId, 'downvote_given_removed', postId, userId);
-                if (!isSelfVote) await reputationService.award(authorId, 'post_downvote_removed');
-                await reputationService.award(userId, 'downvote_given_removed');
+                if (!isSelfVote) await awardRep(authorId, 'post_downvote_removed', postId, userId);
+                await awardRep(userId, 'downvote_given_removed', postId, userId);
             } else {
                 if (hasUpvoted) {
                     await postRepository.removeUpvote(postId, userId);
                     applyDailyUpdate('dailyUpvoteCount', 'dailyUpvoteDate', -1, post.dailyUpvoteDate, post.dailyUpvoteCount);
                     // Rút upvote (do chuyển sang downvote) → trừ điểm tác giả
-                    if (!isSelfVote) await reputationService.award(authorId, 'post_upvote_removed', postId, userId);
-                    if (!isSelfVote) await reputationService.award(authorId, 'post_upvote_removed');
+                    if (!isSelfVote) await awardRep(authorId, 'post_upvote_removed', postId, userId);
                 }
                 await postRepository.addDownvote(postId, userId);
                 userVote = 'downvote';
                 applyDailyUpdate('dailyDownvoteCount', 'dailyDownvoteDate', 1, post.dailyDownvoteDate, post.dailyDownvoteCount);
                 // Downvote mới → trừ điểm tác giả + trừ điểm voter
-                if (!isSelfVote) await reputationService.award(authorId, 'post_downvoted', postId, userId);
-                await reputationService.award(userId, 'downvote_given', postId, userId);
-                if (!isSelfVote) await reputationService.award(authorId, 'post_downvoted');
-                await reputationService.award(userId, 'downvote_given');
+                if (!isSelfVote) await awardRep(authorId, 'post_downvoted', postId, userId);
+                await awardRep(userId, 'downvote_given', postId, userId);
             }
         }
 
         if (Object.keys(dailyUpdates).length > 0) await postRepository.updateDailyVoteStats(postId, dailyUpdates);
         const updatedPost = await postRepository.findById(postId);
-        return { postId: updatedPost._id, upvoteCount: updatedPost.upvotes.length, downvoteCount: updatedPost.downvotes.length, userVote };
+        return { 
+            postId: updatedPost._id, 
+            upvoteCount: updatedPost.upvotes.length, 
+            downvoteCount: updatedPost.downvotes.length, 
+            userVote,
+            // Trả về thêm thông tin cho Free Votes
+            showFreeVotesModal,
+            weeklyFreeVotesUsed: voter.weeklyFreeVotesUsed,
+            weeklyFreeVotesLimit: 5,
+            userReputation: voter.reputation
+        };
     }
 
     async toggleReaction(postId, userId, reactionType) {

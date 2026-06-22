@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 export const flagTypeEnum = [
   'spam',
@@ -10,6 +10,10 @@ export const flagTypeEnum = [
   'duplicate',
   'very_low_quality',
   'moderator_attention',
+  'copyright_infringement',
+  'false_info_scam',
+  'adult_content',
+  'dont_want_to_see',
 ];
 
 export const flagStatusEnum = [
@@ -52,8 +56,19 @@ const reportTicketSchema = new mongoose.Schema({
   post: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Post',
-    required: true,
+    required: false,
     index: true,
+  },
+  comment: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Comment',
+    required: false,
+    index: true,
+  },
+  commentContentSnapshot: {
+    type: String,
+    trim: true,
+    default: '',
   },
   reporter: {
     type: mongoose.Schema.Types.ObjectId,
@@ -93,7 +108,14 @@ const reportTicketSchema = new mongoose.Schema({
 });
 
 reportTicketSchema.index({ reporter: 1, createdAt: -1 });
-reportTicketSchema.index({ post: 1, reporter: 1, flagType: 1 }, { unique: true });
+reportTicketSchema.index({ post: 1, reporter: 1, flagType: 1 }, {
+  unique: true,
+  partialFilterExpression: { comment: { $exists: false } }
+});
+reportTicketSchema.index({ comment: 1, reporter: 1, flagType: 1 }, {
+  unique: true,
+  partialFilterExpression: { comment: { $exists: true } }
+});
 
 const ReportTicket = mongoose.model('ReportTicket', reportTicketSchema);
 

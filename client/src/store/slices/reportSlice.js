@@ -1,4 +1,4 @@
-﻿import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import {
   adminUpdateFlagStatusApi,
   createReportTicketApi,
@@ -32,9 +32,9 @@ const extractMessage = (error, fallback) => error?.response?.data?.message || fa
 
 export const createReportTicketThunk = createAsyncThunk(
   'reports/create',
-  async ({ postId, flagType, details }, { rejectWithValue }) => {
+  async ({ postId, commentId, flagType, details }, { rejectWithValue }) => {
     try {
-      const response = await createReportTicketApi({ postId, flagType, details });
+      const response = await createReportTicketApi({ postId, commentId, flagType, details });
       return response.data;
     } catch (error) {
       return rejectWithValue(extractMessage(error, 'Không thể gửi cờ báo cáo.'));

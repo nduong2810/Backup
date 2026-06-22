@@ -64,7 +64,13 @@ class AdminController {
                     { $group: { _id: null, totalAmount: { $sum: '$amount' }, count: { $sum: 1 } } },
                 ]),
                 DonationTransaction.countDocuments({ status: 'pending_review', paymentMethod: 'cod' }),
-                ReportTicket.countDocuments({ status: { $in: ['submitted', 'received', 'in_review'] } }),
+                ReportTicket.countDocuments({
+                    $or: [
+                        { status: 'received' },
+                        { status: 'in_review' },
+                        { status: 'submitted', createdAt: { $lte: new Date(Date.now() - 30 * 60 * 1000) } }
+                    ]
+                }),
             ]);
 
             const totalDonationAmount = completedDonationsAgg[0]?.totalAmount || 0;
@@ -139,7 +145,13 @@ class AdminController {
             });
             const postsWithoutCommentsCount = Math.max(0, totalPosts - postsWithCommentsCount);
 
-            const rawRecentFlags = await ReportTicket.find({})
+            const bufferLimit = new Date(Date.now() - 30 * 60 * 1000);
+            const rawRecentFlags = await ReportTicket.find({
+                $or: [
+                    { status: { $ne: 'submitted' } },
+                    { status: 'submitted', createdAt: { $lte: bufferLimit } }
+                ]
+            })
                 .sort({ createdAt: -1 })
                 .limit(5)
                 .populate('reporter', 'fullName email')

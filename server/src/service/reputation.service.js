@@ -23,7 +23,24 @@ export const getTodayStart = () => {
         0, 0, 0, 0
     );
     // Trừ lại 7 tiếng để ra mốc thời gian UTC tương ứng với 00:00:00 VN
-    return new Date(vnStartUtc - 7 * 60 * 60 * 1000);
+};
+
+export const getThisWeekStart = () => {
+    const now = new Date();
+    // Cộng 7 tiếng để ra giờ VN
+    const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const day = vnTime.getUTCDay(); // 0: Chủ Nhật, 1: Thứ Hai, ..., 6: Thứ Bảy
+    const diffToMonday = day === 0 ? 6 : day - 1;
+    
+    // Tạo mốc 00:00:00 Thứ Hai đầu tuần VN bằng UTC
+    const vnWeekStartUtc = Date.UTC(
+        vnTime.getUTCFullYear(),
+        vnTime.getUTCMonth(),
+        vnTime.getUTCDate() - diffToMonday,
+        0, 0, 0, 0
+    );
+    // Trừ lại 7 tiếng để ra mốc thời gian UTC tương ứng với 00:00:00 VN của Thứ Hai
+    return new Date(vnWeekStartUtc - 7 * 60 * 60 * 1000);
 };
 
 // ====================================================================
@@ -61,9 +78,13 @@ const DELTA_MAP = {
     downvote_given:        -1,
     donate_received:       +20,
     post_deleted_by_report: -10,
+    comment_deleted_by_report: -5,
     post_upvote_removed:   -10,
     post_downvote_removed: +2,
     downvote_given_removed: +1,
+    report_submitted:      -1,
+    report_helpful:        +2,
+    report_retracted:      +1,
 };
 
 const DAILY_CAP_REASONS = new Set([
@@ -212,7 +233,11 @@ class ReputationService {
                 }
 
                 // Tinh chỉnh tiêu đề hiển thị trong lịch sử cho trực quan
-                if (reason === 'post_upvoted' && effectiveDelta === 0) {
+                if (reason === 'comment_deleted_by_report') {
+                    title = `Bình luận bị xóa do vi phạm: ${title}`;
+                } else if (reason === 'post_deleted_by_report') {
+                    title = `Bài viết bị xóa do vi phạm: ${title}`;
+                } else if (reason === 'post_upvoted' && effectiveDelta === 0) {
                     title = `[Đạt giới hạn ngày] ${title}`;
                 } else if (reason === 'post_upvote_removed') {
                     title = `Huỷ upvote: ${title}`;
@@ -222,6 +247,12 @@ class ReputationService {
                     title = `Hoàn điểm downvote đã gửi`;
                 } else if (reason === 'downvote_given') {
                     title = `Đã gửi downvote cho bài viết`;
+                } else if (reason === 'report_submitted') {
+                    title = `Gửi báo cáo vi phạm: ${title}`;
+                } else if (reason === 'report_helpful') {
+                    title = `Báo cáo vi phạm hợp lệ (thưởng uy tín): ${title}`;
+                } else if (reason === 'report_retracted') {
+                    title = `Hoàn điểm gửi báo cáo (đã rút cờ): ${title}`;
                 }
 
                 await ReputationHistory.create({

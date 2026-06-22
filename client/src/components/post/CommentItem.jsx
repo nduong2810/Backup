@@ -42,6 +42,7 @@ export default function CommentItem({
   onDeleteComment,
   postStatus = 'active',
   onCommentUpdated,
+  onReportComment,
 }) {
   const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
@@ -158,6 +159,7 @@ export default function CommentItem({
     setVideos((prev) => prev.filter((vid) => vid.id !== id));
   };
 
+  const isDeleted = comment.content === '[Bình luận bị xóa vì không phù hợp]';
   const isAuthor = comment.author?._id === postAuthorId;
   const isCommentOwner = currentUserId && comment.author?._id && String(currentUserId) === String(comment.author._id);
   const maxDepth = 3;
@@ -280,7 +282,7 @@ export default function CommentItem({
             </span>
           </div>
 
-          {isCommentOwner && (
+          {isAuthenticated && !isDeleted && (
             <div className="relative shrink-0" ref={menuRef}>
               <button
                 type="button"
@@ -293,31 +295,47 @@ export default function CommentItem({
 
               {showMenu && (
                 <div className="absolute right-0 mt-0.5 w-36 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
-                  {(postStatus === 'active' || postStatus === 'unresolved') && (
+                  {isCommentOwner ? (
+                    <>
+                      {(postStatus === 'active' || postStatus === 'unresolved') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            setEditContent(comment.content || '');
+                            setImages((comment.images || []).map((url, idx) => ({ id: `old-img-${idx}`, src: url, type: 'old' })));
+                            setVideos((comment.videos || []).map((url, idx) => ({ id: `old-vid-${idx}`, src: url, type: 'old' })));
+                            setMediaError('');
+                            setIsEditing(true);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 border-b border-slate-100 whitespace-nowrap"
+                        >
+                          <span className="material-symbols-outlined text-base text-slate-500">edit</span>
+                          Sửa bình luận
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { setShowMenu(false); setShowConfirm(true); }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 whitespace-nowrap"
+                      >
+                        <span className="material-symbols-outlined text-base">delete</span>
+                        Xóa bình luận
+                      </button>
+                    </>
+                  ) : (
                     <button
                       type="button"
                       onClick={() => {
                         setShowMenu(false);
-                        setEditContent(comment.content || '');
-                        setImages((comment.images || []).map((url, idx) => ({ id: `old-img-${idx}`, src: url, type: 'old' })));
-                        setVideos((comment.videos || []).map((url, idx) => ({ id: `old-vid-${idx}`, src: url, type: 'old' })));
-                        setMediaError('');
-                        setIsEditing(true);
+                        onReportComment?.(comment);
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 border-b border-slate-100 whitespace-nowrap"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 whitespace-nowrap"
                     >
-                      <span className="material-symbols-outlined text-base text-slate-500">edit</span>
-                      Sửa bình luận
+                      <span className="material-symbols-outlined text-base text-rose-500 font-semibold">report</span>
+                      Báo cáo bình luận
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => { setShowMenu(false); setShowConfirm(true); }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 whitespace-nowrap"
-                  >
-                    <span className="material-symbols-outlined text-base">delete</span>
-                    Xóa bình luận
-                  </button>
                 </div>
               )}
             </div>
@@ -439,7 +457,7 @@ export default function CommentItem({
             </div>
           </form>
         ) : (
-          <p className="text-on-surface font-body-sm text-body-sm leading-relaxed whitespace-pre-wrap">
+          <p className={isDeleted ? "text-outline font-body-sm text-body-sm leading-relaxed italic" : "text-on-surface font-body-sm text-body-sm leading-relaxed whitespace-pre-wrap"}>
             {comment.content}
           </p>
         )}
@@ -472,91 +490,93 @@ export default function CommentItem({
           )
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {postType === 'question' ? (
-            <>
-              <button
-                type="button"
-                onClick={() => handleReact('like')}
-                disabled={isReacting}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  hasLiked
-                    ? 'border-primary/30 bg-primary-fixed text-primary'
-                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30 hover:text-primary'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
-                Upvote {likeCount}
-              </button>
+        {!isDeleted && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {postType === 'question' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleReact('like')}
+                  disabled={isReacting}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    hasLiked
+                      ? 'border-primary/30 bg-primary-fixed text-primary'
+                      : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30 hover:text-primary'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
+                  Upvote {likeCount}
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleReact('dislike')}
-                disabled={isReacting}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  hasDisliked
-                    ? 'border-error/30 bg-error-container text-error'
-                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30 hover:text-error'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
-                Downvote {dislikeCount}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => handleReact('like')}
-                disabled={isReacting}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  hasLiked
-                    ? 'border-blue-300 bg-blue-50 text-blue-700'
-                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-blue-50 hover:text-blue-700'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">thumb_up</span>
-                Thích {likeCount}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleReact('dislike')}
+                  disabled={isReacting}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    hasDisliked
+                      ? 'border-error/30 bg-error-container text-error'
+                      : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30 hover:text-error'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                  Downvote {dislikeCount}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleReact('like')}
+                  disabled={isReacting}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    hasLiked
+                      ? 'border-blue-300 bg-blue-50 text-blue-700'
+                      : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-blue-50 hover:text-blue-700'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">thumb_up</span>
+                  Thích {likeCount}
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleReact('dislike')}
-                disabled={isReacting}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  hasDisliked
-                    ? 'border-rose-300 bg-rose-50 text-rose-700'
-                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-rose-50 hover:text-rose-700'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">thumb_down</span>
-                Không thích {dislikeCount}
-              </button>
-            </>
-          )}
+                <button
+                  type="button"
+                  onClick={() => handleReact('dislike')}
+                  disabled={isReacting}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    hasDisliked
+                      ? 'border-rose-300 bg-rose-50 text-rose-700'
+                      : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-rose-50 hover:text-rose-700'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">thumb_down</span>
+                  Không thích {dislikeCount}
+                </button>
+              </>
+            )}
 
-          <button
-            type="button"
-            onClick={handleStartReply}
-            className="inline-flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container-low px-3 py-1.5 text-xs font-semibold text-secondary transition hover:bg-primary-fixed/30 hover:text-primary"
-          >
-            <span className="material-symbols-outlined text-[16px]">reply</span>
-            Bình luận
-          </button>
-
-          {depth === 0 && typeof onDonate === 'function' && comment.author?._id && (
             <button
               type="button"
-              onClick={() => onDonate(comment)}
-              className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:border-amber-400 hover:bg-amber-100"
+              onClick={handleStartReply}
+              className="inline-flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container-low px-3 py-1.5 text-xs font-semibold text-secondary transition hover:bg-primary-fixed/30 hover:text-primary"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10.5 2.5a1 1 0 00-1 0l-6 3.5a1 1 0 00-.5.866V13.5a1 1 0 00.5.866l6 3.5a1 1 0 001 0l6-3.5a1 1 0 00.5-.866V6.866a1 1 0 00-.5-.866l-6-3.5zM9 6.5h2v2H9v-2zm0 4h2v5H9v-5z" />
-              </svg>
-              Ủng hộ tác giả
+              <span className="material-symbols-outlined text-[16px]">reply</span>
+              Bình luận
             </button>
-          )}
-        </div>
+
+            {depth === 0 && typeof onDonate === 'function' && comment.author?._id && (
+              <button
+                type="button"
+                onClick={() => onDonate(comment)}
+                className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:border-amber-400 hover:bg-amber-100"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10.5 2.5a1 1 0 00-1 0l-6 3.5a1 1 0 00-.5.866V13.5a1 1 0 00.5.866l6 3.5a1 1 0 001 0l6-3.5a1 1 0 00.5-.866V6.866a1 1 0 00-.5-.866l-6-3.5zM9 6.5h2v2H9v-2zm0 4h2v5H9v-5z" />
+                </svg>
+                Ủng hộ tác giả
+              </button>
+            )}
+          </div>
+        )}
 
         {isReplying && (
           <form onSubmit={handleSubmitReply} className="mt-3 rounded-xl border border-outline-variant bg-surface-container-low p-3">
@@ -619,6 +639,7 @@ export default function CommentItem({
                 onDeleteComment={onDeleteComment}
                 postStatus={postStatus}
                 onCommentUpdated={onCommentUpdated}
+                onReportComment={onReportComment}
               />
             ))}
           </div>

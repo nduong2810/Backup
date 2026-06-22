@@ -33,6 +33,12 @@ async function seed() {
             ReputationHistory.deleteMany({}),
             SystemSetting.deleteMany({})
         ]);
+        try {
+            await ReportTicket.collection.dropIndex('post_1_reporter_1_flagType_1');
+            console.log('Dropped old ReportTicket compound unique index.');
+        } catch (e) {
+            console.log('Old ReportTicket index not found or already dropped.');
+        }
         console.log('Collections cleared.');
 
         // 1. Seed System Settings

@@ -6,6 +6,8 @@ import SaveIconButton from '../ui/SaveIconButton';
 import { fetchCollectionsThunk, savePostToCollectionThunk, toggleSaveThunk } from '../../store/slices/savedSlice';
 import { updatePostVoteInList, updatePostReactionInList } from '../../store/slices/postSlice';
 import { useToast } from '../../context/ToastContext';
+import { updateUser } from '../../store/slices/loginSlice';
+import FreeVotesIntroModal from '../post/FreeVotesIntroModal';
 
 const PER_PAGE_OPTIONS = [15, 30, 50];
 
@@ -30,11 +32,12 @@ const getPlainText = (value) => {
     return String(value).replace(/<[^>]+>/g, '').trim();
 };
 
-const SmallPostActionButton = ({ active, disabled, onClick, icon, label, count, activeClass, hoverClass }) => (
+const SmallPostActionButton = ({ active, disabled, onClick, icon, label, count, activeClass, hoverClass, title }) => (
     <button
         type="button"
         onClick={onClick}
         disabled={disabled}
+        title={title}
         className={`inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-semibold leading-none transition disabled:cursor-not-allowed disabled:opacity-60 ${active ? activeClass : `border-outline-variant bg-surface-container-lowest text-secondary ${hoverClass}`
             }`}
     >
@@ -52,6 +55,7 @@ const QuestionCard = ({
     onReactPost,
     votingPostId,
     reactingPostId,
+    currentUser,
 }) => {
     const answerCount = question.answerCount ?? 0;
     const upvoteCount = question.upvoteCount ?? question.upvotes ?? 0;
@@ -136,14 +140,20 @@ const QuestionCard = ({
                                     />
                                     <SmallPostActionButton
                                         active={userVote === 'downvote'}
-                                        disabled={isVoting}
+                                        disabled={isVoting || (currentUser && currentUser.reputationInfo && currentUser.reputationInfo.reputation >= 15 && currentUser.reputationInfo.reputation < 100)}
                                         onClick={() => onVotePost?.(question._id, 'downvote')}
                                         icon="arrow_downward"
                                         label="Downvote"
                                         count={downvoteCount}
                                         activeClass="border-error/30 bg-error-container text-error"
                                         hoverClass="hover:bg-error-container/30 hover:text-error"
+                                        title={currentUser && currentUser.reputationInfo && currentUser.reputationInfo.reputation >= 15 && currentUser.reputationInfo.reputation < 100 ? "Bạn cần tối thiểu 100 điểm uy tín để Downvote" : "Bình chọn xuống"}
                                     />
+                                    {currentUser && currentUser.reputationInfo && currentUser.reputationInfo.reputation < 15 && (
+                                        <span className="text-[10px] text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-full font-bold select-none tabular-nums" title="Lượt bình chọn miễn phí hàng tuần còn lại">
+                                            Free: {Math.max(0, (currentUser.reputationInfo.weeklyFreeVotesLimit || 5) - (currentUser.reputationInfo.weeklyFreeVotesUsed || 0))}/5
+                                        </span>
+                                    )}
                                 </>
                             ) : (
                                 <>
@@ -324,6 +334,7 @@ const MainContent = () => {
     const [saveModalOpen, setSaveModalOpen] = useState(false);
     const [savePostId, setSavePostId] = useState(null);
     const [selectedCollectionId, setSelectedCollectionId] = useState('');
+    const [freeVotesModalOpen, setFreeVotesModalOpen] = useState(false);
 
     const totalTrendingPages = useMemo(() => trending.length ? Math.ceil(trending.length / pageSize) : 0, [trending.length, pageSize]);
     const savedIdSet = useMemo(() => new Set(savedIds), [savedIds]);
@@ -344,14 +355,36 @@ const MainContent = () => {
         try {
             const response = await votePost(postId, voteType);
             const data = response?.data?.data || {};
-            dispatch(updatePostVoteInList({ postId, upvoteCount: data.upvoteCount ?? 0, downvoteCount: data.downvoteCount ?? 0, userVote: data.userVote ?? null }));
+            dispatch(updatePostVoteInList({ 
+                postId, 
+                upvoteCount: data.upvoteCount ?? 0, 
+                downvoteCount: data.downvoteCount ?? 0, 
+                userVote: data.userVote ?? null 
+            }));
+
+            // Đồng bộ dữ liệu Free Votes vào Redux Store (nếu được trả về từ API)
+            if (data.weeklyFreeVotesUsed !== undefined) {
+                dispatch(updateUser({
+                    reputationInfo: {
+                        ...(currentUser?.reputationInfo || {}),
+                        weeklyFreeVotesUsed: data.weeklyFreeVotesUsed,
+                        weeklyFreeVotesLimit: data.weeklyFreeVotesLimit || 5,
+                        reputation: data.userReputation
+                    },
+                    reputation: data.userReputation
+                }));
+            }
+
+            // Hiển thị modal giới thiệu Free Votes nếu là lần đầu
+            if (data.showFreeVotesModal) {
+                setFreeVotesModalOpen(true);
+            }
         } catch (voteError) {
             toast.error(voteError?.response?.data?.message || 'Không thể upvote/downvote bài viết.');
         } finally {
             setVotingPostId('');
         }
     };
-
     const handleReactPost = async (postId, reactionType) => {
         if (!isAuthenticated) return navigate('/auth/login');
         if (isAdmin) { toast.warning('Quản trị viên không được phép thực hiện tương tác này.'); return; }
@@ -689,6 +722,12 @@ const MainContent = () => {
                     </div>
                 </div>
             )}
+
+            {/* Modal giới thiệu Free Votes cho tài khoản mới */}
+            <FreeVotesIntroModal 
+                isOpen={freeVotesModalOpen} 
+                onClose={() => setFreeVotesModalOpen(false)} 
+            />
         </main>
     );
 };

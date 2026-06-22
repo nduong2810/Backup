@@ -38,15 +38,26 @@ export default function ReportHistoryPage() {
   const { tickets, loadingTickets, ticketsErrorMessage, actionLoadingById } = useSelector((state) => state.reports);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+  const [activeTab, setActiveTab] = useState('post'); // 'post' or 'comment'
 
   useEffect(() => {
     dispatch(fetchMyReportTicketsThunk());
   }, [dispatch]);
 
+  const filteredTickets = useMemo(() => {
+    return tickets.filter((ticket) => {
+      if (activeTab === 'post') {
+        return !ticket.comment;
+      } else {
+        return !!ticket.comment;
+      }
+    });
+  }, [tickets, activeTab]);
+
   const groupedByPost = useMemo(() => {
     const map = new Map();
 
-    for (const ticket of tickets) {
+    for (const ticket of filteredTickets) {
       const postId = ticket.post?._id || `unknown-${ticket._id}`;
       if (!map.has(postId)) {
         map.set(postId, {
@@ -59,7 +70,7 @@ export default function ReportHistoryPage() {
     }
 
     return Array.from(map.values());
-  }, [tickets]);
+  }, [filteredTickets]);
 
   const totalPages = Math.max(1, Math.ceil(groupedByPost.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
@@ -82,12 +93,38 @@ export default function ReportHistoryPage() {
       <h1 className="text-2xl font-bold text-slate-900">Lịch sử cờ báo cáo</h1>
       <p className="mt-2 text-sm text-slate-600">Theo dõi trạng thái xử lý các cờ bạn đã gửi.</p>
 
+      {/* Tab Switcher */}
+      <div className="mt-6 flex border-b border-slate-200">
+        <button
+          type="button"
+          onClick={() => { setActiveTab('post'); setCurrentPage(1); }}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'post'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          Báo cáo Bài viết
+        </button>
+        <button
+          type="button"
+          onClick={() => { setActiveTab('comment'); setCurrentPage(1); }}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'comment'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          Báo cáo Bình luận
+        </button>
+      </div>
+
       {loadingTickets && <p className="mt-6 text-slate-600">Đang tải dữ liệu...</p>}
       {ticketsErrorMessage && <p className="mt-4 text-sm text-red-600">{ticketsErrorMessage}</p>}
 
-      {!loadingTickets && tickets.length === 0 && (
+      {!loadingTickets && filteredTickets.length === 0 && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 text-slate-600">
-          Bạn chưa có cờ báo cáo nào.
+          {activeTab === 'post' ? 'Bạn chưa có cờ báo cáo bài viết nào.' : 'Bạn chưa có cờ báo cáo bình luận nào.'}
         </div>
       )}
 
@@ -125,18 +162,46 @@ export default function ReportHistoryPage() {
                       </span>
                     </div>
 
-                    {ticket.details && <p className="mt-1 text-sm text-slate-700"><strong>Mô tả:</strong> {ticket.details}</p>}
+                     {ticket.comment && (
+                      <div className="mt-2 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-600">
+                        <p className="font-semibold text-xs text-slate-400 uppercase tracking-wider mb-1">Nội dung bình luận bị báo cáo:</p>
+                        <p className="italic">"{ticket.commentContentSnapshot || ticket.comment.content || 'Bình luận đã bị xóa'}"</p>
+                        {ticket.comment.author && (
+                          <p className="mt-1 text-xs text-slate-400">
+                            Tác giả: {ticket.comment.author.fullName}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {ticket.details && <p className="mt-2 text-sm text-slate-700"><strong>Mô tả:</strong> {ticket.details}</p>}
                     <p className="mt-1 text-sm text-slate-700">
                       <strong>Kết quả:</strong> {outcomeLabelMap[ticket.outcome] || ticket.outcome}
                     </p>
 
                     <ol className="mt-3 space-y-2 border-l-2 border-slate-200 pl-4">
-                      {(ticket.history || []).map((step, idx) => (
-                        <li key={`${ticket._id}-${idx}`} className="text-sm text-slate-700">
-                          <p className="font-medium">{step.note}</p>
-                          <p className="text-xs text-slate-500">{new Date(step.createdAt).toLocaleString('vi-VN')}</p>
-                        </li>
-                      ))}
+                      {(ticket.history || []).map((step, idx) => {
+                        let rolePrefix = '';
+                        if (step.actorRole === 'admin') {
+                          rolePrefix = '[Quản trị viên] ';
+                        } else if (step.actorRole === 'system') {
+                          rolePrefix = '[Hệ thống] ';
+                        } else if (step.actorRole === 'user') {
+                          rolePrefix = '[Người báo cáo] ';
+                        }
+
+                        return (
+                          <li key={`${ticket._id}-${idx}`} className="text-sm text-slate-700">
+                            <p className="font-medium">
+                              {rolePrefix && (
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-450 mr-1">{rolePrefix}</span>
+                              )}
+                              {step.note}
+                            </p>
+                            <p className="text-xs text-slate-500">{new Date(step.createdAt).toLocaleString('vi-VN')}</p>
+                          </li>
+                        );
+                      })}
                     </ol>
 
                     {ticket.retractable && (
@@ -157,10 +222,10 @@ export default function ReportHistoryPage() {
         ))}
       </div>
 
-      {!loadingTickets && groupedByPost.length > 0 && (
+      {!loadingTickets && filteredTickets.length > 0 && (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
           <p className="text-sm text-slate-600">
-            Trang {safePage}/{totalPages} • {groupedByPost.length} bài đã báo cáo
+            Trang {safePage}/{totalPages} • {groupedByPost.length} {activeTab === 'post' ? 'bài đã báo cáo' : 'bài viết có bình luận bị báo cáo'}
           </p>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">

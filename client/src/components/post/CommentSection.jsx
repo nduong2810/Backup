@@ -22,6 +22,7 @@ export default function CommentSection({
   onDeleteComment,
   postStatus = 'active',
   onCommentUpdated,
+  onReportComment,
 }) {
   const [content, setContent] = useState('');
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -296,6 +297,7 @@ export default function CommentSection({
               onDeleteComment={onDeleteComment}
               postStatus={postStatus}
               onCommentUpdated={onCommentUpdated}
+              onReportComment={onReportComment}
             />
           ))}
         </div>

@@ -1,14 +1,14 @@
-﻿import reportService from '../service/report.service.js';
+import reportService from '../service/report.service.js';
 
 class ReportController {
   async createTicket(req, res) {
     try {
-      const { postId, flagType, details = '' } = req.body;
-      if (!postId || !flagType) {
-        return res.status(400).json({ success: false, message: 'postId và flagType là bắt buộc.' });
+      const { postId, commentId, flagType, details = '' } = req.body;
+      if ((!postId && !commentId) || !flagType) {
+        return res.status(400).json({ success: false, message: 'postId hoặc commentId, cùng với flagType là bắt buộc.' });
       }
 
-      const ticket = await reportService.createReportTicket(postId, req.user.userId, flagType, details.trim());
+      const ticket = await reportService.createReportTicket({ postId, commentId, flagType, details: details.trim() }, req.user.userId);
       return res.status(201).json({ success: true, message: 'Gửi cờ báo cáo thành công.', data: ticket });
     } catch (error) {
       return res.status(error.status || 500).json({ success: false, message: error.message || 'Lỗi server.' });

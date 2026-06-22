@@ -7,6 +7,9 @@ import VoteSidebar from '../../components/post/VoteSidebar';
 import PostContent from '../../components/post/PostContent';
 import CommentSection from '../../components/post/CommentSection';
 import RelatedPosts from '../../components/post/RelatedPosts';
+import ReportCommentModal from '../../components/post/ReportCommentModal';
+import ReportPostModal from '../../components/post/ReportPostModal';
+import FreeVotesIntroModal from '../../components/post/FreeVotesIntroModal';
 import {
   clearReportCreateMessages,
   createReportTicketThunk,
@@ -82,11 +85,12 @@ export default function PostDetailPage() {
     loadingOwnerSummary,
     ownerSummaryErrorMessage,
   } = useSelector((state) => state.reports);
-  const [flagType, setFlagType] = useState('');
-  const [details, setDetails] = useState('');
   const [showOwnerSummary, setShowOwnerSummary] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState('');
+  const [reportCommentModalOpen, setReportCommentModalOpen] = useState(false);
+  const [reportingComment, setReportingComment] = useState(null);
+  const [reportPostModalOpen, setReportPostModalOpen] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -118,6 +122,8 @@ export default function PostDetailPage() {
     relatedPosts,
     deleteComment,
     refreshPost,
+    showFreeVotesModal,
+    setShowFreeVotesModal,
   } = usePostDetail(id);
 
   const minReportReputation = 15;
@@ -154,8 +160,7 @@ export default function PostDetailPage() {
   if (!post) return null;
   const isPostOwner = user?._id && post?.author?._id && user._id === post.author._id;
 
-  const handleSubmitReport = async (event) => {
-    event.preventDefault();
+  const handleSubmitPostReport = async (selectedFlagType) => {
     if (!user?._id) {
       toast.warning('Bạn cần đăng nhập để gửi cờ báo cáo.');
       return;
@@ -164,13 +169,39 @@ export default function PostDetailPage() {
       toast.warning(`Bạn cần tối thiểu ${minReportReputation} điểm uy tín để gửi cờ báo cáo.`);
       return;
     }
-    if (!flagType) return;
-
-    const action = await dispatch(createReportTicketThunk({ postId: id, flagType, details: details.trim() }));
+    const action = await dispatch(createReportTicketThunk({ postId: id, flagType: selectedFlagType, details: '' }));
     if (createReportTicketThunk.fulfilled.match(action)) {
-      setFlagType('');
-      setDetails('');
+      toast.success('Báo cáo bài viết thành công!');
+    } else {
+      toast.error(action.payload || 'Báo cáo bài viết thất bại.');
     }
+    setReportPostModalOpen(false);
+  };
+
+  const handleReportComment = (comment) => {
+    if (!isAuthenticated) {
+      toast.warning('Bạn cần đăng nhập để gửi báo cáo bình luận.');
+      navigate('/auth/login');
+      return;
+    }
+    setReportingComment(comment);
+    setReportCommentModalOpen(true);
+  };
+
+  const handleSubmitCommentReport = async (selectedFlagType) => {
+    if (!reportingComment) return;
+    const action = await dispatch(createReportTicketThunk({
+      commentId: reportingComment._id,
+      flagType: selectedFlagType,
+      details: ''
+    }));
+    if (createReportTicketThunk.fulfilled.match(action)) {
+      toast.success('Báo cáo bình luận thành công!');
+    } else {
+      toast.error(action.payload || 'Báo cáo bình luận thất bại.');
+    }
+    setReportCommentModalOpen(false);
+    setReportingComment(null);
   };
 
   const isSaved = savedIds.includes(post._id);
@@ -264,7 +295,16 @@ export default function PostDetailPage() {
       <div className="flex gap-4 sm:gap-6">
         {post.postType === 'question' && (
           <div className="hidden sm:block">
-            <VoteSidebar upvoteCount={upvoteCount} downvoteCount={downvoteCount} userVote={userVote} onVote={handleVote} loading={voteLoading} />
+            <VoteSidebar 
+              upvoteCount={upvoteCount} 
+              downvoteCount={downvoteCount} 
+              userVote={userVote} 
+              onVote={handleVote} 
+              loading={voteLoading} 
+              userReputation={userReputation}
+              weeklyFreeVotesUsed={user?.reputationInfo?.weeklyFreeVotesUsed || 0}
+              weeklyFreeVotesLimit={user?.reputationInfo?.weeklyFreeVotesLimit || 5}
+            />
           </div>
         )}
 
@@ -280,6 +320,9 @@ export default function PostDetailPage() {
           onPostReaction={requireLoginOrReact}
           currentUserId={user?._id || user?.id || ''}
           onPostUpdated={refreshPost}
+          isAuthenticated={isAuthenticated}
+          userReputation={userReputation}
+          onReportPost={() => setReportPostModalOpen(true)}
         />
       </div>
 
@@ -296,12 +339,18 @@ export default function PostDetailPage() {
           <span className="text-lg font-bold text-on-surface">{upvoteCount - downvoteCount}</span>
           <button
             onClick={() => handleVote('downvote')}
-            disabled={voteLoading}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'downvote' ? 'border border-error/30 bg-error-container text-error' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'}`}
+            disabled={voteLoading || (userReputation !== undefined && userReputation >= 15 && userReputation < 100)}
+            title={(userReputation !== undefined && userReputation >= 15 && userReputation < 100) ? 'Bạn cần tối thiểu 100 điểm uy tín để Downvote' : 'Bình chọn xuống'}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'downvote' ? 'border border-error/30 bg-error-container text-error' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'} ${(userReputation !== undefined && userReputation >= 15 && userReputation < 100) ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 20l8-8h-5V4H9v8H4z" /></svg>
             {downvoteCount}
           </button>
+          {userReputation !== undefined && userReputation < 15 && (
+            <span className="text-[10px] text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-full font-bold select-none tabular-nums" title="Lượt bình chọn miễn phí hàng tuần còn lại">
+              Free: {Math.max(0, (user?.reputationInfo?.weeklyFreeVotesLimit || 5) - (user?.reputationInfo?.weeklyFreeVotesUsed || 0))}/5
+            </span>
+          )}
         </div>
       )}
 
@@ -355,61 +404,12 @@ export default function PostDetailPage() {
         onDeleteComment={deleteComment}
         postStatus={post.status}
         onCommentUpdated={refreshPost}
+        onReportComment={handleReportComment}
       />
 
       <RelatedPosts posts={relatedPosts} />
 
-      <section className="mt-8 rounded-2xl border border-rose-200 bg-rose-50/60 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-semibold text-rose-900">Gắn cờ bài viết</h3>
-            <p className="mt-1 text-sm text-rose-800">Chọn lý do gắn cờ để cộng đồng và admin xử lý.</p>
-          </div>
-          <button type="button" onClick={() => navigate('/reports/history')} className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-medium text-rose-800 hover:bg-rose-100">
-            Lịch sử cờ báo cáo
-          </button>
-        </div>
 
-        <form className="mt-4 space-y-3" onSubmit={handleSubmitReport}>
-          <select
-            value={flagType}
-            onChange={(e) => { dispatch(clearReportCreateMessages()); setFlagType(e.target.value); }}
-            disabled={isReportLockedByRep}
-            className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
-          >
-            <option value="">Chọn loại cờ...</option>
-            {flagOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-
-          <textarea
-            value={details}
-            onChange={(e) => setDetails(e.target.value)}
-            rows={3}
-            placeholder="Mô tả thêm (đặc biệt hữu ích khi chọn 'Cần moderator xem thủ công')"
-            disabled={isReportLockedByRep}
-            className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
-          />
-
-          <button type="submit" disabled={creating || !flagType || isReportLockedByRep} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60">
-            {creating ? 'Đang gửi...' : 'Gửi cờ báo cáo'}
-          </button>
-
-          {isReportLockedByRep && (
-            <div className="flex items-start gap-3 rounded-xl border border-rose-200/80 bg-gradient-to-r from-rose-50/90 to-red-50/50 p-4 text-rose-900 shadow-sm backdrop-blur-sm">
-              <span className="material-symbols-outlined text-rose-500 shrink-0 text-xl mt-0.5">shield_lock</span>
-              <div className="text-sm leading-relaxed">
-                <p className="font-bold text-rose-800">Hạn chế quyền báo cáo</p>
-                <p className="mt-0.5 text-rose-700">
-                  Bạn cần có tối thiểu <strong className="font-semibold text-rose-950">{minReportReputation} điểm uy tín</strong> để thực hiện báo cáo bài viết này. Điểm uy tín hiện tại của bạn là <strong className="font-semibold text-rose-950">{userReputation}</strong>.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {createSuccessMessage && <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><span className="mt-0.5 text-emerald-700">✓</span><p className="leading-5">{createSuccessMessage}</p></div>}
-          {createErrorMessage && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"><span className="mt-0.5 text-rose-700">!</span><p className="leading-5">{createErrorMessage}</p></div>}
-        </form>
-      </section>
 
       {isPostOwner && (
         <section className="mt-6 rounded-2xl border border-blue-200 bg-blue-50/70 p-5">
@@ -473,6 +473,24 @@ export default function PostDetailPage() {
           </div>
         </div>
       )}
+
+      <ReportCommentModal
+        isOpen={reportCommentModalOpen}
+        onClose={() => { setReportCommentModalOpen(false); setReportingComment(null); }}
+        comment={reportingComment}
+        onSubmitReport={handleSubmitCommentReport}
+      />
+
+      <ReportPostModal
+        isOpen={reportPostModalOpen}
+        onClose={() => setReportPostModalOpen(false)}
+        onSubmitReport={handleSubmitPostReport}
+      />
+
+      <FreeVotesIntroModal
+        isOpen={showFreeVotesModal}
+        onClose={() => setShowFreeVotesModal(false)}
+      />
     </div>
   );
 }

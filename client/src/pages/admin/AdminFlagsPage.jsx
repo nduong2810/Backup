@@ -6,15 +6,17 @@ const statusOptions = [
   { value: '', label: 'Tất cả trạng thái' },
   { value: 'submitted', label: 'Mới gửi' },
   { value: 'received', label: 'Đã tiếp nhận' },
-  { value: 'in_review', label: 'Đang xem xét' },
   { value: 'action_taken', label: 'Đã xử lý vi phạm' },
   { value: 'closed', label: 'Đã đóng (không xử lý)' },
   { value: 'retracted', label: 'Đã rút cờ' },
 ];
 
 const nextStatusOptionsByCurrent = {
-  received: [{ value: 'in_review', label: 'Đang xem xét' }],
-  in_review: [
+  submitted: [
+    { value: 'action_taken', label: 'Đã xử lý vi phạm' },
+    { value: 'closed', label: 'Đã đóng (không xử lý)' },
+  ],
+  received: [
     { value: 'action_taken', label: 'Đã xử lý vi phạm' },
     { value: 'closed', label: 'Đã đóng (không xử lý)' },
   ],
@@ -53,6 +55,10 @@ const flagTypeBadgeClassMap = {
   duplicate: 'border-indigo-200 bg-indigo-50 text-indigo-800',
   very_low_quality: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800',
   moderator_attention: 'border-blue-200 bg-blue-50 text-blue-800',
+  copyright_infringement: 'border-pink-200 bg-pink-50 text-pink-800',
+  false_info_scam: 'border-teal-200 bg-teal-50 text-teal-800',
+  adult_content: 'border-rose-350 bg-rose-50 text-rose-800',
+  dont_want_to_see: 'border-slate-200 bg-slate-100 text-slate-700',
 };
 
 const flagTypeOptions = [
@@ -66,6 +72,10 @@ const flagTypeOptions = [
   { value: 'duplicate', label: 'Trùng lặp' },
   { value: 'very_low_quality', label: 'Chất lượng thấp' },
   { value: 'moderator_attention', label: 'Cần moderator' },
+  { value: 'copyright_infringement', label: 'Vi phạm bản quyền' },
+  { value: 'false_info_scam', label: 'Sai sự thật/Lừa đảo' },
+  { value: 'adult_content', label: 'Nội dung nhạy cảm' },
+  { value: 'dont_want_to_see', label: 'Không muốn xem' },
 ];
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30];
@@ -97,15 +107,26 @@ export default function AdminFlagsPage({ embedded = false }) {
   const [nextStatusById, setNextStatusById] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+  const [activeTab, setActiveTab] = useState('post'); // 'post' or 'comment'
 
   useEffect(() => {
     dispatch(fetchAdminFlagsThunk({ status: statusFilter, flagType: flagTypeFilter }));
   }, [dispatch, statusFilter, flagTypeFilter]);
 
+  const filteredFlags = useMemo(() => {
+    return adminFlags.filter((ticket) => {
+      if (activeTab === 'post') {
+        return !ticket.comment;
+      } else {
+        return !!ticket.comment;
+      }
+    });
+  }, [adminFlags, activeTab]);
+
   const groupedByPost = useMemo(() => {
     const map = new Map();
 
-    for (const ticket of adminFlags) {
+    for (const ticket of filteredFlags) {
       const postId = ticket.post?._id || `unknown-${ticket._id}`;
       if (!map.has(postId)) {
         map.set(postId, {
@@ -118,9 +139,9 @@ export default function AdminFlagsPage({ embedded = false }) {
     }
 
     return Array.from(map.values());
-  }, [adminFlags]);
+  }, [filteredFlags]);
 
-  const total = useMemo(() => adminFlags.length, [adminFlags.length]);
+  const total = useMemo(() => filteredFlags.length, [filteredFlags.length]);
   const totalPages = Math.max(1, Math.ceil(groupedByPost.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
   const start = (safePage - 1) * pageSize;
@@ -144,6 +165,32 @@ export default function AdminFlagsPage({ embedded = false }) {
           <p className="mt-1 text-sm text-slate-600">Hàng đợi moderation dành cho quản trị viên.</p>
         </div>
         <p className="rounded-full border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700">Tổng: {total}</p>
+      </div>
+
+      {/* Tab Switcher */}
+      <div className="mt-6 flex border-b border-slate-200">
+        <button
+          type="button"
+          onClick={() => { setActiveTab('post'); setCurrentPage(1); }}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'post'
+              ? 'border-slate-900 text-slate-900 border-slate-900'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          Bài viết bị báo cáo
+        </button>
+        <button
+          type="button"
+          onClick={() => { setActiveTab('comment'); setCurrentPage(1); }}
+          className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'comment'
+              ? 'border-slate-900 text-slate-900 border-slate-900'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          Bình luận bị báo cáo
+        </button>
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-3">
@@ -195,7 +242,6 @@ export default function AdminFlagsPage({ embedded = false }) {
                 const nextStatus = nextStatusById[ticket._id] || fallbackNextStatus;
                 const note = noteById[ticket._id] || '';
                 const isFinalState = allowedNextStatuses.length === 0;
-                const isSubmittedWaiting = ticket.status === 'submitted';
 
                 return (
                   <div key={ticket._id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
@@ -226,10 +272,16 @@ export default function AdminFlagsPage({ embedded = false }) {
 
                     {ticket.details && <p className="mt-2 text-sm text-slate-700"><strong>Mô tả:</strong> {ticket.details}</p>}
 
-                    {isSubmittedWaiting && (
-                      <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                        Cờ mới gửi cần chờ đủ 30 phút để tự chuyển sang "Đã tiếp nhận", sau đó admin mới duyệt.
-                      </p>
+                    {ticket.comment && (
+                      <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3 text-sm text-slate-700">
+                        <p className="font-bold text-amber-900 flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-base">chat_bubble</span>
+                          Báo cáo bình luận của {ticket.comment.author?.fullName || 'N/A'}
+                        </p>
+                        <p className="mt-1 italic text-slate-600 bg-white border border-slate-100 rounded px-2 py-1.5 font-body-sm">
+                          "{ticket.commentContentSnapshot || ticket.comment.content}"
+                        </p>
+                      </div>
                     )}
 
                     <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[180px,1fr,auto]">
@@ -268,14 +320,16 @@ export default function AdminFlagsPage({ embedded = false }) {
         ))}
 
         {!loadingAdminFlags && groupedByPost.length === 0 && (
-          <div className="rounded-xl border border-slate-200 bg-white p-5 text-slate-600">Không có cờ nào theo bộ lọc hiện tại.</div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5 text-slate-600">
+            {activeTab === 'post' ? 'Không có cờ bài viết nào theo bộ lọc hiện tại.' : 'Không có cờ bình luận nào theo bộ lọc hiện tại.'}
+          </div>
         )}
       </div>
 
       {!loadingAdminFlags && groupedByPost.length > 0 && (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
           <p className="text-sm text-slate-600">
-            Trang {safePage}/{totalPages} • {groupedByPost.length} bài viết có cờ
+            Trang {safePage}/{totalPages} • {groupedByPost.length} {activeTab === 'post' ? 'bài viết có cờ' : 'bài viết có bình luận bị báo cáo'}
           </p>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
