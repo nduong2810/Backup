@@ -1,4 +1,33 @@
 import reportService from '../service/report.service.js';
+import notificationService from '../service/notification.service.js';
+
+const getId = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value?.toString === 'function') return value.toString();
+  return '';
+};
+
+const getDocId = (value) => getId(value?._id || value);
+
+const safeNotifyReportOutcome = async ({ ticket, adminId, note }) => {
+  try {
+    const reporterId = getDocId(ticket?.reporter);
+    const postId = getDocId(ticket?.post);
+    if (!reporterId || !postId || !adminId) return;
+
+    await notificationService.createReportOutcomeNotification({
+      reporterId,
+      adminId,
+      post: postId,
+      report: ticket,
+      status: ticket.status,
+      note,
+    });
+  } catch (error) {
+    console.error('[ReportController] create report outcome notification failed:', error.message || error);
+  }
+};
 
 class ReportController {
   async createTicket(req, res) {
@@ -62,6 +91,7 @@ class ReportController {
         return res.status(400).json({ success: false, message: 'nextStatus là bắt buộc.' });
       }
       const ticket = await reportService.adminTransition(req.params.ticketId, nextStatus, req.user.userId, note);
+      await safeNotifyReportOutcome({ ticket, adminId: req.user.userId, note });
       return res.status(200).json({ success: true, message: 'Cập nhật trạng thái thành công.', data: ticket });
     } catch (error) {
       return res.status(error.status || 500).json({ success: false, message: error.message || 'Lỗi server.' });

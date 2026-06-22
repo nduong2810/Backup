@@ -59,7 +59,7 @@ const projectDonationForAdmin = () => ({
   paymentMethod: 1,
   status: 1,
   note: 1,
-  billImage: 1,
+  hasBillImage: { $ne: [{ $ifNull: ['$billImage', ''] }, ''] },
   paymentUrl: 1,
   donorSnapshot: 1,
   authorSnapshot: 1,
@@ -148,10 +148,17 @@ class DonationRepository {
     page = 1,
     limit = 10,
     startDate = null,
+    fromDate = null,
+    toDate = null,
   } = {}) {
     const match = {};
     if (status) match.status = status;
     if (paymentMethod) match.paymentMethod = paymentMethod;
+
+    const createdAtFilter = {};
+    if (fromDate) createdAtFilter.$gte = fromDate;
+    if (toDate) createdAtFilter.$lte = toDate;
+    if (Object.keys(createdAtFilter).length > 0) match.createdAt = createdAtFilter;
 
     const searchText = String(keyword || '').trim();
     const searchMatch = searchText
@@ -178,7 +185,7 @@ class DonationRepository {
 
     if (searchMatch) basePipeline.push({ $match: searchMatch });
 
-    const timelineMatch = startDate ? [{ $match: { createdAt: { $gte: startDate } } }] : [];
+    const timelineMatch = (!fromDate && !toDate && startDate) ? [{ $match: { createdAt: { $gte: startDate } } }] : [];
 
     const [result] = await DonationTransaction.aggregate([
       ...basePipeline,

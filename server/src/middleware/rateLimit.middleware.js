@@ -6,7 +6,7 @@ export const loginLimiter = rateLimit({
     max: 15,                  // Tối đa 15 lần đăng nhập/15 phút
     message: { message: "Bạn đã thử đăng nhập quá nhiều lần. Vui lòng thử lại sau 15 phút." },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: false
 });
 
 // 2. Giới hạn đăng ký tài khoản (Register) - Tránh tạo tài khoản rác hàng loạt
@@ -15,7 +15,7 @@ export const registerLimiter = rateLimit({
     max: 10,                  // Tối đa 10 lần đăng ký/15 phút
     message: { message: "Quá nhiều yêu cầu đăng ký từ IP của bạn. Vui lòng thử lại sau 15 phút." },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: false
 });
 
 // 3. Giới hạn xác thực & gửi lại mã OTP (OTP)
@@ -24,7 +24,7 @@ export const otpLimiter = rateLimit({
     max: 15,                  // Tối đa 15 lần yêu cầu hoặc xác thực OTP/15 phút
     message: { message: "Quá nhiều yêu cầu gửi hoặc xác thực mã OTP. Vui lòng thử lại sau 15 phút." },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: false
 });
 
 // 4. Giới hạn đặt lại mật khẩu (Password Reset)
@@ -33,7 +33,7 @@ export const passwordResetLimiter = rateLimit({
     max: 10,                  // Tối đa 10 lần yêu cầu khôi phục/đặt lại mật khẩu/15 phút
     message: { message: "Quá nhiều yêu cầu khôi phục mật khẩu. Vui lòng thử lại sau 15 phút." },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: false
 });
 
 // 5. Giới hạn cập nhật thông tin cá nhân & đổi mật khẩu (Profile & Password Change)
@@ -42,7 +42,7 @@ export const profileUpdateLimiter = rateLimit({
     max: 30,                  // Tối đa 30 lần cập nhật/15 phút (thoải mái cho người dùng thao tác)
     message: { message: "Bạn đang thực hiện thay đổi thông tin quá nhanh. Vui lòng thử lại sau 15 phút." },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: false
 });
 
 // 6. Giới hạn Vote (Upvote/Downvote) - Nới lỏng nhẹ để trải nghiệm đọc tốt hơn
@@ -51,7 +51,7 @@ export const voteLimiter = rateLimit({
     max: 60,                    // Tối đa 60 lần vote/phút
     message: { message: "Bạn đang vote quá nhanh, vui lòng chờ." },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: false
 });
 
 // 7. Giới hạn tạo bài đăng mới (Post Creation) - Tránh spam bài đăng & quá tải upload media
@@ -60,25 +60,28 @@ export const postCreationLimiter = rateLimit({
     max: 10,                  // Tối đa 10 bài đăng/15 phút
     message: { message: "Bạn đang tạo bài viết quá nhanh. Vui lòng thử lại sau 15 phút." },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: false
 });
 
 // 8. Giới hạn bình luận (Comment Creation) - Tránh spam bình luận & upload media trong comment
 export const commentCreationLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 phút
     max: 30,                  // Tối đa 30 bình luận/15 phút
-    message: { message: "Bạn đang bình luận quá nhanh. Vui lòng thử lại sau 15 phút." },
+    message: { message: "Bạn đang bình luận quá nhanh, vui lòng thử lại sau 15 phút." },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: false
 });
 
-// 9. Giới hạn tạo giao dịch ủng hộ (Donation Creation) - Tránh spam gọi cổng thanh toán VNPay
+// 9. Giới hạn tạo giao dịch ủng hộ
+// Nới giới hạn để quá trình test chuyển khoản thủ công không bị lúc được lúc không do rate limit.
+// Các request lỗi validation/network không bị tính vào giới hạn.
 export const donationLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 phút
-    max: 10,                  // Tối đa 10 giao dịch/15 phút
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    skipFailedRequests: true,
     message: { message: "Bạn đã tạo quá nhiều yêu cầu ủng hộ. Vui lòng thử lại sau 15 phút." },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: false
 });
 
 // 10. Giới hạn gửi báo cáo (Report/Ticket Creation) - Tránh spam gửi ticket
@@ -87,7 +90,7 @@ export const reportLimiter = rateLimit({
     max: 10,                  // Tối đa 10 báo cáo/15 phút
     message: { message: "Bạn đã gửi quá nhiều báo cáo. Vui lòng thử lại sau 15 phút." },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: false
 });
 
 // 11. Giới hạn chung toàn hệ thống (Global API Rate Limiter) - Bảo vệ DDoS & Scraping
@@ -101,7 +104,5 @@ export const globalLimiter = rateLimit({
                req.originalUrl.startsWith('/api/health');
     },
     standardHeaders: true,
-    legacyHeaders: false,
+    legacyHeaders: false
 });
-
-

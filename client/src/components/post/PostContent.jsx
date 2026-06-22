@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import SaveIconButton from '../ui/SaveIconButton';
 import ReputationBadge from '../ui/ReputationBadge';
-import { softDeletePost } from '../../services/postService';
+import { softDeletePost, updatePostVisibilityApi } from '../../services/postService';
 import { useToast } from '../../context/ToastContext';
 import EditPostModal from './EditPostModal';
 import EditHistoryModal from '../common/EditHistoryModal';
@@ -40,6 +40,12 @@ const SmallReactionButton = ({ active, disabled, onClick, icon, label, count, ac
   </button>
 );
 
+const statusActorLabel = {
+  owner: 'Chủ bài',
+  admin: 'Admin',
+  system: 'Hệ thống',
+};
+
 export default function PostContent({
   post,
   commentCount,
@@ -51,6 +57,7 @@ export default function PostContent({
   reactionLoading = false,
   onPostReaction,
   currentUserId = '',
+  currentUserRole = '',
   onPostUpdated,
   isAuthenticated = false,
   userReputation = 1,
@@ -61,6 +68,10 @@ export default function PostContent({
   const [deleting, setDeleting] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [visibilityModalOpen, setVisibilityModalOpen] = useState(false);
+  const [visibilityTargetStatus, setVisibilityTargetStatus] = useState('');
+  const [visibilityReason, setVisibilityReason] = useState('');
+  const [visibilityLoading, setVisibilityLoading] = useState(false);
   const menuRef = useRef(null);
   
   const navigate = useNavigate();
@@ -79,10 +90,53 @@ export default function PostContent({
   if (!post) return null;
 
   const isOwner = currentUserId && post.author?._id && String(currentUserId) === String(post.author._id);
+  const isAdmin = currentUserRole === 'admin';
+  const canManageVisibility = isOwner || isAdmin;
+  const isClosed = post.status === 'resolved' || post.status === 'closed';
+  const canEditPost = isOwner && (post.status === 'active' || post.status === 'unresolved');
+  const canChangeVisibility = canManageVisibility && ['active', 'unresolved', 'resolved', 'closed'].includes(post.status);
+  const nextVisibilityStatus = isClosed ? 'unresolved' : 'resolved';
+  const nextVisibilityLabel = isClosed ? 'Mở lại bài viết' : 'Đóng bài viết';
 
   const handleDeleteClick = () => {
     setShowMenu(false);
     setShowConfirm(true);
+  };
+
+  const handleOpenVisibilityModal = () => {
+    setShowMenu(false);
+    setVisibilityTargetStatus(nextVisibilityStatus);
+    setVisibilityReason('');
+    setVisibilityModalOpen(true);
+  };
+
+  const handleConfirmVisibility = async () => {
+    const reason = visibilityReason.trim();
+    if (!reason) {
+      toast.warning('Vui lòng nhập lý do đóng/mở bài viết.');
+      return;
+    }
+
+    if (reason.length > 500) {
+      toast.warning('Lý do tối đa 500 ký tự.');
+      return;
+    }
+
+    setVisibilityLoading(true);
+    try {
+      const response = await updatePostVisibilityApi(post._id, {
+        status: visibilityTargetStatus,
+        reason,
+      });
+      toast.success(response?.data?.message || 'Đã cập nhật trạng thái bài viết.');
+      setVisibilityModalOpen(false);
+      setVisibilityReason('');
+      if (onPostUpdated) await onPostUpdated();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Không thể cập nhật trạng thái bài viết.');
+    } finally {
+      setVisibilityLoading(false);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -119,7 +173,7 @@ export default function PostContent({
             </button>
             
             {showMenu && (
-              <div className="absolute right-0 mt-1 w-40 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
+              <div className="absolute right-0 mt-1 w-44 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
                 <button
                   type="button"
                   onClick={() => {
@@ -134,9 +188,20 @@ export default function PostContent({
                   {isSaved ? 'Bỏ lưu bài viết' : 'Lưu bài viết'}
                 </button>
 
+                {canManageVisibility && canChangeVisibility && (
+                  <button
+                    type="button"
+                    onClick={handleOpenVisibilityModal}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-amber-700 hover:bg-amber-50/60 border-t border-slate-100 whitespace-nowrap"
+                  >
+                    <span className="material-symbols-outlined text-base">{isClosed ? 'lock_open' : 'lock'}</span>
+                    {nextVisibilityLabel}
+                  </button>
+                )}
+
                 {isOwner ? (
                   <>
-                    {(post.status === 'active' || post.status === 'unresolved') && (
+                    {canEditPost && (
                       <button
                         type="button"
                         onClick={() => {
@@ -159,7 +224,7 @@ export default function PostContent({
                     </button>
                   </>
                 ) : (
-                  isAuthenticated && userReputation >= 15 && (
+                  isAuthenticated && !isAdmin && userReputation >= 15 && (
                     <button
                       type="button"
                       onClick={() => {
@@ -268,9 +333,82 @@ export default function PostContent({
         </div>
       </div>
 
+      {(isClosed || post.statusReason) && (
+        <div className={`rounded-xl border px-4 py-3 text-sm ${isClosed ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+          <div className="flex items-start gap-2">
+            <span className="material-symbols-outlined text-[18px]">{isClosed ? 'lock' : 'info'}</span>
+            <div className="min-w-0">
+              <p className="font-bold">{isClosed ? 'Bài viết đang được đóng' : 'Lịch sử trạng thái bài viết'}</p>
+              {post.statusReason && <p className="mt-1 leading-6">Lý do: {post.statusReason}</p>}
+              {post.statusChangedAt && (
+                <p className="mt-1 text-xs opacity-75">
+                  {statusActorLabel[post.statusChangedByRole] || 'Người dùng'} cập nhật lúc {new Date(post.statusChangedAt).toLocaleString('vi-VN')}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="text-on-surface font-body-md text-body-md leading-relaxed whitespace-pre-wrap">
         {post.content}
       </div>
+
+      {visibilityModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <button
+            type="button"
+            onClick={() => setVisibilityModalOpen(false)}
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm cursor-default"
+            aria-label="Đóng"
+          />
+          <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-scale-in">
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                <span className="material-symbols-outlined">{visibilityTargetStatus === 'resolved' ? 'lock' : 'lock_open'}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-800">{visibilityTargetStatus === 'resolved' ? 'Đóng bài viết' : 'Mở lại bài viết'}</h3>
+                <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                  Lý do sẽ được lưu lại và hiển thị trên bài viết để người xem hiểu vì sao trạng thái bài bị thay đổi.
+                </p>
+              </div>
+            </div>
+
+            <label className="mt-5 block">
+              <span className="mb-1.5 block text-sm font-semibold text-slate-700">Lý do</span>
+              <textarea
+                value={visibilityReason}
+                onChange={(event) => setVisibilityReason(event.target.value)}
+                maxLength={500}
+                rows={4}
+                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                placeholder={visibilityTargetStatus === 'resolved' ? 'Ví dụ: Câu hỏi đã được giải quyết, tạm đóng để tránh bình luận thêm...' : 'Ví dụ: Chủ bài/admin mở lại vì cần tiếp tục thảo luận...'}
+              />
+              <p className="mt-1 text-right text-xs text-slate-400">{visibilityReason.length}/500</p>
+            </label>
+            
+            <div className="mt-6 flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setVisibilityModalOpen(false)}
+                disabled={visibilityLoading}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmVisibility}
+                disabled={visibilityLoading}
+                className="rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-amber-700 disabled:opacity-50"
+              >
+                {visibilityLoading ? 'Đang lưu...' : 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

@@ -1,6 +1,6 @@
 import { validationResult } from 'express-validator';
 import donationService from '../service/donation.service.js';
-import donationRepository from '../repository/donation.repository.js';
+import adminAuditLogService from '../service/adminAuditLog.service.js';
 
 const toSafeDonation = (donation) => {
   if (!donation) return null;
@@ -18,6 +18,43 @@ const toSafeDonation = (donation) => {
     createdAt: donation.createdAt,
     updatedAt: donation.updatedAt,
   };
+};
+
+const getDonationLabel = (donation) => (
+  donation?.orderId
+  || donation?.requestId
+  || donation?._id?.toString?.()
+  || 'Giao dịch ủng hộ'
+);
+
+const getDonationMetadata = (donation = {}) => ({
+  amount: donation.amount || 0,
+  paymentMethod: donation.paymentMethod || '',
+  postTitle: donation.postSnapshot?.title || donation.post?.title || '',
+  donorId: donation.donor?._id || donation.donor || null,
+  donorName: donation.donorSnapshot?.fullName || donation.donor?.fullName || '',
+  donorEmail: donation.donor?.email || '',
+  authorId: donation.author?._id || donation.author || null,
+  authorName: donation.authorSnapshot?.fullName || donation.author?.fullName || '',
+  authorEmail: donation.author?.email || '',
+});
+
+const auditDonationReview = async ({ req, donation, action, reason = '' }) => {
+  await adminAuditLogService.log({
+    req,
+    action,
+    targetType: 'donation',
+    targetId: donation?._id,
+    targetLabel: getDonationLabel(donation),
+    previousState: { status: 'pending_review' },
+    newState: {
+      status: donation?.status || '',
+      approvedAt: donation?.approvedAt || null,
+      rejectedAt: donation?.rejectedAt || null,
+    },
+    reason,
+    metadata: getDonationMetadata(donation),
+  });
 };
 
 class DonationController {
@@ -109,6 +146,12 @@ class DonationController {
 
     try {
       const donation = await donationService.approveCodDonation(req.params.donationId, req.user.userId);
+      await auditDonationReview({
+        req,
+        donation,
+        action: 'donation_approved',
+        reason: String(req.body?.reason || '').trim() || 'Admin duyệt bill chuyển khoản thủ công',
+      });
       return res.status(200).json({
         success: true,
         message: 'Đã duyệt giao dịch thành công',
@@ -127,36 +170,24 @@ class DonationController {
     if (validationError) return validationError;
 
     try {
-      const donation = await donationRepository.findById(req.params.donationId);
+      const reason = String(req.body?.reason || '').trim() || 'Admin không duyệt bill chuyển khoản';
+      const donation = await donationService.rejectCodDonation(
+        req.params.donationId,
+        req.user.userId,
+        reason,
+      );
 
-      if (!donation) {
-        return res.status(404).json({ success: false, message: 'Không tìm thấy giao dịch' });
-      }
-
-      if (donation.paymentMethod !== 'cod') {
-        return res.status(400).json({ success: false, message: 'Chỉ từ chối được giao dịch chuyển khoản thủ công' });
-      }
-
-      if (donation.status !== 'pending_review') {
-        return res.status(400).json({ success: false, message: 'Giao dịch này không ở trạng thái chờ duyệt' });
-      }
-
-      const reason = (req.body?.reason || 'Admin không duyệt bill COD').trim();
-      const updatedDonation = await donationRepository.updateStatus(req.params.donationId, {
-        status: 'rejected',
-        rejectedAt: new Date(),
-        approvedBy: req.user.userId,
-        gatewayResponse: {
-          ...(donation.gatewayResponse || {}),
-          rejectReason: reason,
-          rejectedBy: req.user.userId,
-        },
+      await auditDonationReview({
+        req,
+        donation,
+        action: 'donation_rejected',
+        reason,
       });
 
       return res.status(200).json({
         success: true,
         message: 'Đã từ chối giao dịch thành công',
-        data: updatedDonation,
+        data: donation,
       });
     } catch (error) {
       return res.status(error.status || 500).json({

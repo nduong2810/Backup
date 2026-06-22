@@ -100,6 +100,8 @@ const formatDate = (value) => {
   });
 };
 
+const needsReason = (status) => ['resolved', 'unresolved'].includes(status);
+
 export default function AdminPostsTab({ embedded = false }) {
   const [posts, setPosts] = useState([]);
   const [pagination, setPagination] = useState({
@@ -115,6 +117,8 @@ export default function AdminPostsTab({ embedded = false }) {
   const [error, setError] = useState('');
   const [updatingId, setUpdatingId] = useState('');
   const [recentlyUpdatedId, setRecentlyUpdatedId] = useState('');
+  const [reasonDialog, setReasonDialog] = useState(null);
+  const [reasonText, setReasonText] = useState('');
 
   const query = useMemo(() => ({
     page: pagination.page,
@@ -157,17 +161,27 @@ export default function AdminPostsTab({ embedded = false }) {
     setStatus(event.target.value);
   };
 
-  const handleSetPostStatus = async (post, nextStatus) => {
+  const applyPostStatus = async (post, nextStatus, reason = '') => {
     if (!post?._id || updatingId || post.status === nextStatus) return;
 
     setUpdatingId(post._id);
     setError('');
 
     try {
-      await updateAdminPostStatus(post._id, nextStatus);
+      const response = await updateAdminPostStatus(post._id, nextStatus, reason);
+      const updatedPost = response?.data?.data || {};
 
       setPosts((current) => current.map((item) => (
-        item._id === post._id ? { ...item, status: nextStatus } : item
+        item._id === post._id
+          ? {
+              ...item,
+              ...updatedPost,
+              status: nextStatus,
+              statusReason: updatedPost.statusReason ?? reason ?? item.statusReason,
+              statusChangedAt: updatedPost.statusChangedAt ?? new Date().toISOString(),
+              statusChangedByRole: updatedPost.statusChangedByRole ?? (needsReason(nextStatus) ? 'admin' : item.statusChangedByRole),
+            }
+          : item
       )));
 
       setRecentlyUpdatedId(post._id);
@@ -176,7 +190,37 @@ export default function AdminPostsTab({ embedded = false }) {
       setError(updateError?.response?.data?.message || 'Không thể cập nhật trạng thái bài đăng.');
     } finally {
       setUpdatingId('');
+      setReasonDialog(null);
+      setReasonText('');
     }
+  };
+
+  const handleSetPostStatus = async (post, nextStatus) => {
+    if (!post?._id || updatingId || post.status === nextStatus) return;
+
+    if (needsReason(nextStatus)) {
+      setReasonDialog({ post, nextStatus });
+      setReasonText('');
+      setError('');
+      return;
+    }
+
+    await applyPostStatus(post, nextStatus);
+  };
+
+  const handleConfirmReason = async () => {
+    const reason = reasonText.trim();
+    if (!reason) {
+      setError('Vui lòng nhập lý do đóng/mở bài viết.');
+      return;
+    }
+
+    if (reason.length > 500) {
+      setError('Lý do tối đa 500 ký tự.');
+      return;
+    }
+
+    await applyPostStatus(reasonDialog.post, reasonDialog.nextStatus, reason);
   };
 
   const goToPage = (page) => {
@@ -353,6 +397,11 @@ export default function AdminPostsTab({ embedded = false }) {
                       >
                         {STATUS_LABELS[post.status] || post.status}
                       </span>
+                      {post.statusReason && (
+                        <p className="mx-auto mt-2 line-clamp-2 max-w-[180px] text-[11px] leading-4 text-slate-500" title={post.statusReason}>
+                          Lý do: {post.statusReason}
+                        </p>
+                      )}
                     </td>
 
                     <td className="px-5 py-5 text-right align-middle">
@@ -418,6 +467,63 @@ export default function AdminPostsTab({ embedded = false }) {
           </div>
         </div>
       </div>
+
+      {reasonDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <button
+            type="button"
+            onClick={() => { setReasonDialog(null); setReasonText(''); }}
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+            aria-label="Đóng"
+          />
+          <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                <span className="material-symbols-outlined">{reasonDialog.nextStatus === 'resolved' ? 'lock' : 'lock_open'}</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-black text-slate-900">
+                  {reasonDialog.nextStatus === 'resolved' ? 'Khóa bài viết' : 'Mở lại bài viết'}
+                </h3>
+                <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-600">{reasonDialog.post?.title}</p>
+                <p className="mt-2 text-xs leading-5 text-slate-500">Lý do sẽ được lưu và hiển thị trên bài viết.</p>
+              </div>
+            </div>
+
+            <label className="mt-5 block">
+              <span className="mb-1.5 block text-sm font-bold text-slate-700">Lý do</span>
+              <textarea
+                value={reasonText}
+                onChange={(event) => setReasonText(event.target.value)}
+                maxLength={500}
+                rows={4}
+                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                placeholder={reasonDialog.nextStatus === 'resolved' ? 'Ví dụ: Bài đã có câu trả lời phù hợp, tạm khóa để tránh bình luận thêm...' : 'Ví dụ: Mở lại để tiếp tục thảo luận hoặc bổ sung thông tin...'}
+              />
+              <p className="mt-1 text-right text-xs text-slate-400">{reasonText.length}/500</p>
+            </label>
+
+            <div className="mt-6 flex justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={Boolean(updatingId)}
+                onClick={() => { setReasonDialog(null); setReasonText(''); }}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={Boolean(updatingId)}
+                onClick={handleConfirmReason}
+                className="rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-amber-700 disabled:opacity-50"
+              >
+                {updatingId ? 'Đang lưu...' : 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

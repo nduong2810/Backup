@@ -5,9 +5,11 @@ import donationRepository from '../repository/donation.repository.js';
 import userRepository from '../repository/user.repository.js';
 import Post from '../model/post.model.js';
 import Comment from '../model/comment.model.js';
+import DonationTransaction from '../model/donationTransaction.model.js';
 import sendEmail from '../util/email.util.js';
 import env from '../config/environment.js';
 import reputationService from './reputation.service.js';
+import notificationService from './notification.service.js';
 
 const SUPPORTED_AMOUNTS = new Set([20000, 50000, 100000]);
 const DONATION_STATUS_VALUES = ['pending_review', 'pending_payment', 'completed', 'rejected'];
@@ -41,6 +43,20 @@ const buildSnapshot = (doc = {}) => ({
   avatar: pickText(doc.avatar),
   major: pickText(doc.major),
 });
+
+const hasBankTransferInfo = (user = {}) => Boolean(
+  pickText(user.bankName) && pickText(user.bankAccountNumber),
+);
+
+const getRawBankTransferInfo = async (userId) => {
+  const safeUserId = normalizeId(userId);
+  if (!isMongoId(safeUserId)) return null;
+
+  return await mongoose.connection.collection('users').findOne(
+    { _id: new mongoose.Types.ObjectId(safeUserId) },
+    { projection: { bankName: 1, bankAccountNumber: 1, fullName: 1 } },
+  );
+};
 
 const normalizeEmail = (value = {}) => {
   if (typeof value === 'string') return value.includes('@') ? value.trim().toLowerCase() : '';
@@ -92,6 +108,84 @@ const safeNotify = async (email, subject, message) => {
   }
 };
 
+const formatDonationAmount = (donation = {}) => Number(donation.amount || 0).toLocaleString('vi-VN');
+
+const getDonationTitle = (donation = {}) => donation.postSnapshot?.title || donation.post?.title || 'IT Forum';
+
+const getDonationDonorName = (donation = {}) => (
+  donation.donorSnapshot?.fullName
+  || donation.donor?.fullName
+  || 'bạn'
+);
+
+const safeNotifyCodDonorApproval = async (donation) => {
+  const donorEmail = normalizeEmail(donation?.donor);
+  if (!donorEmail) return;
+
+  const amount = formatDonationAmount(donation);
+  const postTitle = getDonationTitle(donation);
+  const donorName = getDonationDonorName(donation);
+
+  await safeNotify(
+    donorEmail,
+    'Bill chuyển khoản của bạn đã được duyệt',
+    `Xin chào ${donorName},\n\nGiao dịch chuyển khoản ${amount}đ cho bài viết "${postTitle}" đã được admin duyệt thành công.\n\nCảm ơn bạn đã ủng hộ tác giả trên IT Forum.\n\nTrân trọng,\nIT Forum`,
+  );
+};
+
+const safeNotifyCodDonorRejection = async (donation, reason = '') => {
+  const donorEmail = normalizeEmail(donation?.donor);
+  if (!donorEmail) return;
+
+  const amount = formatDonationAmount(donation);
+  const postTitle = getDonationTitle(donation);
+  const donorName = getDonationDonorName(donation);
+  const cleanReason = pickText(reason) || 'Bill chuyển khoản chưa đủ điều kiện để duyệt.';
+
+  await safeNotify(
+    donorEmail,
+    'Bill chuyển khoản của bạn chưa được duyệt',
+    `Xin chào ${donorName},\n\nGiao dịch chuyển khoản ${amount}đ cho bài viết "${postTitle}" chưa được admin duyệt.\n\nLý do: ${cleanReason}\n\nBạn có thể kiểm tra lại bill chuyển khoản hoặc liên hệ admin để được hỗ trợ thêm.\n\nTrân trọng,\nIT Forum`,
+  );
+};
+
+const safeCreateDonationApprovalNotification = async ({ donation, adminId }) => {
+  try {
+    const donorId = donation?.donor?._id?.toString() || donation?.donor?.toString();
+    const postId = donation?.post?._id?.toString() || donation?.post?.toString();
+
+    if (!donorId || !adminId || !postId) return;
+
+    await notificationService.createDonationApprovedNotification({
+      donorId,
+      adminId,
+      post: postId,
+      donation,
+    });
+  } catch (error) {
+    console.error('[DonationService] Donation approval notification failed:', error.message);
+  }
+};
+
+const safeCreateDonationRejectionNotification = async ({ donation, adminId, reason }) => {
+  try {
+    const donorId = donation?.donor?._id?.toString() || donation?.donor?.toString();
+    const postId = donation?.post?._id?.toString() || donation?.post?.toString();
+
+    if (!donorId || !adminId || !postId) return;
+
+    await notificationService.createDonationRejectedNotification({
+      donorId,
+      adminId,
+      post: postId,
+      donation,
+      reason,
+    });
+  } catch (error) {
+    console.error('[DonationService] Donation rejection notification failed:', error.message);
+  }
+};
+
 const normalizeStatusFilter = (value = '') => {
   const status = String(value || '').trim();
   return DONATION_STATUS_VALUES.includes(status) ? status : '';
@@ -102,13 +196,35 @@ const normalizePaymentMethodFilter = (value = '') => {
   return PAYMENT_METHOD_VALUES.includes(paymentMethod) ? paymentMethod : '';
 };
 
-const buildSixMonthTimeline = (rawTimeline = []) => {
-  const now = new Date();
+const parseDateOnly = (value, endOfDay = false) => {
+  const text = String(value || '').trim();
+  if (!text) return null;
+
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const [, yearText, monthText, dayText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const date = new Date(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+};
+
+const buildMonthlyTimeline = (rawTimeline = [], fromDate, toDate = new Date()) => {
+  const from = fromDate || new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1);
+  const to = toDate || new Date();
+  const start = new Date(from.getFullYear(), from.getMonth(), 1);
+  const end = new Date(to.getFullYear(), to.getMonth(), 1);
   const result = [];
-  for (let i = 5; i >= 0; i -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
+
+  let cursor = start;
+  let index = 0;
+  while (cursor <= end && index < 36) {
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth() + 1;
     const found = rawTimeline.find((item) => item._id?.year === year && item._id?.month === month);
     result.push({
       year,
@@ -119,9 +235,18 @@ const buildSixMonthTimeline = (rawTimeline = []) => {
       donationCount: found?.donationCount || 0,
       completedCount: found?.completedCount || 0,
     });
+    cursor = new Date(year, month, 1);
+    index += 1;
   }
+
   return result;
 };
+
+const populateDonation = (query) => query
+  .populate('donor', 'fullName avatar major email')
+  .populate('author', 'fullName avatar major email')
+  .populate('post', 'title')
+  .populate('answer', 'content');
 
 class DonationService {
   async resolveAuthor(authorId, ...candidates) {
@@ -203,7 +328,24 @@ class DonationService {
     const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
     const limit = Math.min(50, Math.max(5, Number.parseInt(query.limit, 10) || 10));
     const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const defaultTimelineFromDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const fromDate = parseDateOnly(query.fromDate || query.startDate);
+    const toDate = parseDateOnly(query.toDate || query.endDate, true);
+
+    if ((query.fromDate || query.startDate) && !fromDate) {
+      throw { status: 400, message: 'Ngày bắt đầu không hợp lệ. Định dạng đúng là YYYY-MM-DD.' };
+    }
+
+    if ((query.toDate || query.endDate) && !toDate) {
+      throw { status: 400, message: 'Ngày kết thúc không hợp lệ. Định dạng đúng là YYYY-MM-DD.' };
+    }
+
+    if (fromDate && toDate && fromDate > toDate) {
+      throw { status: 400, message: 'Ngày bắt đầu không được lớn hơn ngày kết thúc.' };
+    }
+
+    const timelineFromDate = fromDate || defaultTimelineFromDate;
+    const timelineToDate = toDate || now;
 
     const result = await donationRepository.findAllAdminDonations({
       status,
@@ -211,13 +353,26 @@ class DonationService {
       keyword,
       page,
       limit,
-      startDate,
+      startDate: defaultTimelineFromDate,
+      fromDate,
+      toDate,
     });
 
     return {
       ...result,
-      filters: { status, paymentMethod, keyword },
-      timeline: buildSixMonthTimeline(result.timeline),
+      filters: {
+        status,
+        paymentMethod,
+        keyword,
+        fromDate: fromDate ? fromDate.toISOString() : '',
+        toDate: toDate ? toDate.toISOString() : '',
+      },
+      dateRange: {
+        fromDate: fromDate ? fromDate.toISOString() : '',
+        toDate: toDate ? toDate.toISOString() : '',
+        isCustom: Boolean(fromDate || toDate),
+      },
+      timeline: buildMonthlyTimeline(result.timeline, timelineFromDate, timelineToDate),
     };
   }
 
@@ -241,7 +396,7 @@ class DonationService {
 
     if (!donor) throw { status: 404, message: 'Người donate không tồn tại' };
     if (!currentPost) throw { status: 404, message: 'Bài viết không tồn tại' };
-    if (currentPost.status === 'resolved') throw { status: 423, message: 'Bài viết đang bị khóa' };
+    if (currentPost.status === 'resolved' || currentPost.status === 'closed') throw { status: 423, message: 'Bài viết đang bị khóa' };
     if (currentPost.status === 'hidden') throw { status: 403, message: 'Bài viết đang bị ẩn' };
     if (currentPost.status === 'deleted') throw { status: 410, message: 'Bài viết đã bị xóa' };
 
@@ -259,6 +414,23 @@ class DonationService {
 
     const author = await this.resolveAuthor(authorId, authorCandidate, currentPost.author, answer?.author);
     if (!author) throw { status: 400, message: 'Không xác định được tác giả để ủng hộ.' };
+
+    if (paymentMethod === 'cod') {
+      const rawTransferInfo = hasBankTransferInfo(author)
+        ? author
+        : await getRawBankTransferInfo(author._id);
+
+      if (!hasBankTransferInfo(rawTransferInfo)) {
+        throw {
+          status: 400,
+          message: 'Tác giả chưa cập nhật thông tin nhận chuyển khoản nên chưa thể dùng phương thức chuyển khoản thủ công.',
+        };
+      }
+
+      if (!billImage) {
+        throw { status: 400, message: 'Bạn cần tải ảnh bill chuyển khoản trước khi gửi giao dịch thủ công.' };
+      }
+    }
 
     const basePayload = {
       donor: donor._id,
@@ -326,44 +498,103 @@ class DonationService {
   }
 
   async confirmVnpayPayment({ transactionId, txnRef, responseCode, message = '', amount }) {
-    const donation = transactionId ? await donationRepository.findById(transactionId) : await donationRepository.findByOrderId(txnRef);
+    const donation = transactionId
+      ? await donationRepository.findById(transactionId)
+      : await donationRepository.findByOrderId(txnRef);
+
     if (!donation) throw { status: 404, message: 'Không tìm thấy giao dịch' };
+    if (donation.paymentMethod !== 'vnpay') throw { status: 400, message: 'Chỉ xác nhận được giao dịch VNPAY' };
+
+    const gatewayResponse = { ...(donation.gatewayResponse || {}), responseCode, message, amount };
 
     if (String(responseCode) === '00') {
-      const updatedDonation = await donationRepository.updateStatus(donation._id, {
-        status: 'completed',
-        completedAt: new Date(),
-        gatewayResponse: { ...(donation.gatewayResponse || {}), responseCode, message, amount },
-      });
+      const updatedDonation = await populateDonation(DonationTransaction.findOneAndUpdate(
+        { _id: donation._id, paymentMethod: 'vnpay', status: 'pending_payment' },
+        {
+          $set: {
+            status: 'completed',
+            completedAt: donation.completedAt || new Date(),
+            gatewayResponse,
+          },
+        },
+        { new: true },
+      ));
 
+      if (!updatedDonation) {
+        const latestDonation = await donationRepository.findById(donation._id);
+        if (latestDonation?.status === 'completed') return latestDonation;
+        throw {
+          status: 409,
+          message: `Giao dịch đã ở trạng thái ${latestDonation?.status || donation.status || 'không xác định'}, không thể xác nhận lại`,
+        };
+      }
 
       const authorId = updatedDonation.author?._id?.toString() || updatedDonation.author?.toString();
       if (authorId) {
         await reputationService.award(authorId, 'donate_received', updatedDonation._id);
       }
-      await safeNotify(updatedDonation.author?.email, 'Bạn vừa nhận được một lượt ủng hộ', `Bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa nhận ${updatedDonation.amount.toLocaleString('vi-VN')}đ từ một người dùng.`);
+      await safeNotify(
+        updatedDonation.author?.email,
+        'Bạn vừa nhận được một lượt ủng hộ',
+        `Bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa nhận ${updatedDonation.amount.toLocaleString('vi-VN')}đ từ một người dùng.`,
+      );
       return updatedDonation;
     }
 
-    return await donationRepository.updateStatus(donation._id, {
-      status: 'rejected',
-      rejectedAt: new Date(),
-      gatewayResponse: { ...(donation.gatewayResponse || {}), responseCode, message, amount },
-    });
+    const rejectedDonation = await populateDonation(DonationTransaction.findOneAndUpdate(
+      { _id: donation._id, paymentMethod: 'vnpay', status: 'pending_payment' },
+      {
+        $set: {
+          status: 'rejected',
+          rejectedAt: new Date(),
+          gatewayResponse,
+        },
+      },
+      { new: true },
+    ));
+
+    if (rejectedDonation) return rejectedDonation;
+
+    const latestDonation = await donationRepository.findById(donation._id);
+    if (latestDonation?.status === 'completed') return latestDonation;
+    throw {
+      status: 409,
+      message: `Giao dịch đã ở trạng thái ${latestDonation?.status || donation.status || 'không xác định'}, không thể xác nhận lại`,
+    };
   }
 
   async approveCodDonation(donationId, adminId) {
-    const donation = await donationRepository.findById(donationId);
-    if (!donation) throw { status: 404, message: 'Không tìm thấy giao dịch' };
-    if (donation.paymentMethod !== 'cod') throw { status: 400, message: 'Chỉ duyệt được giao dịch chuyển khoản thủ công' };
-    if (donation.status !== 'pending_review') throw { status: 400, message: 'Giao dịch này không ở trạng thái chờ duyệt' };
+    if (!isMongoId(donationId)) throw { status: 400, message: 'ID giao dịch không hợp lệ' };
 
-    const updatedDonation = await donationRepository.updateStatus(donationId, {
-      status: 'completed',
-      approvedBy: adminId,
-      approvedAt: new Date(),
-      completedAt: new Date(),
-    });
+    const updatedDonation = await populateDonation(DonationTransaction.findOneAndUpdate(
+      { _id: donationId, paymentMethod: 'cod', status: 'pending_review' },
+      {
+        $set: {
+          status: 'completed',
+          approvedBy: adminId,
+          approvedAt: new Date(),
+          completedAt: new Date(),
+        },
+      },
+      { new: true },
+    ));
+
+    if (!updatedDonation) {
+      const latestDonation = await donationRepository.findById(donationId);
+
+      if (!latestDonation) {
+        throw { status: 404, message: 'Không tìm thấy giao dịch' };
+      }
+
+      if (latestDonation.paymentMethod !== 'cod') {
+        throw { status: 400, message: 'Chỉ duyệt được giao dịch chuyển khoản thủ công' };
+      }
+
+      throw {
+        status: 409,
+        message: `Giao dịch đã ở trạng thái ${latestDonation.status || 'không xác định'}, không thể duyệt lại`,
+      };
+    }
 
     const authorId = updatedDonation.author?._id?.toString() || updatedDonation.author?.toString();
     if (authorId) {
@@ -371,6 +602,52 @@ class DonationService {
     }
 
     await safeNotify(updatedDonation.author?.email, 'Một lượt ủng hộ vừa được duyệt', `Bill chuyển khoản cho bài viết "${updatedDonation.postSnapshot?.title || 'IT Forum'}" vừa được admin duyệt với số tiền ${updatedDonation.amount.toLocaleString('vi-VN')}đ.`);
+    await safeNotifyCodDonorApproval(updatedDonation);
+    await safeCreateDonationApprovalNotification({ donation: updatedDonation, adminId });
+    return updatedDonation;
+  }
+
+  async rejectCodDonation(donationId, adminId, reasonInput = '') {
+    if (!isMongoId(donationId)) throw { status: 400, message: 'ID giao dịch không hợp lệ' };
+
+    const reason = pickText(reasonInput) || 'Admin không duyệt bill chuyển khoản';
+    const rejectedAt = new Date();
+    const updatedDonation = await populateDonation(DonationTransaction.findOneAndUpdate(
+      { _id: donationId, paymentMethod: 'cod', status: 'pending_review' },
+      {
+        $set: {
+          status: 'rejected',
+          rejectedAt,
+          approvedBy: adminId,
+          gatewayResponse: {
+            rejectReason: reason,
+            rejectedBy: adminId,
+            rejectedAt,
+          },
+        },
+      },
+      { new: true },
+    ));
+
+    if (!updatedDonation) {
+      const latestDonation = await donationRepository.findById(donationId);
+
+      if (!latestDonation) {
+        throw { status: 404, message: 'Không tìm thấy giao dịch' };
+      }
+
+      if (latestDonation.paymentMethod !== 'cod') {
+        throw { status: 400, message: 'Chỉ từ chối được giao dịch chuyển khoản thủ công' };
+      }
+
+      throw {
+        status: 409,
+        message: `Giao dịch đã ở trạng thái ${latestDonation.status || 'không xác định'}, không thể từ chối lại`,
+      };
+    }
+
+    await safeNotifyCodDonorRejection(updatedDonation, reason);
+    await safeCreateDonationRejectionNotification({ donation: updatedDonation, adminId, reason });
     return updatedDonation;
   }
 

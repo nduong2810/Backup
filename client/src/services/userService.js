@@ -15,6 +15,18 @@ export const getAdminProfile = () => apiClient.get('/admin/profile');
 
 export const getAdminDashboardStats = () => apiClient.get('/admin/dashboard-stats');
 
+export const getAdminAuditLogs = ({
+  page = 1,
+  limit = 20,
+  keyword = '',
+  action = '',
+  targetType = '',
+  fromDate = '',
+  toDate = '',
+} = {}) => apiClient.get('/admin/audit-logs', {
+  params: { page, limit, keyword, action, targetType, fromDate, toDate },
+});
+
 
 export const getAdminSystemSettings = () => apiClient.get('/admin/settings');
 
@@ -26,8 +38,14 @@ export const getAdminPosts = ({ page = 1, limit = 10, keyword = '', status = 'al
     params: { page, limit, keyword, status },
   });
 
-export const updateAdminPostStatus = (postId, status) =>
-  apiClient.patch(`/admin/posts/${postId}/status`, { status });
+export const updateAdminPostStatus = (postId, status, reason = '') => {
+  const cleanReason = String(reason || '').trim();
+  if (['resolved', 'unresolved'].includes(status) && cleanReason) {
+    return apiClient.patch(`/posts/${postId}/visibility`, { status, reason: cleanReason });
+  }
+
+  return apiClient.patch(`/admin/posts/${postId}/status`, { status, reason: cleanReason });
+};
 
 
 export const adminCreateTag = (payload) => apiClient.post('/admin/tags', payload);
@@ -44,8 +62,8 @@ export const getAdminUsers = ({ page = 1, limit = 10, keyword = '', status = 'al
 
 export const getAdminUserDetail = (userId) => apiClient.get(`/admin/users/${userId}`);
 
-export const toggleAdminUserStatus = (userId, isActive) =>
-  apiClient.patch(`/admin/users/${userId}/status`, { isActive });
+export const toggleAdminUserStatus = (userId, isActive, reason = '') =>
+  apiClient.patch(`/admin/users/${userId}/status`, { isActive, reason });
 
 export const getAdminAllDonations = ({
   page = 1,
@@ -53,7 +71,9 @@ export const getAdminAllDonations = ({
   keyword = '',
   status = '',
   paymentMethod = '',
+  fromDate = '',
+  toDate = '',
 } = {}) =>
   apiClient.get('/donations/admin/all', {
-    params: { page, limit, keyword, status, paymentMethod },
+    params: { page, limit, keyword, status, paymentMethod, fromDate, toDate },
   });

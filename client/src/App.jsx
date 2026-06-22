@@ -39,6 +39,7 @@ function App() {
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/posts" element={<Navigate to="/admin/dashboard?tab=posts" replace />} />
         <Route path="/admin/all-donations" element={<Navigate to="/admin/dashboard?tab=all-donations" replace />} />
+        <Route path="/admin/audit-logs" element={<Navigate to="/admin/dashboard?tab=audit-logs" replace />} />
         <Route path="/admin/flags" element={<Navigate to="/admin/dashboard?tab=flags" replace />} />
         <Route path="/admin/donations" element={<Navigate to="/admin/dashboard?tab=donations" replace />} />
         <Route path="/admin/users" element={<Navigate to="/admin/dashboard?tab=users" replace />} />

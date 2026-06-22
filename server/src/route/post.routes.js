@@ -1,5 +1,6 @@
 import express from 'express';
 import postController from '../controller/post.controller.js';
+import postStatusController from '../controller/postStatus.controller.js';
 import { authenticateToken, optionalAuthenticateToken } from '../middleware/auth.middleware.js';
 import { uploadPostMedia, uploadCommentMedia } from '../middleware/upload.middleware.js';
 import { voteLimiter, postCreationLimiter, commentCreationLimiter } from '../middleware/rateLimit.middleware.js';
@@ -54,6 +55,13 @@ router.get('/top-upvoted', postController.getTopUpvoted.bind(postController));
 
 // GET /api/posts/trash — Thùng rác chứa các bài viết đã xóa mềm (Yêu cầu đăng nhập)
 router.get('/trash', authenticateToken, postController.getTrashPosts.bind(postController));
+
+// PATCH /api/posts/:id/visibility — Chủ bài hoặc admin đóng/mở bài viết kèm lý do
+router.patch('/:id/visibility',
+  authenticateToken,
+  postIdValidation,
+  postStatusController.updateVisibility.bind(postStatusController)
+);
 
 // GET /api/posts/:id — Xem chi tiết (Public)
 router.get('/:id',

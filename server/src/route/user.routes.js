@@ -37,8 +37,10 @@ router.put('/profile',
     profileUpdateLimiter, // Lớp 2
     [
         body('fullName').optional().notEmpty().withMessage('Tên không được để trống'), // Lớp 1 
-        body('phone').optional().isMobilePhone('vi-VN').withMessage('SĐT không hợp lệ'),
-        body('bio').optional().isLength({ max: 500 }).withMessage('Bio tối đa 500 ký tự')
+        body('phone').optional({ checkFalsy: true }).isMobilePhone('vi-VN').withMessage('SĐT không hợp lệ'),
+        body('bio').optional().isLength({ max: 500 }).withMessage('Bio tối đa 500 ký tự'),
+        body('bankName').optional().trim().isLength({ max: 120 }).withMessage('Tên ngân hàng tối đa 120 ký tự'),
+        body('bankAccountNumber').optional().trim().matches(/^[0-9A-Za-z .-]{0,40}$/).withMessage('Số tài khoản không hợp lệ')
     ],
     userController.updateMyProfile
 );

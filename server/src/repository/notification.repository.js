@@ -1,12 +1,40 @@
 import mongoose from 'mongoose';
 import Notification from '../model/notification.model.js';
 
+const ALWAYS_VISIBLE_TYPES = ['admin_post_action', 'report_outcome', 'donation_rejected'];
+
+const postVisibilityMatch = {
+  postDoc: { $exists: true, $ne: null },
+  $or: [
+    { type: { $in: ALWAYS_VISIBLE_TYPES } },
+    {
+      $and: [
+        { 'postDoc.status': { $nin: ['hidden', 'deleted'] } },
+        { 'postDoc.isAuthorActive': { $ne: false } },
+      ],
+    },
+  ],
+};
+
+const commentVisibilityMatch = {
+  $or: [
+    { comment: null },
+    { type: { $in: ALWAYS_VISIBLE_TYPES } },
+    {
+      $and: [
+        { commentDoc: { $exists: true, $ne: null } },
+        { 'commentDoc.isAuthorActive': { $ne: false } },
+      ],
+    },
+  ],
+};
+
 class NotificationRepository {
   async create(data) {
     const notification = await Notification.create(data);
     return await Notification.findById(notification._id)
       .populate('sender', 'fullName avatar email')
-      .populate('post', 'title');
+      .populate('post', 'title status');
   }
 
   async findByRecipient(userId, limit = 20) {
@@ -16,7 +44,6 @@ class NotificationRepository {
     const safeUserId = new mongoose.Types.ObjectId(userId);
     return await Notification.aggregate([
       { $match: { recipient: safeUserId } },
-      // Tìm kiếm thông tin bài viết
       {
         $lookup: {
           from: 'posts',
@@ -25,21 +52,8 @@ class NotificationRepository {
           as: 'postDoc'
         }
       },
-      {
-        $unwind: {
-          path: '$postDoc',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      // Lọc bỏ thông báo nếu bài viết không tồn tại, bị ẩn, bị xóa mềm, hoặc tác giả bài viết bị khóa
-      {
-        $match: {
-          postDoc: { $exists: true, $ne: null },
-          'postDoc.status': { $nin: ['hidden', 'deleted'] },
-          'postDoc.isAuthorActive': { $ne: false }
-        }
-      },
-      // Tìm kiếm thông tin bình luận nếu có
+      { $unwind: { path: '$postDoc', preserveNullAndEmptyArrays: true } },
+      { $match: postVisibilityMatch },
       {
         $lookup: {
           from: 'comments',
@@ -48,31 +62,10 @@ class NotificationRepository {
           as: 'commentDoc'
         }
       },
-      {
-        $unwind: {
-          path: '$commentDoc',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      // Lọc bỏ thông báo liên quan đến bình luận nếu bình luận đã bị xóa hoặc tác giả bình luận bị khóa
-      {
-        $match: {
-          $or: [
-            { comment: null },
-            {
-              $and: [
-                { commentDoc: { $exists: true, $ne: null } },
-                { 'commentDoc.isAuthorActive': { $ne: false } }
-              ]
-            }
-          ]
-        }
-      },
-      // Sắp xếp theo thời gian tạo mới nhất
+      { $unwind: { path: '$commentDoc', preserveNullAndEmptyArrays: true } },
+      { $match: commentVisibilityMatch },
       { $sort: { createdAt: -1 } },
-      // Giới hạn số lượng kết quả
       { $limit: limit },
-      // Tìm kiếm thông tin người gửi thông báo
       {
         $lookup: {
           from: 'users',
@@ -81,13 +74,7 @@ class NotificationRepository {
           as: 'senderDoc'
         }
       },
-      {
-        $unwind: {
-          path: '$senderDoc',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      // Định dạng cấu trúc đầu ra khớp với populate của Mongoose
+      { $unwind: { path: '$senderDoc', preserveNullAndEmptyArrays: true } },
       {
         $project: {
           _id: 1,
@@ -100,18 +87,8 @@ class NotificationRepository {
           parentComment: 1,
           createdAt: 1,
           updatedAt: 1,
-          post: {
-            _id: '$postDoc._id',
-            title: '$postDoc.title',
-            status: '$postDoc.status'
-          },
-          comment: {
-            $cond: {
-              if: { $not: ['$commentDoc'] },
-              then: null,
-              else: '$commentDoc'
-            }
-          },
+          post: { _id: '$postDoc._id', title: '$postDoc.title', status: '$postDoc.status' },
+          comment: { $cond: { if: { $not: ['$commentDoc'] }, then: null, else: '$commentDoc' } },
           sender: {
             _id: '$senderDoc._id',
             fullName: '$senderDoc.fullName',
@@ -130,7 +107,6 @@ class NotificationRepository {
     const safeUserId = new mongoose.Types.ObjectId(userId);
     const result = await Notification.aggregate([
       { $match: { recipient: safeUserId, isRead: false } },
-      // Tìm kiếm thông tin bài viết
       {
         $lookup: {
           from: 'posts',
@@ -139,20 +115,8 @@ class NotificationRepository {
           as: 'postDoc'
         }
       },
-      {
-        $unwind: {
-          path: '$postDoc',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      {
-        $match: {
-          postDoc: { $exists: true, $ne: null },
-          'postDoc.status': { $nin: ['hidden', 'deleted'] },
-          'postDoc.isAuthorActive': { $ne: false }
-        }
-      },
-      // Tìm kiếm thông tin bình luận nếu có
+      { $unwind: { path: '$postDoc', preserveNullAndEmptyArrays: true } },
+      { $match: postVisibilityMatch },
       {
         $lookup: {
           from: 'comments',
@@ -161,25 +125,8 @@ class NotificationRepository {
           as: 'commentDoc'
         }
       },
-      {
-        $unwind: {
-          path: '$commentDoc',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      {
-        $match: {
-          $or: [
-            { comment: null },
-            {
-              $and: [
-                { commentDoc: { $exists: true, $ne: null } },
-                { 'commentDoc.isAuthorActive': { $ne: false } }
-              ]
-            }
-          ]
-        }
-      },
+      { $unwind: { path: '$commentDoc', preserveNullAndEmptyArrays: true } },
+      { $match: commentVisibilityMatch },
       { $count: 'unreadCount' }
     ]);
     return result[0]?.unreadCount ?? 0;

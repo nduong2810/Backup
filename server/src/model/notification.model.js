@@ -29,7 +29,16 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['post_comment', 'comment_reply'],
+    enum: [
+      'post_comment',
+      'comment_reply',
+      'post_vote',
+      'donation_approved',
+      'donation_rejected',
+      'donation_received',
+      'admin_post_action',
+      'report_outcome',
+    ],
     required: true,
   },
   title: {

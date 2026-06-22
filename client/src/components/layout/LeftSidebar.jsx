@@ -6,6 +6,7 @@ const ADMIN_TABS = [
     { key: 'overview', label: 'Tổng quan', icon: 'query_stats', tab: null },
     { key: 'donations', label: 'Duyệt bill COD', icon: 'payments', tab: 'donations' },
     { key: 'all-donations', label: 'Quản lý giao dịch quyên góp', icon: 'receipt_long', tab: 'all-donations' },
+    { key: 'audit-logs', label: 'Nhật ký quản trị', icon: 'manage_history', tab: 'audit-logs' },
     { key: 'flags', label: 'Duyệt cờ báo cáo', icon: 'flag', tab: 'flags' },
     { key: 'users', label: 'Quản lý thành viên', icon: 'group', tab: 'users' },
     { key: 'tags', label: 'Quản lý thẻ tag', icon: 'label', tab: 'tags' },

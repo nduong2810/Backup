@@ -5,6 +5,34 @@ import mongoose from 'mongoose';
 // Hỗ trợ: nhiều ảnh (Swiper), tags, upvote/downvote, like/dislike, đếm lượt xem
 // ====================================================================
 
+const postStatusHistorySchema = new mongoose.Schema({
+    status: {
+        type: String,
+        enum: ['unresolved', 'resolved', 'hidden', 'deleted'],
+        required: true
+    },
+    reason: {
+        type: String,
+        trim: true,
+        maxLength: 500,
+        default: ''
+    },
+    changedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    changedByRole: {
+        type: String,
+        enum: ['owner', 'admin', 'system'],
+        default: 'system'
+    },
+    changedAt: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: false });
+
 const postSchema = new mongoose.Schema({
     title: { 
         type: String, 
@@ -108,7 +136,7 @@ const postSchema = new mongoose.Schema({
 
     // Trạng thái bài viết
     // unresolved: đang hiển thị, chưa giải quyết
-    // resolved: đã khóa, vẫn hiển thị nhưng không cho tương tác
+    // resolved: đã khóa/đóng, vẫn hiển thị nhưng không cho tương tác
     // hidden: đang bị ẩn khỏi trang public
     // deleted: đã bị xóa mềm
     status: { 
@@ -116,6 +144,27 @@ const postSchema = new mongoose.Schema({
         enum: ['unresolved', 'resolved', 'hidden', 'deleted'], 
         default: 'unresolved' 
     },
+    statusReason: {
+        type: String,
+        trim: true,
+        maxLength: 500,
+        default: ''
+    },
+    statusChangedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    statusChangedByRole: {
+        type: String,
+        enum: ['owner', 'admin', 'system'],
+        default: 'system'
+    },
+    statusChangedAt: {
+        type: Date,
+        default: null
+    },
+    statusHistory: [postStatusHistorySchema],
     deletedAt: {
         type: Date,
         default: null,

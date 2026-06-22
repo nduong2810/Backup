@@ -63,6 +63,15 @@ const formatDateTime = (value) => {
   });
 };
 
+const formatDateOnly = (value) => {
+  if (!value) return '';
+  return new Date(`${value}T00:00:00`).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
 const getUserName = (donation, type) => {
   const doc = type === 'donor' ? donation.donor : donation.author;
   const snapshot = type === 'donor' ? donation.donorSnapshot : donation.authorSnapshot;
@@ -74,7 +83,7 @@ const getUserEmail = (donation, type) => {
   return doc?.email || '—';
 };
 
-function MiniDonationChart({ timeline = [] }) {
+function MiniDonationChart({ timeline = [], title, subtitle }) {
   const maxValue = Math.max(...timeline.map((item) => Number(item.completedAmount || 0)), 1);
 
   return (
@@ -82,17 +91,18 @@ function MiniDonationChart({ timeline = [] }) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Donation Flow</p>
-          <h3 className="mt-1 text-lg font-extrabold leading-7 text-slate-900">Dòng tiền hoàn thành 6 tháng gần đây</h3>
+          <h3 className="mt-1 text-lg font-extrabold leading-7 text-slate-900">{title}</h3>
+          {subtitle && <p className="mt-1 text-xs font-semibold text-slate-500">{subtitle}</p>}
         </div>
         <span className="shrink-0 rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-500">VND</span>
       </div>
 
-      <div className="mt-5 flex h-44 items-end gap-3 rounded-2xl bg-slate-50 px-4 py-4">
+      <div className="mt-5 flex h-44 items-end gap-3 overflow-x-auto rounded-2xl bg-slate-50 px-4 py-4">
         {timeline.map((item) => {
           const value = Number(item.completedAmount || 0);
           const height = Math.max(8, Math.round((value / maxValue) * 128));
           return (
-            <div key={`${item.year}-${item.month}`} className="group flex flex-1 flex-col items-center gap-2">
+            <div key={`${item.year}-${item.month}`} className="group flex min-w-14 flex-1 flex-col items-center gap-2">
               <div className="relative flex h-32 w-full items-end justify-center">
                 <div
                   className="w-full max-w-10 rounded-t-xl bg-primary/80 transition-all duration-300 group-hover:bg-primary"
@@ -102,7 +112,7 @@ function MiniDonationChart({ timeline = [] }) {
                   {formatShortAmount(value)}
                 </div>
               </div>
-              <span className="text-[11px] font-bold text-slate-500">{item.label}</span>
+              <span className="whitespace-nowrap text-[11px] font-bold text-slate-500">{item.label}</span>
             </div>
           );
         })}
@@ -121,6 +131,8 @@ export default function AdminAllDonationsTab({ embedded = false }) {
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [status, setStatus] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -130,7 +142,14 @@ export default function AdminAllDonationsTab({ embedded = false }) {
     keyword: appliedKeyword,
     paymentMethod,
     status,
-  }), [pagination.page, pagination.limit, appliedKeyword, paymentMethod, status]);
+    fromDate,
+    toDate,
+  }), [pagination.page, pagination.limit, appliedKeyword, paymentMethod, status, fromDate, toDate]);
+
+  const hasDateFilter = Boolean(fromDate || toDate);
+  const dateRangeLabel = hasDateFilter
+    ? `${fromDate ? formatDateOnly(fromDate) : 'Từ đầu'} - ${toDate ? formatDateOnly(toDate) : 'Hôm nay'}`
+    : 'Toàn bộ dữ liệu, biểu đồ 6 tháng gần đây';
 
   const loadDonations = async () => {
     setLoading(true);
@@ -154,7 +173,7 @@ export default function AdminAllDonationsTab({ embedded = false }) {
   useEffect(() => {
     loadDonations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query.page, query.limit, query.keyword, query.paymentMethod, query.status]);
+  }, [query.page, query.limit, query.keyword, query.paymentMethod, query.status, query.fromDate, query.toDate]);
 
   const methodStats = useMemo(() => {
     const map = new Map(byPaymentMethod.map((item) => [item._id, item]));
@@ -180,6 +199,22 @@ export default function AdminAllDonationsTab({ embedded = false }) {
     setStatus(event.target.value);
   };
 
+  const handleFromDateChange = (event) => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    setFromDate(event.target.value);
+  };
+
+  const handleToDateChange = (event) => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    setToDate(event.target.value);
+  };
+
+  const clearDateRange = () => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    setFromDate('');
+    setToDate('');
+  };
+
   const goToPage = (page) => {
     const safePage = Math.min(Math.max(1, page), pagination.totalPages || 1);
     setPagination((prev) => ({ ...prev, page: safePage }));
@@ -192,9 +227,10 @@ export default function AdminAllDonationsTab({ embedded = false }) {
           <div className="max-w-3xl">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">All Donations Management</p>
             <h2 className="mt-2 text-2xl font-extrabold leading-9 text-slate-900 sm:text-3xl">Quản lý giao dịch quyên góp</h2>
+            <p className="mt-2 text-sm font-semibold text-slate-500">Thống kê theo khoảng ngày: {dateRangeLabel}</p>
           </div>
 
-          <form onSubmit={handleSearch} className="grid w-full grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1fr),220px,220px,104px]">
+          <form onSubmit={handleSearch} className="grid w-full grid-cols-1 gap-3 lg:grid-cols-[minmax(240px,1fr),190px,190px,170px,170px,104px]">
             <div className="relative min-w-0">
               <span className="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[20px] text-slate-400">search</span>
               <input
@@ -225,6 +261,29 @@ export default function AdminAllDonationsTab({ embedded = false }) {
               ))}
             </select>
 
+            <label className="min-w-0">
+              <span className="sr-only">Từ ngày</span>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={handleFromDateChange}
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+                title="Từ ngày"
+              />
+            </label>
+
+            <label className="min-w-0">
+              <span className="sr-only">Đến ngày</span>
+              <input
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={handleToDateChange}
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+                title="Đến ngày"
+              />
+            </label>
+
             <button
               type="submit"
               className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
@@ -233,6 +292,17 @@ export default function AdminAllDonationsTab({ embedded = false }) {
               Lọc
             </button>
           </form>
+
+          {hasDateFilter && (
+            <button
+              type="button"
+              onClick={clearDateRange}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+            >
+              <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+              Xóa lọc ngày
+            </button>
+          )}
         </div>
       </div>
 
@@ -265,7 +335,11 @@ export default function AdminAllDonationsTab({ embedded = false }) {
         </div>
       </div>
 
-      <MiniDonationChart timeline={timeline} />
+      <MiniDonationChart
+        timeline={timeline}
+        title={hasDateFilter ? 'Dòng tiền hoàn thành theo khoảng ngày' : 'Dòng tiền hoàn thành 6 tháng gần đây'}
+        subtitle={dateRangeLabel}
+      />
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
@@ -303,7 +377,7 @@ export default function AdminAllDonationsTab({ embedded = false }) {
                       <span className="material-symbols-outlined">payments</span>
                     </div>
                     <p className="mt-3 text-sm font-semibold text-slate-700">Không có giao dịch phù hợp.</p>
-                    <p className="mt-1 text-xs text-slate-400">Thử đổi từ khóa, phương thức hoặc trạng thái.</p>
+                    <p className="mt-1 text-xs text-slate-400">Thử đổi từ khóa, phương thức, trạng thái hoặc khoảng ngày.</p>
                   </td>
                 </tr>
               )}

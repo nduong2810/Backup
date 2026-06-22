@@ -36,6 +36,7 @@ export default function NotificationBell() {
   const { items, unreadCount, loading } = useSelector((state) => state.notifications);
   const [open, setOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [reviewNotice, setReviewNotice] = useState(null);
   const wrapperRef = useRef(null);
   const toastTimersRef = useRef({});
   const knownNotificationIdsRef = useRef(new Set());
@@ -156,7 +157,19 @@ export default function NotificationBell() {
       await dispatch(markNotificationReadThunk(notification._id));
     }
     setOpen(false);
+
+    if (notification.type === 'donation_rejected') {
+      setReviewNotice(notification);
+      return;
+    }
+
     navigate(notification.link || `/posts/${notification.post?._id || notification.post}`);
+  };
+
+  const goToReviewPost = () => {
+    const notification = reviewNotice;
+    setReviewNotice(null);
+    navigate(notification?.link || `/posts/${notification?.post?._id || notification?.post}`);
   };
 
   return (
@@ -191,7 +204,7 @@ export default function NotificationBell() {
           <div className="flex items-center justify-between border-b border-outline-variant px-4 py-3">
             <div>
               <h3 className="text-sm font-bold text-on-surface">Thông báo</h3>
-              <p className="text-xs text-secondary">Bình luận và trả lời mới</p>
+              <p className="text-xs text-secondary">Bình luận, trả lời và giao dịch mới</p>
             </div>
             <button
               type="button"
@@ -228,6 +241,34 @@ export default function NotificationBell() {
                 </div>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {reviewNotice && (
+        <div className="absolute right-0 mt-2 w-[380px] max-w-[calc(100vw-2rem)] rounded-xl border border-rose-200 bg-white p-4 shadow-xl z-[80]">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+              <span className="material-symbols-outlined text-[20px]">info</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-black text-rose-900">{reviewNotice.title}</h3>
+              <p className="mt-1 text-xs text-slate-500">{reviewNotice.post?.title || 'Bài viết được ủng hộ'}</p>
+            </div>
+            <button type="button" onClick={() => setReviewNotice(null)} className="rounded-full p-1 text-slate-400 hover:bg-slate-100">
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
+          <div className="mt-4 rounded-lg bg-rose-50 p-3 text-sm leading-6 text-rose-900">
+            {reviewNotice.message}
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={() => setReviewNotice(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">
+              Đóng
+            </button>
+            <button type="button" onClick={goToReviewPost} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800">
+              Xem bài viết
+            </button>
           </div>
         </div>
       )}

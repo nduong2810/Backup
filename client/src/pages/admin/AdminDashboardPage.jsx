@@ -8,11 +8,13 @@ import AdminTagsTab from './AdminTagsTab';
 import AdminPostsTab from './AdminPostsTab';
 import AdminUsersTab from './AdminUsersTab';
 import AdminAllDonationsTab from './AdminAllDonationsTab';
+import AdminAuditLogsTab from './AdminAuditLogsTab';
 
 const TABS = [
   { key: 'overview', label: 'Tổng quan', icon: 'query_stats' },
   { key: 'donations', label: 'Duyệt bill COD', icon: 'payments' },
   { key: 'all-donations', label: 'Quản lý giao dịch quyên góp', icon: 'receipt_long' },
+  { key: 'audit-logs', label: 'Nhật ký quản trị', icon: 'manage_history' },
   { key: 'posts', label: 'Quản lý bài đăng', icon: 'article' },
   { key: 'flags', label: 'Duyệt cờ báo cáo', icon: 'flag' },
   { key: 'users', label: 'Quản lý thành viên', icon: 'group' },
@@ -332,6 +334,22 @@ export default function AdminDashboardPage() {
 
               <button
                 type="button"
+                onClick={() => handleTabChange('audit-logs')}
+                className="min-h-[112px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-primary hover:bg-primary/5"
+              >
+                <span className="material-symbols-outlined text-primary">
+                  manage_history
+                </span>
+                <p className="mt-2 text-sm font-bold leading-5 text-slate-900">
+                  Nhật ký quản trị
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Xem ai khóa user, đổi status bài và duyệt donation.
+                </p>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => handleTabChange('posts')}
                 className="min-h-[112px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-primary hover:bg-primary/5"
               >
@@ -373,6 +391,7 @@ export default function AdminDashboardPage() {
       {activeTab === 'overview' && renderOverview()}
       {activeTab === 'donations' && <AdminDonationsPage embedded />}
       {activeTab === 'all-donations' && <AdminAllDonationsTab embedded />}
+      {activeTab === 'audit-logs' && <AdminAuditLogsTab embedded />}
       {activeTab === 'posts' && <AdminPostsTab embedded />}
       {activeTab === 'flags' && <AdminFlagsPage embedded />}
       {activeTab === 'users' && <AdminUsersTab embedded />}

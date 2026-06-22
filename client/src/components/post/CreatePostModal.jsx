@@ -3,6 +3,31 @@ import { useNavigate } from 'react-router-dom';
 import { createPostApi } from '../../services/postService';
 import { useToast } from '../../context/ToastContext';
 
+const CREATE_POST_DRAFT_KEY = 'itforum:create-post-draft:v1';
+
+const readDraft = () => {
+  try {
+    return JSON.parse(localStorage.getItem(CREATE_POST_DRAFT_KEY) || 'null');
+  } catch {
+    return null;
+  }
+};
+
+const removeDraft = () => {
+  localStorage.removeItem(CREATE_POST_DRAFT_KEY);
+};
+
+const formatDraftTime = (value) => {
+  if (!value) return '';
+  return new Date(value).toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
 export default function CreatePostModal({ isOpen, onClose }) {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -16,15 +41,124 @@ export default function CreatePostModal({ isOpen, onClose }) {
   const [videoFiles, setVideoFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [mediaError, setMediaError] = useState('');
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [draftNotice, setDraftNotice] = useState('');
+  const [manualDraftSavedAt, setManualDraftSavedAt] = useState('');
+
+  const resetForm = () => {
+    setPostType('question');
+    setTitle('');
+    setContent('');
+    setTagsInput('');
+    setImages([]);
+    setVideos([]);
+    setImageFiles([]);
+    setVideoFiles([]);
+    setMediaError('');
+    setDraftNotice('');
+    setManualDraftSavedAt('');
+  };
+
+  const hasAnyInput = () => Boolean(
+    title.trim()
+    || content.trim()
+    || tagsInput.trim()
+    || postType !== 'question'
+    || images.length > 0
+    || videos.length > 0
+    || imageFiles.length > 0
+    || videoFiles.length > 0,
+  );
+
+  const hasDraftText = () => Boolean(
+    title.trim()
+    || content.trim()
+    || tagsInput.trim()
+    || postType !== 'question',
+  );
+
+  const saveDraft = ({ showToast = false } = {}) => {
+    if (!hasDraftText()) {
+      removeDraft();
+      setManualDraftSavedAt('');
+      if (showToast) toast.warning('Chưa có nội dung chữ để lưu nháp.');
+      return false;
+    }
+
+    const savedAt = new Date().toISOString();
+    localStorage.setItem(CREATE_POST_DRAFT_KEY, JSON.stringify({
+      postType,
+      title,
+      content,
+      tagsInput,
+      savedAt,
+    }));
+    setManualDraftSavedAt(savedAt);
+    if (showToast) toast.success('Đã lưu nháp bài viết.');
+    return true;
+  };
+
+  const handleRequestClose = () => {
+    if (submitting) return;
+
+    if (hasAnyInput()) {
+      setShowCloseConfirm(true);
+      return;
+    }
+
+    onClose();
+  };
+
+  const handleSaveDraftAndClose = () => {
+    const saved = saveDraft({ showToast: true });
+    setShowCloseConfirm(false);
+    if (saved) onClose();
+  };
+
+  const handleDiscardAndClose = () => {
+    removeDraft();
+    resetForm();
+    setShowCloseConfirm(false);
+    onClose();
+  };
 
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+
+      const draft = readDraft();
+      const formIsEmpty = !title && !content && !tagsInput && images.length === 0 && videos.length === 0;
+      if (draft && formIsEmpty) {
+        setPostType(draft.postType || 'question');
+        setTitle(draft.title || '');
+        setContent(draft.content || '');
+        setTagsInput(draft.tagsInput || '');
+        setDraftNotice(`Đã khôi phục bản nháp lưu lúc ${formatDraftTime(draft.savedAt)}.`);
+        setManualDraftSavedAt(draft.savedAt || '');
+      }
     }
     return () => {
       document.body.style.overflow = '';
     };
+    // Chỉ chạy khi mở/đóng modal để không ghi đè nội dung đang nhập.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const timer = window.setTimeout(() => {
+      if (hasDraftText()) {
+        saveDraft();
+      } else {
+        removeDraft();
+        setManualDraftSavedAt('');
+      }
+    }, 800);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, postType, title, content, tagsInput]);
 
   if (!isOpen) return null;
 
@@ -107,17 +241,23 @@ export default function CreatePostModal({ isOpen, onClose }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (title.trim().length < 10) {
+    e?.preventDefault?.();
+
+    const cleanTitle = title.trim();
+    const cleanContent = content.trim();
+
+    if (cleanTitle.length < 10 || cleanTitle.length > 200) {
       toast.error('Tiêu đề bài viết phải có độ dài từ 10 đến 200 ký tự.');
       return;
     }
-    if (content.trim().length < 20) {
+
+    if (cleanContent.length < 20 || cleanContent.length > 10000) {
       toast.error('Nội dung chi tiết bài viết phải có độ dài từ 20 đến 10000 ký tự.');
       return;
     }
 
     setSubmitting(true);
+
     const tags = tagsInput
       .split(',')
       .map((t) => t.trim().toLowerCase())
@@ -125,8 +265,8 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
     try {
       const formData = new FormData();
-      formData.append('title', title);
-      formData.append('content', content);
+      formData.append('title', cleanTitle);
+      formData.append('content', cleanContent);
       formData.append('postType', postType);
       formData.append('tags', JSON.stringify(tags));
 
@@ -140,8 +280,11 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
       const response = await createPostApi(formData);
 
+      removeDraft();
+      resetForm();
       toast.success('Đăng bài viết thành công!');
       onClose();
+
       const newPostId = response.data?.data?._id;
       if (newPostId) {
         navigate(`/posts/${newPostId}`);
@@ -161,7 +304,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
       {/* Backdrop */}
       <button
         type="button"
-        onClick={onClose}
+        onClick={handleRequestClose}
         disabled={submitting}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default animate-backdrop-fade"
         aria-label="Đóng modal"
@@ -172,13 +315,20 @@ export default function CreatePostModal({ isOpen, onClose }) {
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant dark:border-slate-800">
-          <h2 className="text-xl font-bold text-on-surface dark:text-slate-100 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">edit_document</span>
-            Tạo bài viết mới
-          </h2>
+          <div>
+            <h2 className="text-xl font-bold text-on-surface dark:text-slate-100 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">edit_document</span>
+              Tạo bài viết mới
+            </h2>
+            {manualDraftSavedAt && (
+              <p className="mt-1 text-xs text-secondary">
+                Bản nháp đã lưu lúc {formatDraftTime(manualDraftSavedAt)}
+              </p>
+            )}
+          </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleRequestClose}
             disabled={submitting}
             className="text-secondary hover:text-on-surface p-1 rounded-full hover:bg-surface-container transition-colors"
           >
@@ -188,6 +338,11 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
         {/* Content Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {draftNotice && (
+            <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-semibold leading-5 text-sky-800">
+              {draftNotice} Ảnh/video đã chọn trước đó không được khôi phục vì trình duyệt không cho lưu file nháp.
+            </div>
+          )}
           
           {/* Post Type Segmented Control */}
           <div>
@@ -367,36 +522,101 @@ export default function CreatePostModal({ isOpen, onClose }) {
         </form>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-outline-variant dark:border-slate-800 flex justify-end gap-3 bg-surface-container-lowest dark:bg-slate-900">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="px-4 py-2 text-sm font-semibold rounded-xl border border-outline-variant hover:bg-surface-container-low transition-colors disabled:cursor-not-allowed"
-          >
-            Hủy bỏ
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="px-5 py-2 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-primary/95 disabled:cursor-not-allowed disabled:opacity-60 flex items-center gap-1.5"
-          >
-            {submitting ? (
-              <>
-                <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                <span>Đang xử lý...</span>
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-[18px]">send</span>
-                <span>Đăng bài</span>
-              </>
-            )}
-          </button>
+        <div className="px-6 py-4 border-t border-outline-variant dark:border-slate-800 flex flex-col gap-3 bg-surface-container-lowest dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-secondary">
+            Nháp tự lưu khi bạn nhập tiêu đề, nội dung hoặc tag.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => saveDraft({ showToast: true })}
+              disabled={submitting}
+              className="px-4 py-2 text-sm font-semibold rounded-xl border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors disabled:cursor-not-allowed"
+            >
+              Lưu nháp
+            </button>
+            <button
+              type="button"
+              onClick={handleRequestClose}
+              disabled={submitting}
+              className="px-4 py-2 text-sm font-semibold rounded-xl border border-outline-variant hover:bg-surface-container-low transition-colors disabled:cursor-not-allowed"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="px-5 py-2 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-primary/95 disabled:cursor-not-allowed disabled:opacity-60 flex items-center gap-1.5"
+            >
+              {submitting ? (
+                <>
+                  <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  <span>Đang xử lý...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">send</span>
+                  <span>Đăng bài</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
-
       </div>
+
+      {showCloseConfirm && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <button
+            type="button"
+            onClick={() => setShowCloseConfirm(false)}
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+            aria-label="Tiếp tục nhập"
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                <span className="material-symbols-outlined">draft</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Bạn đang nhập bài viết</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  Nếu rời modal ngay, nội dung đang nhập có thể bị mất. Bạn có thể lưu nháp để quay lại viết tiếp sau.
+                </p>
+                {(images.length > 0 || videos.length > 0) && (
+                  <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                    Lưu nháp chỉ giữ tiêu đề, nội dung, tag và loại bài. Ảnh/video đã chọn sẽ không được khôi phục sau khi đóng modal.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCloseConfirm(false)}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Tiếp tục nhập
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardAndClose}
+                className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+              >
+                Thoát không lưu
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDraftAndClose}
+                className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary/95"
+              >
+                Lưu nháp và thoát
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -7,9 +7,19 @@ import { getRankInfo, getTodayStart, getThisWeekStart } from './reputation.servi
 import { uploadToCloudinary } from '../util/cloudinary.js';
 import SystemSetting from '../model/systemSetting.model.js';
 
+const normalizeBankProfileFields = (data = {}) => ({
+    fullName: typeof data.fullName === 'string' ? data.fullName.trim() : data.fullName,
+    phone: typeof data.phone === 'string' ? data.phone.trim() : data.phone,
+    major: typeof data.major === 'string' ? data.major.trim() : data.major,
+    bio: typeof data.bio === 'string' ? data.bio.trim() : data.bio,
+    avatar: data.avatar,
+    bankName: typeof data.bankName === 'string' ? data.bankName.trim() : data.bankName,
+    bankAccountNumber: typeof data.bankAccountNumber === 'string' ? data.bankAccountNumber.trim() : data.bankAccountNumber,
+});
+
 class UserService {
     async getProfile(userId) {
-        const user = await User.findById(userId).select('-password');
+        const user = await User.findById(userId).select('-password').lean();
         if (!user) return null;
         const rep = user.reputation || 1;
 
@@ -45,7 +55,9 @@ class UserService {
         }
 
         return { 
-            ...user.toObject(), 
+            ...user,
+            bankName: user.bankName || '',
+            bankAccountNumber: user.bankAccountNumber || '',
             reputationInfo: { 
                 reputation: rep, 
                 dailyCap,
@@ -59,15 +71,26 @@ class UserService {
     }
 
     async updateProfile(userId, updateData) {
-        if (updateData.avatar) {
-            updateData.avatar = await uploadToCloudinary(updateData.avatar);
+        const safeUpdate = normalizeBankProfileFields(updateData);
+        Object.keys(safeUpdate).forEach((key) => {
+            if (safeUpdate[key] === undefined) delete safeUpdate[key];
+        });
+
+        if (safeUpdate.avatar) {
+            safeUpdate.avatar = await uploadToCloudinary(safeUpdate.avatar);
         }
-        // Cập nhật và lấy bản ghi mới nhất
-        return await User.findByIdAndUpdate(
-            userId, 
-            { $set: updateData }, 
-            { new: true, runValidators: true } 
-        ).select('-password');
+
+        await User.collection.updateOne(
+            { _id: new User.base.Types.ObjectId(userId) },
+            { $set: safeUpdate }
+        );
+
+        const updatedUser = await User.findById(userId).select('-password').lean();
+        return {
+            ...updatedUser,
+            bankName: updatedUser?.bankName || '',
+            bankAccountNumber: updatedUser?.bankAccountNumber || '',
+        };
     }
 
     async changePassword(userId, oldPassword, newPassword) {
@@ -97,7 +120,7 @@ class UserService {
         const skip = (pageNum - 1) * limitNum;
 
         const [user, donations, summary, posts, totalPosts, postSummary] = await Promise.all([
-            User.findById(userId).select('-password'),
+            User.findById(userId).select('-password').lean(),
             donationRepository.findReceivedByAuthor(userId, 20),
             donationRepository.getReceivedSummary(userId),
             postRepository.findPublicPostsByAuthor(userId, skip, limitNum),
@@ -126,7 +149,9 @@ class UserService {
 
         return {
             user: { 
-                ...user.toObject(), 
+                ...user,
+                bankName: user.bankName || '',
+                bankAccountNumber: user.bankAccountNumber || '',
                 reputationInfo: { 
                     reputation: rep, 
                     dailyCap,
