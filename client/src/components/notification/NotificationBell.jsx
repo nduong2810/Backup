@@ -9,6 +9,7 @@ import {
   setUnreadCount,
 } from '../../store/slices/notificationSlice';
 import { connectSocket, disconnectSocket } from '../../lib/socketClient';
+import { logout } from '../../store/slices/loginSlice';
 
 const TOAST_DURATION_MS = 4200;
 const FALLBACK_REFRESH_MS = 12000;
@@ -105,10 +106,17 @@ export default function NotificationBell() {
       dispatch(setUnreadCount(payload));
     };
 
+    const handleUserBlocked = (payload) => {
+      sessionStorage.setItem('locked_message', payload?.reason || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.');
+      dispatch(logout());
+      window.location.href = '/auth/login';
+    };
+
     socket?.on('connect', handleConnect);
     socket?.on('disconnect', handleDisconnect);
     socket?.on('notification:new', handleNewNotification);
     socket?.on('notification:unread-count', handleUnreadCount);
+    socket?.on('user:blocked', handleUserBlocked);
 
     const fallbackIntervalId = window.setInterval(async () => {
       const action = await dispatch(fetchNotificationsThunk());
@@ -130,6 +138,7 @@ export default function NotificationBell() {
       socket?.off('disconnect', handleDisconnect);
       socket?.off('notification:new', handleNewNotification);
       socket?.off('notification:unread-count', handleUnreadCount);
+      socket?.off('user:blocked', handleUserBlocked);
       window.clearInterval(fallbackIntervalId);
       Object.values(toastTimersRef.current).forEach((timerId) => window.clearTimeout(timerId));
       toastTimersRef.current = {};

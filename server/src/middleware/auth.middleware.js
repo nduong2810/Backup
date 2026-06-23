@@ -1,11 +1,12 @@
 import jwt from 'jsonwebtoken';
 import env from '../config/environment.js';
+import User from '../model/user.model.js';
 
 // ====================================================================
 // LỚP 3 - AUTHENTICATION (XÁC THỰC)
 // Đọc Token từ HttpOnly Cookie, tự động làm mới bằng Refresh Token
 // ====================================================================
-export const authenticateToken = (req, res, next) => {
+export const authenticateToken = async (req, res, next) => {
     const accessToken = req.cookies?.accessToken;
     const secret = env.ACCESS_TOKEN_SECRET || env.JWT_SECRET;
 
@@ -17,6 +18,20 @@ export const authenticateToken = (req, res, next) => {
                 email: decoded.email,
                 role: decoded.role
             };
+
+            // Kiểm tra trạng thái hoạt động của tài khoản trong cơ sở dữ liệu
+            const user = await User.findById(req.user.userId).select('isActive');
+            if (!user || !user.isActive) {
+                const cookieOptions = {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'strict',
+                };
+                res.clearCookie('accessToken', cookieOptions);
+                res.clearCookie('refreshToken', cookieOptions);
+                return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' });
+            }
+
             return next();
         } catch (err) {
             // Access token hết hạn hoặc không hợp lệ, tiếp tục kiểm tra Refresh Token
@@ -30,6 +45,19 @@ export const authenticateToken = (req, res, next) => {
 
     try {
         const decodedRefresh = jwt.verify(refreshToken, secret + '_refresh');
+
+        // Kiểm tra trạng thái hoạt động của tài khoản trước khi làm mới token
+        const user = await User.findById(decodedRefresh.id || decodedRefresh.userId).select('isActive');
+        if (!user || !user.isActive) {
+            const cookieOptions = {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+            };
+            res.clearCookie('accessToken', cookieOptions);
+            res.clearCookie('refreshToken', cookieOptions);
+            return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' });
+        }
 
         // Tạo Access Token mới (15 phút)
         const newAccessToken = jwt.sign(
@@ -82,7 +110,7 @@ export const authorizeRole = (role) => {
 // OPTIONAL AUTHENTICATION
 // Decode token nếu có, tự động refresh nếu accessToken hết hạn
 // ====================================================================
-export const optionalAuthenticateToken = (req, res, next) => {
+export const optionalAuthenticateToken = async (req, res, next) => {
     const accessToken = req.cookies?.accessToken;
     const secret = env.ACCESS_TOKEN_SECRET || env.JWT_SECRET;
 
@@ -94,6 +122,21 @@ export const optionalAuthenticateToken = (req, res, next) => {
                 email: decoded.email,
                 role: decoded.role
             };
+
+            // Kiểm tra trạng thái hoạt động của tài khoản
+            const user = await User.findById(req.user.userId).select('isActive');
+            if (!user || !user.isActive) {
+                const cookieOptions = {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'strict',
+                };
+                res.clearCookie('accessToken', cookieOptions);
+                res.clearCookie('refreshToken', cookieOptions);
+                delete req.user;
+                return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' });
+            }
+
             return next();
         } catch (err) {
             // Qua bước check refresh token
@@ -104,6 +147,19 @@ export const optionalAuthenticateToken = (req, res, next) => {
     if (refreshToken) {
         try {
             const decodedRefresh = jwt.verify(refreshToken, secret + '_refresh');
+
+            // Kiểm tra trạng thái hoạt động của tài khoản trước khi làm mới token
+            const user = await User.findById(decodedRefresh.id || decodedRefresh.userId).select('isActive');
+            if (!user || !user.isActive) {
+                const cookieOptions = {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'strict',
+                };
+                res.clearCookie('accessToken', cookieOptions);
+                res.clearCookie('refreshToken', cookieOptions);
+                return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' });
+            }
 
             const newAccessToken = jwt.sign(
                 { id: decodedRefresh.id || decodedRefresh.userId, role: decodedRefresh.role, email: decodedRefresh.email },

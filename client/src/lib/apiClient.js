@@ -50,6 +50,8 @@ apiClient.interceptors.response.use(
         } catch (e) {
           console.error('[apiClient] Lỗi khi thực hiện tự động logout:', e);
         }
+        const message = error.response.data?.message || 'Phiên đăng nhập đã hết hạn hoặc tài khoản bị khóa.';
+        sessionStorage.setItem('locked_message', message);
         window.location.href = '/auth/login';
       }
     }

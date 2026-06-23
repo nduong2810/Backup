@@ -3,6 +3,7 @@ import User from '../model/user.model.js';
 import Post from '../model/post.model.js';
 import Comment from '../model/comment.model.js';
 import adminAuditLogService from '../service/adminAuditLog.service.js';
+import { emitToUser } from '../socket/socket.js';
 
 const getObjectId = (value) => {
   if (!mongoose.Types.ObjectId.isValid(String(value || '').trim())) return null;
@@ -40,6 +41,13 @@ class AdminUserStatusController {
       const previousState = { isActive: targetUser.isActive };
       targetUser.isActive = isActive;
       await targetUser.save();
+
+      // Nếu tài khoản bị khóa, gửi thông báo qua socket đến người dùng
+      if (!isActive) {
+        emitToUser(String(userObjectId), 'user:blocked', {
+          reason: reason || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.'
+        });
+      }
 
       await Promise.all([
         Post.updateMany({ author: userObjectId }, { $set: { isAuthorActive: isActive } }),

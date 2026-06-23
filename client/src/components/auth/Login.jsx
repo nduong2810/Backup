@@ -16,6 +16,14 @@ export default function Login() {
   }, [dispatch]);
 
   useEffect(() => {
+    const lockedMsg = sessionStorage.getItem('locked_message');
+    if (lockedMsg) {
+      toast.error(lockedMsg, 5000);
+      sessionStorage.removeItem('locked_message');
+    }
+  }, [toast]);
+
+  useEffect(() => {
     if (successMessage) {
       toast.success(successMessage);
       dispatch(clearLoginMessages());
