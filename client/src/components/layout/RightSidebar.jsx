@@ -29,7 +29,7 @@ const RightSidebar = ({ filters, onFilterChange, onApply, onClear }) => {
     );
 
     return (
-        <aside className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-stack-lg pb-12">
+        <aside className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-stack-lg pt-3 pb-12">
             {/* Announcements Card */}
             <div className="bg-[#fdf7e2] border border-[#e6c172] rounded-DEFAULT overflow-hidden shadow-sm">
                 <div className="bg-[#fbf3d5] border-b border-[#e6c172] px-4 py-2 font-headline-md text-[15px] font-bold text-[#4c3b12]">

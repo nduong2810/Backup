@@ -78,7 +78,7 @@ class PostRepository {
             isAuthorActive: { $ne: false }
         })
         .populate('author', '_id fullName avatar email')
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: -1, title: 1 })
         .limit(limit)
         .select('title tags images upvotes downvotes likes dislikes viewCount createdAt');
     }
@@ -100,12 +100,12 @@ class PostRepository {
         const sortStage = (() => {
             switch (sortBy) {
                 case 'MostViewed':
-                    return { viewCount: -1 };
+                    return { viewCount: -1, title: 1 };
                 case 'MostUpvoted':
-                    return { upvoteCount: -1 };
+                    return { upvoteCount: -1, title: 1 };
                 case 'Newest':
                 default:
-                    return { createdAt: -1 };
+                    return { createdAt: -1, title: 1 };
             }
         })();
 
@@ -177,7 +177,7 @@ class PostRepository {
         return await Post.aggregate([
             { $match: PUBLIC_POST_MATCH },
             { $addFields: { upvoteCount: { $cond: [{ $isArray: '$upvotes' }, { $size: { $ifNull: ['$upvotes', []] } }, { $ifNull: ['$upvotes', 0] }] } } },
-            { $sort: { viewCount: -1, upvoteCount: -1, createdAt: -1 } },
+            { $sort: { viewCount: -1, upvoteCount: -1, createdAt: -1, title: 1 } },
             { $limit: limit },
             { $project: { _id: 1, title: 1 } },
         ]);
@@ -186,7 +186,7 @@ class PostRepository {
     async findTrendingToday(todayStart, limit = 10) {
         return await Post.aggregate([
             { $match: { ...PUBLIC_POST_MATCH, dailyViewDate: todayStart, dailyViewCount: { $gt: 0 } } },
-            { $sort: { dailyViewCount: -1, viewCount: -1, createdAt: -1 } },
+            { $sort: { dailyViewCount: -1, viewCount: -1, createdAt: -1, title: 1 } },
             { $limit: limit },
             { $lookup: { from: 'users', localField: 'author', foreignField: '_id', as: 'author' } },
             { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
@@ -203,7 +203,7 @@ class PostRepository {
                     downvoteCount: { $cond: [{ $isArray: '$downvotes' }, { $size: { $ifNull: ['$downvotes', []] } }, { $ifNull: ['$downvotes', 0] }] },
                 },
             },
-            { $sort: { dailyUpvoteCount: -1, upvoteCount: -1, createdAt: -1 } },
+            { $sort: { dailyUpvoteCount: -1, upvoteCount: -1, createdAt: -1, title: 1 } },
             { $limit: limit },
             { $lookup: { from: 'users', localField: 'author', foreignField: '_id', as: 'author' } },
             { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
@@ -241,7 +241,7 @@ class PostRepository {
 
     async findDeletedPostsByAuthor(authorId) {
         return await Post.find({ author: authorId, status: 'deleted' })
-            .sort({ deletedAt: -1 })
+            .sort({ deletedAt: -1, title: 1 })
             .populate('author', '_id fullName avatar email')
             .lean();
     }
@@ -271,7 +271,7 @@ class PostRepository {
             },
             { $addFields: { answerCount: { $ifNull: [{ $arrayElemAt: ['$commentMeta.count', 0] }, 0] } } },
             { $project: { commentMeta: 0, author: 0 } },
-            { $sort: { createdAt: -1 } },
+            { $sort: { createdAt: -1, title: 1 } },
             { $skip: skip },
             { $limit: limit },
             {

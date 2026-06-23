@@ -69,15 +69,21 @@ export default function AdminSettingsTab() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary text-2xl font-bold">settings</span>
-          Cài đặt hệ thống
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Cấu hình các thông số vận hành cốt lõi của diễn đàn IT Forum.
-        </p>
+    <div className="flex flex-col gap-6">
+      {/* Header card */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <span className="material-symbols-outlined text-2xl font-bold">settings</span>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Quản trị</p>
+              <h1 className="mt-1 text-2xl font-extrabold text-slate-900 leading-none">Cấu hình hệ thống</h1>
+              <p className="mt-1.5 text-sm text-slate-500">Cấu hình các thông số vận hành cốt lõi của diễn đàn IT Forum.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {successMsg && (

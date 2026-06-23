@@ -20,7 +20,7 @@ export default function UserStatistics() {
     dispatch(fetchStatisticsThunk(12));
   }, [dispatch]);
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="space-y-6">
         {/* Skeleton summary cards */}

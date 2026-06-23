@@ -155,7 +155,22 @@ export default function AdminDashboardPage() {
     }
 
     return (
-      <div className="space-y-8">
+      <div className="flex flex-col gap-6">
+        {/* Header card */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <span className="material-symbols-outlined text-2xl font-bold">query_stats</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Quản trị</p>
+                <h1 className="mt-1 text-2xl font-extrabold text-slate-900 leading-none">Tổng quan hệ thống</h1>
+                <p className="mt-1.5 text-sm text-slate-500">Xem số liệu thống kê tổng quát, hàng đợi cần xử lý và các lối tắt tác vụ quản trị.</p>
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
           <div className="min-h-[138px] rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between gap-3">
@@ -387,7 +402,7 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <main className="min-w-0 flex-1 px-4 pb-8 pt-2 sm:px-6 lg:px-8 xl:px-10">
+    <main className="mx-auto w-full max-w-[1280px] px-6 pt-2 pb-8 min-w-0 flex-1 flex flex-col gap-6">
       {activeTab === 'overview' && renderOverview()}
       {activeTab === 'donations' && <AdminDonationsPage embedded />}
       {activeTab === 'all-donations' && <AdminAllDonationsTab embedded />}

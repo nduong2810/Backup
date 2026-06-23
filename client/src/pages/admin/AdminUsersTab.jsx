@@ -9,6 +9,14 @@ const STATUS_OPTIONS = [
   { value: 'locked', label: 'Đã bị khóa' },
 ];
 
+const SORT_OPTIONS = [
+  { value: 'createdAt_desc', label: 'Thành viên mới' },
+  { value: 'reputation_desc', label: 'Uy tín cao nhất' },
+  { value: 'reputation_asc', label: 'Uy tín thấp nhất' },
+  { value: 'violations_desc', label: 'Vi phạm đã xử lý nhiều nhất' },
+  { value: 'reports_desc', label: 'Bị báo cáo nhiều nhất' },
+];
+
 const REPUTATION_RANKS = [
   { min: 1, max: 49, label: 'Newbie', color: 'text-slate-500', bg: 'bg-slate-100' },
   { min: 50, max: 199, label: 'Member', color: 'text-sky-600', bg: 'bg-sky-50' },
@@ -43,63 +51,58 @@ const getRiskEvaluation = (stats, user) => {
   const confirmedViolations = stats.confirmedViolationsCount || 0;
   const deletedPosts = stats.deletedPostCount || 0;
   const hiddenPosts = stats.hiddenPostCount || 0;
-  const reportRate = stats.reportRate || 0;
   const totalDownvotes = stats.totalDownvotes || 0;
   const reputation = user?.reputation || 1;
-  const reportCount = stats.reportCount || 0;
 
   let score = 0;
   const reasons = [];
 
+  // Đánh giá dựa trên các vi phạm thực tế đã được xử lý (action taken)
   if (confirmedViolations > 0) {
     score += confirmedViolations * 3;
-    reasons.push(`Có ${confirmedViolations} báo cáo vi phạm đã được Admin duyệt (action taken).`);
+    reasons.push(`Có ${confirmedViolations} vi phạm đã xử lý (báo cáo được duyệt).`);
   }
   if (deletedPosts > 0) {
-    score += deletedPosts * 2.5;
-    reasons.push(`Có ${deletedPosts} bài đăng đã bị xóa khỏi hệ thống.`);
+    score += deletedPosts * 2;
+    reasons.push(`Có ${deletedPosts} bài viết vi phạm đã bị xóa.`);
   }
   if (hiddenPosts > 0) {
-    score += hiddenPosts * 1.5;
-    reasons.push(`Có ${hiddenPosts} bài đăng đang bị ẩn.`);
+    score += hiddenPosts * 1;
+    reasons.push(`Có ${hiddenPosts} bài viết vi phạm bị ẩn.`);
   }
-  if (reportRate >= 30 && stats.postCount > 1) {
+  if (totalDownvotes > 10) {
+    score += Math.min(2, Math.floor(totalDownvotes / 10));
+    reasons.push(`Có ${totalDownvotes} lượt downvote từ cộng đồng (đánh giá tiêu cực).`);
+  }
+  if (reputation < 0) {
     score += 2;
-    reasons.push(`Tỷ lệ bài viết bị báo cáo cao (${reportRate}%).`);
-  }
-  if (totalDownvotes > 5) {
-    score += Math.min(3, Math.floor(totalDownvotes / 3));
-    reasons.push(`Nhận ${totalDownvotes} lượt downvote từ cộng đồng.`);
-  }
-  if (reputation <= 5 && reportCount > 3) {
-    score += 2;
-    reasons.push(`Danh tiếng thấp nhưng bị báo cáo nhiều lần (${reportCount} lượt).`);
+    reasons.push(`Điểm uy tín âm (${reputation} điểm).`);
   }
 
   let level = 'safety';
   let title = 'An toàn';
   let color = 'text-emerald-700 bg-emerald-50 border-emerald-200';
   let icon = 'verified_user';
-  let recommendation = 'Thành viên hoạt động bình thường. Không có dấu hiệu vi phạm cần xử lý.';
+  let recommendation = 'Thành viên hoạt động bình thường. Không có vi phạm nào cần xử lý.';
 
-  if (score >= 7) {
+  if (score >= 6) {
     level = 'high';
     title = 'Rủi ro cao (Khuyên khóa)';
     color = 'text-rose-700 bg-rose-50 border-rose-200';
     icon = 'gavel';
-    recommendation = 'Hệ thống đề xuất KHÓA TÀI KHOẢN do có nhiều vi phạm hoặc nội dung độc hại liên tục.';
-  } else if (score >= 4) {
+    recommendation = 'Hệ thống đề xuất KHÓA TÀI KHOẢN do có nhiều vi phạm đã xử lý hoặc điểm uy tín quá thấp.';
+  } else if (score >= 3) {
     level = 'medium';
     title = 'Rủi ro trung bình';
     color = 'text-amber-700 bg-amber-50 border-amber-200';
     icon = 'warning';
-    recommendation = 'Cân nhắc gửi cảnh báo hoặc khóa tạm thời nếu phát hiện hành vi cố ý spam/công kích.';
+    recommendation = 'Theo dõi thêm hoạt động. Cân nhắc nhắc nhở hoặc khóa tạm thời nếu phát hiện hành vi cố ý vi phạm.';
   } else if (score > 0) {
     level = 'low';
     title = 'Rủi ro thấp';
     color = 'text-sky-700 bg-sky-50 border-sky-200';
     icon = 'info';
-    recommendation = 'Theo dõi thêm hoạt động. Nhắc nhở nếu nội dung chưa nghiêm trọng.';
+    recommendation = 'Theo dõi và nhắc nhở thành viên tuân thủ nội quy diễn đàn.';
   }
 
   return { score, level, title, color, icon, recommendation, reasons };
@@ -112,6 +115,7 @@ export default function AdminUsersTab({ embedded = false }) {
   const [keyword, setKeyword] = useState('');
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [status, setStatus] = useState('all');
+  const [sortBy, setSortBy] = useState('createdAt_desc');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -146,7 +150,8 @@ export default function AdminUsersTab({ embedded = false }) {
     limit: pagination.limit,
     keyword: appliedKeyword,
     status,
-  }), [pagination.page, pagination.limit, appliedKeyword, status]);
+    sortBy,
+  }), [pagination.page, pagination.limit, appliedKeyword, status, sortBy]);
 
   // ===== Fetch users =====
   const fetchUsers = useCallback(async () => {
@@ -166,10 +171,7 @@ export default function AdminUsersTab({ embedded = false }) {
   }, [query]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchUsers();
-    }, 0);
-    return () => clearTimeout(timer);
+    fetchUsers();
   }, [fetchUsers]);
 
   // ===== Auto-hide success message =====
@@ -180,16 +182,24 @@ export default function AdminUsersTab({ embedded = false }) {
     }
   }, [successMsg]);
 
-  // ===== Handlers =====
-  const handleApplySearch = (event) => {
-    event?.preventDefault();
-    setPagination((prev) => ({ ...prev, page: 1 }));
-    setAppliedKeyword(keyword.trim());
-  };
+  // ===== Debounced Search Effect =====
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      setPagination((prev) => ({ ...prev, page: 1 }));
+      setAppliedKeyword(keyword.trim());
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [keyword]);
 
   const handleStatusFilter = (event) => {
     setPagination((prev) => ({ ...prev, page: 1 }));
     setStatus(event.target.value);
+  };
+
+  const handleSortByChange = (event) => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    setSortBy(event.target.value);
   };
 
   const goToPage = (page) => {
@@ -262,48 +272,63 @@ export default function AdminUsersTab({ embedded = false }) {
   };
 
   return (
-    <section className={embedded ? 'space-y-5' : 'mx-auto w-full max-w-[1280px] px-6 py-8'}>
-      {/* Header */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">User Management</p>
-            <h2 className="mt-1 text-2xl font-extrabold text-slate-900">Quản lý thành viên</h2>
-            <p className="mt-1 text-sm text-slate-500">Xem danh sách, theo dõi hoạt động và quản lý trạng thái tài khoản thành viên.</p>
+    <section className={embedded ? 'flex flex-col gap-6' : 'mx-auto w-full max-w-[1280px] px-6 py-8 flex flex-col gap-6'}>
+      {/* Header card */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <span className="material-symbols-outlined text-2xl font-bold">group</span>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Quản trị</p>
+              <h1 className="mt-1 text-2xl font-extrabold text-slate-900 leading-none">Quản lý thành viên</h1>
+              <p className="mt-1.5 text-sm text-slate-500">Xem danh sách, theo dõi hoạt động và quản lý trạng thái tài khoản thành viên.</p>
+            </div>
           </div>
+        </div>
+      </div>
 
-          <form onSubmit={handleApplySearch} className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
-            <div className="relative min-w-0 sm:w-72">
-              <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">search</span>
-              <input
-                value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
-                placeholder="Tìm theo tên hoặc email..."
-                className="h-10 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm font-medium text-slate-700 outline-none transition focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
-              />
-            </div>
-            <div className="relative w-full sm:w-48">
-              <select
-                value={status}
-                onChange={handleStatusFilter}
-                className="h-10 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-3 pr-10 text-sm font-semibold text-slate-700 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
-              >
-                {STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-              <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">
-                expand_more
-              </span>
-            </div>
-            <button
-              type="submit"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-bold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
+      {/* Filter Controls Card */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="relative w-full">
+            <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">search</span>
+            <input
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              placeholder="Tìm theo tên hoặc email..."
+              className="h-10 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm font-medium text-slate-700 outline-none transition focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
+            />
+          </div>
+          <div className="relative w-full">
+            <select
+              value={status}
+              onChange={handleStatusFilter}
+              className="h-10 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-3 pr-10 text-sm font-semibold text-slate-700 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
             >
-              <span className="material-symbols-outlined text-[18px]">manage_search</span>
-              Lọc
-            </button>
-          </form>
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">
+              expand_more
+            </span>
+          </div>
+          <div className="relative w-full">
+            <select
+              value={sortBy}
+              onChange={handleSortByChange}
+              className="h-10 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-3 pr-10 text-sm font-semibold text-slate-700 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-slate-400">
+              sort
+            </span>
+          </div>
         </div>
       </div>
 
@@ -342,9 +367,9 @@ export default function AdminUsersTab({ embedded = false }) {
                 <th className="px-6 py-4 text-center">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className={`divide-y divide-slate-100 transition-opacity duration-200 ${loading && users.length > 0 ? 'opacity-50' : 'opacity-100'}`}>
               {/* Loading skeleton */}
-              {loading &&
+              {loading && users.length === 0 &&
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={index} className="animate-pulse">
                     <td className="px-6 py-4">
@@ -379,7 +404,7 @@ export default function AdminUsersTab({ embedded = false }) {
               )}
 
               {/* User rows */}
-              {!loading && users.map((user) => {
+              {users.map((user) => {
                 const isUpdating = updatingId === user._id;
                 const isRecent = recentlyUpdatedId === user._id;
                 const rank = getRank(user.reputation || 1);

@@ -83,7 +83,7 @@ const TagsPage = () => {
   );
 
   return (
-    <main className="flex-1 flex flex-col min-w-0 pb-12">
+    <main className="flex-1 flex flex-col min-w-0 pt-3 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline-variant pb-4 mb-6">
         <div>
           <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">Thẻ</h1>

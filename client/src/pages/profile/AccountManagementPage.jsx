@@ -46,10 +46,21 @@ export default function AccountManagementPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-      <div className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-black text-slate-800">Quản lý tài khoản</h1>
-        <p className="text-sm text-slate-500 mt-1">Cấu hình các thiết lập liên quan đến sự tồn tại tài khoản diễn đàn của bạn.</p>
+    <div className="mx-auto w-full max-w-[1280px] px-6 pt-2 pb-8 flex flex-col gap-6">
+      {/* Header card */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <span className="material-symbols-outlined text-2xl font-bold">manage_accounts</span>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Cá nhân</p>
+              <h1 className="mt-1 text-2xl font-extrabold text-slate-900 leading-none">Quản lý tài khoản</h1>
+              <p className="mt-1.5 text-sm text-slate-500">Cấu hình các thiết lập liên quan đến sự tồn tại tài khoản diễn đàn của bạn.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-6">

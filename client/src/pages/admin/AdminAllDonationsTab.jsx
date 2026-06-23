@@ -221,15 +221,30 @@ export default function AdminAllDonationsTab({ embedded = false }) {
   };
 
   return (
-    <section className={embedded ? 'space-y-5' : 'mx-auto w-full max-w-[1400px] px-6 py-8'}>
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="space-y-5">
-          <div className="max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">All Donations Management</p>
-            <h2 className="mt-2 text-2xl font-extrabold leading-9 text-slate-900 sm:text-3xl">Quản lý giao dịch quyên góp</h2>
-            <p className="mt-2 text-sm font-semibold text-slate-500">Thống kê theo khoảng ngày: {dateRangeLabel}</p>
+    <section className={embedded ? 'flex flex-col gap-6' : 'mx-auto w-full max-w-[1400px] px-6 py-8 flex flex-col gap-6'}>
+      {/* Header card */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <span className="material-symbols-outlined text-2xl font-bold">receipt_long</span>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Quản trị</p>
+              <h1 className="mt-1 text-2xl font-extrabold text-slate-900 leading-none">Quản lý giao dịch quyên góp</h1>
+              <p className="mt-1.5 text-sm text-slate-500">Theo dõi tất cả lịch sử giao dịch ủng hộ thông qua VNPAY và COD trên hệ thống.</p>
+            </div>
           </div>
+        </div>
+      </div>
 
+      {/* Filter Card */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs font-bold text-slate-405 uppercase tracking-wider">Bộ lọc giao dịch</p>
+            <p className="text-xs font-semibold text-slate-500">Thống kê theo khoảng ngày: {dateRangeLabel}</p>
+          </div>
           <form onSubmit={handleSearch} className="grid w-full grid-cols-1 gap-3 lg:grid-cols-[minmax(240px,1fr),190px,190px,170px,170px,104px]">
             <div className="relative min-w-0">
               <span className="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[20px] text-slate-400">search</span>
@@ -294,14 +309,16 @@ export default function AdminAllDonationsTab({ embedded = false }) {
           </form>
 
           {hasDateFilter && (
-            <button
-              type="button"
-              onClick={clearDateRange}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
-            >
-              <span className="material-symbols-outlined text-[16px]">restart_alt</span>
-              Xóa lọc ngày
-            </button>
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={clearDateRange}
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+                Xóa lọc ngày
+              </button>
+            </div>
           )}
         </div>
       </div>

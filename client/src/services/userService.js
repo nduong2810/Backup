@@ -55,9 +55,9 @@ export const adminUpdateTag = (tagId, payload) => apiClient.put(`/admin/tags/${t
 export const adminDeleteTag = (tagId) => apiClient.delete(`/admin/tags/${tagId}`);
 
 // ==================== ADMIN USER MANAGEMENT ====================
-export const getAdminUsers = ({ page = 1, limit = 10, keyword = '', status = 'all' } = {}) =>
+export const getAdminUsers = ({ page = 1, limit = 10, keyword = '', status = 'all', sortBy = 'createdAt_desc' } = {}) =>
   apiClient.get('/admin/users', {
-    params: { page, limit, keyword, status },
+    params: { page, limit, keyword, status, sortBy },
   });
 
 export const getAdminUserDetail = (userId) => apiClient.get(`/admin/users/${userId}`);

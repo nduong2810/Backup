@@ -35,6 +35,7 @@ function App() {
         <Route path="reports/history" element={<ReportHistoryPage />} />
         <Route path="trash" element={<TrashPage />} />
         <Route path="user/account" element={<AccountManagementPage />} />
+        <Route path="user/saves" element={<SavedPostsPage />} />
         <Route path="donate/checkout" element={<DonateCheckoutPage />} />
         <Route path="donate/result" element={<DonateResultPage />} />
 
@@ -64,7 +65,6 @@ function App() {
 
       <Route element={<ProfileShellLayout />}>
         <Route path="/user/profile" element={<ProfilePage />} />
-        <Route path="/user/saves" element={<SavedPostsPage />} />
         <Route path="/users/:id" element={<AuthorProfilePage />} />
         <Route path="/admin/profile" element={<AdminProfilePage />} />
       </Route>

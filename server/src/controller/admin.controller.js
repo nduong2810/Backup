@@ -271,7 +271,7 @@ class AdminController {
                 {
                     $facet: {
                         items: [
-                            { $sort: { createdAt: -1 } },
+                            { $sort: { createdAt: -1, title: 1 } },
                             { $skip: skip },
                             { $limit: limit },
                             {
@@ -537,6 +537,7 @@ class AdminController {
             const limit = Math.min(50, Math.max(5, Number.parseInt(req.query.limit, 10) || 10));
             const keyword = String(req.query.keyword || '').trim();
             const status = String(req.query.status || 'all').trim().toLowerCase();
+            const sortBy = String(req.query.sortBy || 'createdAt_desc').trim();
             const skip = (page - 1) * limit;
 
             const match = { role: 'user' };
@@ -549,30 +550,87 @@ class AdminController {
             if (status === 'active') match.isActive = true;
             else if (status === 'locked') match.isActive = false;
 
+            let sortObj = { createdAt: -1, fullName: 1 };
+            if (sortBy === 'reputation_asc') {
+                sortObj = { reputation: 1, fullName: 1, createdAt: -1 };
+            } else if (sortBy === 'reputation_desc') {
+                sortObj = { reputation: -1, fullName: 1, createdAt: -1 };
+            } else if (sortBy === 'violations_desc') {
+                sortObj = { violationsCount: -1, fullName: 1, createdAt: -1 };
+            } else if (sortBy === 'reports_desc') {
+                sortObj = { reportsCount: -1, fullName: 1, createdAt: -1 };
+            }
+
             const pipeline = [
-                { $match: match },
-                {
-                    $facet: {
-                        items: [
-                            { $sort: { createdAt: -1 } },
-                            { $skip: skip },
-                            { $limit: limit },
-                            {
-                                $project: {
-                                    fullName: 1,
-                                    email: 1,
-                                    avatar: 1,
-                                    major: 1,
-                                    reputation: 1,
-                                    isActive: 1,
-                                    createdAt: 1,
-                                },
-                            },
-                        ],
-                        total: [{ $count: 'count' }],
-                    },
-                },
+                { $match: match }
             ];
+
+            const needsLookups = ['violations_desc', 'reports_desc'].includes(sortBy);
+            if (needsLookups) {
+                pipeline.push(
+                    {
+                        $lookup: {
+                            from: 'posts',
+                            localField: '_id',
+                            foreignField: 'author',
+                            as: 'userPosts',
+                        },
+                    },
+                    {
+                        $lookup: {
+                            from: 'reporttickets',
+                            let: { postIds: '$userPosts._id' },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: { $in: ['$post', '$$postIds'] },
+                                    },
+                                },
+                                {
+                                    $group: {
+                                        _id: null,
+                                        totalReports: { $sum: 1 },
+                                        totalViolations: {
+                                            $sum: {
+                                                $cond: [{ $eq: ['$status', 'action_taken'] }, 1, 0],
+                                            },
+                                        },
+                                    },
+                                },
+                            ],
+                            as: 'reportStats',
+                        },
+                    },
+                    {
+                        $addFields: {
+                            violationsCount: { $ifNull: [{ $arrayElemAt: ['$reportStats.totalViolations', 0] }, 0] },
+                            reportsCount: { $ifNull: [{ $arrayElemAt: ['$reportStats.totalReports', 0] }, 0] },
+                        },
+                    }
+                );
+            }
+
+            pipeline.push({
+                $facet: {
+                    items: [
+                        { $sort: sortObj },
+                        { $skip: skip },
+                        { $limit: limit },
+                        {
+                            $project: {
+                                fullName: 1,
+                                email: 1,
+                                avatar: 1,
+                                major: 1,
+                                reputation: 1,
+                                isActive: 1,
+                                createdAt: 1,
+                            },
+                        },
+                    ],
+                    total: [{ $count: 'count' }],
+                },
+            });
 
             const [result] = await User.aggregate(pipeline);
             const users = result?.items || [];

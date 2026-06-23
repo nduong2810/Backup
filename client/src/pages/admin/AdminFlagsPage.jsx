@@ -158,17 +158,30 @@ export default function AdminFlagsPage({ embedded = false }) {
   }, [currentPage, totalPages]);
 
   return (
-    <div className={embedded ? 'w-full' : 'mx-auto w-full max-w-6xl px-4 py-8'}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Duyệt cờ báo cáo</h1>
-          <p className="mt-1 text-sm text-slate-600">Hàng đợi moderation dành cho quản trị viên.</p>
+    <div className={embedded ? 'flex flex-col gap-6 w-full' : 'mx-auto w-full max-w-6xl px-4 py-8 flex flex-col gap-6'}>
+      {/* Header card */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <span className="material-symbols-outlined text-2xl font-bold">flag</span>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Quản trị</p>
+              <h1 className="mt-1 text-2xl font-extrabold text-slate-900 leading-none">Duyệt cờ báo cáo</h1>
+              <p className="mt-1.5 text-sm text-slate-500">Hàng đợi moderation dành cho quản trị viên.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            <span className="rounded-full border border-slate-250 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-750 shadow-sm">
+              Tổng cờ: {total}
+            </span>
+          </div>
         </div>
-        <p className="rounded-full border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700">Tổng: {total}</p>
       </div>
 
       {/* Tab Switcher */}
-      <div className="mt-6 flex border-b border-slate-200">
+      <div className="flex border-b border-slate-200">
         <button
           type="button"
           onClick={() => { setActiveTab('post'); setCurrentPage(1); }}
@@ -193,7 +206,7 @@ export default function AdminFlagsPage({ embedded = false }) {
         </button>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-3">
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
           {statusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select>
@@ -209,10 +222,10 @@ export default function AdminFlagsPage({ embedded = false }) {
         </button>
       </div>
 
-      {loadingAdminFlags && <p className="mt-6 text-slate-600">Đang tải hàng đợi...</p>}
-      {adminFlagsErrorMessage && <p className="mt-4 text-sm text-red-600">{adminFlagsErrorMessage}</p>}
+      {loadingAdminFlags && <p className="text-slate-600">Đang tải hàng đợi...</p>}
+      {adminFlagsErrorMessage && <p className="text-sm text-red-600">{adminFlagsErrorMessage}</p>}
 
-      <div className="mt-6 space-y-4">
+      <div className="space-y-4">
         {paginatedGroups.map((group) => (
           <article key={group.postId} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -327,7 +340,7 @@ export default function AdminFlagsPage({ embedded = false }) {
       </div>
 
       {!loadingAdminFlags && groupedByPost.length > 0 && (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
           <p className="text-sm text-slate-600">
             Trang {safePage}/{totalPages} • {groupedByPost.length} {activeTab === 'post' ? 'bài viết có cờ' : 'bài viết có bình luận bị báo cáo'}
           </p>

@@ -164,25 +164,30 @@ export default function AdminTagsTab() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header & Add Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-2xl font-bold">label</span>
-            Quản lý thẻ tag
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Xem, cập nhật mô tả thẻ tag, tạo thẻ tag mới và xóa các thẻ bị lỗi hoặc vi phạm.
-          </p>
+    <div className="flex flex-col gap-6">
+      {/* Header card */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <span className="material-symbols-outlined text-2xl font-bold">label</span>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Quản trị</p>
+              <h1 className="mt-1 text-2xl font-extrabold text-slate-900 leading-none">Quản lý thẻ tag</h1>
+              <p className="mt-1.5 text-sm text-slate-500">Xem, cập nhật mô tả thẻ tag, tạo thẻ tag mới và xóa các thẻ bị lỗi hoặc vi phạm.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            <button
+              onClick={openCreateForm}
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 text-xs font-bold text-white shadow-sm hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <span className="material-symbols-outlined text-base">add</span>
+              Thêm thẻ mới
+            </button>
+          </div>
         </div>
-        <button
-          onClick={openCreateForm}
-          className="self-start sm:self-center flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-primary-dark transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          <span className="material-symbols-outlined text-lg font-bold">add</span>
-          Thêm thẻ mới
-        </button>
       </div>
 
       {/* Messages */}

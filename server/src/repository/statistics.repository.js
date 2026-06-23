@@ -244,7 +244,7 @@ class StatisticsRepository {
                     commentCount: { $ifNull: [{ $arrayElemAt: ['$commentMeta.count', 0] }, 0] },
                 },
             },
-            { $sort: { upvoteCount: -1, viewCount: -1 } },
+            { $sort: { upvoteCount: -1, viewCount: -1, title: 1 } },
             { $limit: limit },
             {
                 $project: {
@@ -268,11 +268,11 @@ class StatisticsRepository {
     async getRecentPosts(userId, limit = 10, skip = 0, sortBy = 'newest', timeRange = 'all') {
         const objectId = new mongoose.Types.ObjectId(userId);
 
-        let sortStage = { createdAt: -1 };
+        let sortStage = { createdAt: -1, title: 1 };
         if (sortBy === 'score') {
-            sortStage = { upvoteCount: -1, createdAt: -1 };
+            sortStage = { upvoteCount: -1, title: 1, createdAt: -1 };
         } else if (sortBy === 'views') {
-            sortStage = { viewCount: -1, createdAt: -1 };
+            sortStage = { viewCount: -1, title: 1, createdAt: -1 };
         }
 
         const matchStage = { author: objectId, status: { $ne: 'deleted' } };
@@ -345,11 +345,11 @@ class StatisticsRepository {
     async getRecentComments(userId, limit = 10, skip = 0, sortBy = 'newest', timeRange = 'all') {
         const objectId = new mongoose.Types.ObjectId(userId);
 
-        let sortStage = { createdAt: -1 };
+        let sortStage = { createdAt: -1, content: 1 };
         if (sortBy === 'score') {
-            sortStage = { likeCount: -1, createdAt: -1 };
+            sortStage = { likeCount: -1, content: 1, createdAt: -1 };
         } else if (sortBy === 'views') {
-            sortStage = { 'postInfo.viewCount': -1, createdAt: -1 };
+            sortStage = { 'postInfo.viewCount': -1, content: 1, createdAt: -1 };
         }
 
         const matchStage = { author: objectId };
@@ -518,11 +518,11 @@ class StatisticsRepository {
                     }
                 }
             });
-            pipeline.push({ $sort: { score: -1, createdAt: -1 } });
+            pipeline.push({ $sort: { score: -1, title: 1, createdAt: -1 } });
         } else if (sortBy === 'views') {
-            pipeline.push({ $sort: { viewCount: -1, createdAt: -1 } });
+            pipeline.push({ $sort: { viewCount: -1, title: 1, createdAt: -1 } });
         } else {
-            pipeline.push({ $sort: { createdAt: -1 } });
+            pipeline.push({ $sort: { createdAt: -1, title: 1 } });
         }
 
         // Pagination

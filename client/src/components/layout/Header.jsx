@@ -120,15 +120,6 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
                       >
                         Hồ sơ
                       </button>
-                      <button
-                        onClick={() => {
-                          setMenuOpen(false);
-                          navigate('/user/saves');
-                        }}
-                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
-                      >
-                        Thư mục lưu trữ
-                      </button>
                     </>
                   )}
                   <button

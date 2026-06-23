@@ -88,13 +88,26 @@ export default function ReportHistoryPage() {
   }, [currentPage, totalPages]);
 
   return (
-    <main className="flex-1 flex flex-col min-w-0 pb-12">
+    <main className="mx-auto w-full max-w-[1280px] px-6 pt-2 pb-8 flex flex-col gap-6 min-w-0 flex-1">
 
-      <h1 className="text-2xl font-bold text-slate-900">Lịch sử cờ báo cáo</h1>
-      <p className="mt-2 text-sm text-slate-600">Theo dõi trạng thái xử lý các cờ bạn đã gửi.</p>
+      {/* Header card */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <span className="material-symbols-outlined text-2xl font-bold">history</span>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Cá nhân</p>
+              <h1 className="mt-1 text-2xl font-extrabold text-slate-900 leading-none">Lịch sử cờ báo cáo</h1>
+              <p className="mt-1.5 text-sm text-slate-500">Theo dõi trạng thái xử lý các cờ bạn đã gửi.</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Tab Switcher */}
-      <div className="mt-6 flex border-b border-slate-200">
+      <div className="flex border-b border-slate-200">
         <button
           type="button"
           onClick={() => { setActiveTab('post'); setCurrentPage(1); }}
@@ -119,16 +132,16 @@ export default function ReportHistoryPage() {
         </button>
       </div>
 
-      {loadingTickets && <p className="mt-6 text-slate-600">Đang tải dữ liệu...</p>}
-      {ticketsErrorMessage && <p className="mt-4 text-sm text-red-600">{ticketsErrorMessage}</p>}
+      {loadingTickets && <p className="text-slate-600">Đang tải dữ liệu...</p>}
+      {ticketsErrorMessage && <p className="text-sm text-red-600">{ticketsErrorMessage}</p>}
 
       {!loadingTickets && filteredTickets.length === 0 && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 text-slate-600">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 text-slate-600">
           {activeTab === 'post' ? 'Bạn chưa có cờ báo cáo bài viết nào.' : 'Bạn chưa có cờ báo cáo bình luận nào.'}
         </div>
       )}
 
-      <div className="mt-6 space-y-4">
+      <div className="space-y-4">
         {paginatedGroups.map((group) => (
           <article key={group.postId} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -223,7 +236,7 @@ export default function ReportHistoryPage() {
       </div>
 
       {!loadingTickets && filteredTickets.length > 0 && (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
           <p className="text-sm text-slate-600">
             Trang {safePage}/{totalPages} • {groupedByPost.length} {activeTab === 'post' ? 'bài đã báo cáo' : 'bài viết có bình luận bị báo cáo'}
           </p>

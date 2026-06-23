@@ -132,7 +132,7 @@ class DonationRepository {
     if (paymentMethod) filter.paymentMethod = paymentMethod;
 
     return await DonationTransaction.find(filter)
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, 'donorSnapshot.fullName': 1 })
       .limit(Number(limit) || 100)
       .populate('donor', 'fullName avatar major email')
       .populate('author', 'fullName avatar major email')
@@ -192,7 +192,7 @@ class DonationRepository {
       {
         $facet: {
           items: [
-            { $sort: { createdAt: -1 } },
+            { $sort: { createdAt: -1, 'donorSnapshot.fullName': 1 } },
             { $skip: skip },
             { $limit: safeLimit },
             { $project: projectDonationForAdmin() },
@@ -299,7 +299,7 @@ class DonationRepository {
       author: authorId,
       status: 'completed',
     })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, 'donorSnapshot.fullName': 1 })
       .limit(limit)
       .populate('donor', 'fullName avatar major')
       .populate('post', 'title')

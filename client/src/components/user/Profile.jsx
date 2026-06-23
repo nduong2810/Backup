@@ -113,7 +113,7 @@ export default function Profile() {
     ? form.avatar
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(form.fullName || 'U')}&background=0066cc&color=fff&size=120`;
 
-  if (loading) {
+  if (loading && !form.email) {
     return (
       <div className="max-w-5xl mx-auto space-y-5">
         <div className="h-32 animate-pulse rounded-2xl bg-white border border-slate-200" />

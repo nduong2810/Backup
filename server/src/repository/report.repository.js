@@ -25,7 +25,7 @@ class ReportRepository {
         select: 'content author post',
         populate: { path: 'author', select: 'fullName email avatar' }
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1, flagType: 1 });
   }
 
   async findForAdmin(filters = {}) {
@@ -61,17 +61,17 @@ class ReportRepository {
         select: 'content author post',
         populate: { path: 'author', select: 'fullName email avatar' }
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1, flagType: 1 });
   }
 
   async findByPost(postId) {
-    return ReportTicket.find({ post: postId }).sort({ createdAt: -1 });
+    return ReportTicket.find({ post: postId }).sort({ createdAt: -1, flagType: 1 });
   }
 
   async findByPostForOwner(postId) {
     return ReportTicket.find({ post: postId })
       .populate('reporter', 'fullName avatar')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1, flagType: 1 });
   }
 
   async findExistingFlag(postId, reporterId, flagType) {

@@ -3,7 +3,7 @@ import SavedCollection from '../model/savedCollection.model.js';
 class SavedCollectionRepository {
     async findByUser(userId) {
         return await SavedCollection.find({ user: userId })
-            .sort({ isDefault: -1, createdAt: 1 })
+            .sort({ isDefault: -1, createdAt: 1, name: 1 })
             .lean();
     }
 

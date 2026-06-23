@@ -545,7 +545,7 @@ const MainContent = () => {
     );
 
     return (
-        <main className="flex-1 flex flex-col min-w-0 pb-12">
+        <main className="flex-1 flex flex-col min-w-0 pt-3 pb-12">
             {!hasAppliedSearchOrFilters && (
             <section className="mb-stack-lg">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">

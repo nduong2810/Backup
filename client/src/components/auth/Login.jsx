@@ -179,7 +179,7 @@ export default function Login() {
                 type="button"
                 onClick={handleRequestReactivateOtp}
                 disabled={submittingOtp}
-                className="rounded-xl bg-orange-500 text-white px-4 py-2.5 text-xs font-bold hover:bg-orange-600 shadow-sm transition-colors"
+                className="rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-xs font-bold hover:bg-emerald-700 shadow-sm transition-colors"
               >
                 {submittingOtp ? 'Đang gửi...' : 'Có, kích hoạt lại'}
               </button>
@@ -228,7 +228,7 @@ export default function Login() {
                 type="button"
                 onClick={handleVerifyReactivateOtp}
                 disabled={submittingOtp}
-                className="rounded-xl bg-orange-500 text-white px-4 py-2.5 text-xs font-bold hover:bg-orange-600 shadow-sm transition-colors"
+                className="rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-xs font-bold hover:bg-emerald-700 shadow-sm transition-colors"
               >
                 {submittingOtp ? 'Đang xác thực...' : 'Xác nhận kích hoạt'}
               </button>
@@ -246,7 +246,21 @@ export default function Login() {
               Khôi phục tài khoản chờ xóa
             </h3>
             <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              {pendingDeleteInfo.message}
+              {(() => {
+                const parts = pendingDeleteInfo.message.split('Thời gian khôi phục còn lại:');
+                if (parts.length === 2) {
+                  const subParts = parts[1].split('.');
+                  const timeStr = subParts[0];
+                  const rest = subParts.slice(1).join('.');
+                  return (
+                    <>
+                      {parts[0]}Thời gian khôi phục còn lại:
+                      <strong className="text-slate-800 font-bold">{timeStr}</strong>.{rest}
+                    </>
+                  );
+                }
+                return pendingDeleteInfo.message;
+              })()}
             </p>
             <p className="mt-3 text-sm font-bold text-slate-700 leading-5">
               Bạn có muốn hủy yêu cầu xóa và khôi phục tài khoản không?
@@ -256,7 +270,7 @@ export default function Login() {
                 type="button"
                 onClick={handleRequestCancelDeletionOtp}
                 disabled={submittingOtp}
-                className="rounded-xl bg-orange-500 text-white px-4 py-2.5 text-xs font-bold hover:bg-orange-600 shadow-sm transition-colors"
+                className="rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-xs font-bold hover:bg-emerald-700 shadow-sm transition-colors"
               >
                 {submittingOtp ? 'Đang xử lý...' : 'Có, khôi phục tài khoản'}
               </button>
@@ -308,7 +322,7 @@ export default function Login() {
                 type="button"
                 onClick={handleVerifyCancelDeletionOtp}
                 disabled={submittingOtp}
-                className="rounded-xl bg-rose-600 text-white px-4 py-2.5 text-xs font-bold hover:bg-rose-700 shadow-sm transition-colors"
+                className="rounded-xl bg-emerald-600 text-white px-4 py-2.5 text-xs font-bold hover:bg-emerald-700 shadow-sm transition-colors"
               >
                 {submittingOtp ? 'Đang xác thực...' : 'Xác nhận hủy xóa'}
               </button>

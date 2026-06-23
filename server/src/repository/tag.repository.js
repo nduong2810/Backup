@@ -20,7 +20,7 @@ class TagRepository {
         if (sortBy === 'name') {
             sortStage = { slug: 1 };
         } else if (sortBy === 'newest') {
-            sortStage = { createdAt: -1 };
+            sortStage = { createdAt: -1, slug: 1 };
         }
 
         const itemsPipeline = [

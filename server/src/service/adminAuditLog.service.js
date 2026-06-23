@@ -139,7 +139,7 @@ class AdminAuditLogService {
       {
         $facet: {
           items: [
-            { $sort: { createdAt: -1 } },
+            { $sort: { createdAt: -1, targetLabel: 1 } },
             { $skip: skip },
             { $limit: limit },
             {

@@ -51,10 +51,13 @@ const LeftSidebar = () => {
             <nav
                 ref={navRef}
                 onWheel={handleWheel}
-                className="sticky top-[calc(4rem+1.5rem)] flex flex-col py-stack-lg gap-stack-sm bg-surface dark:bg-background border-r border-outline-variant dark:border-outline h-[calc(100vh-4rem-1.5rem)] hidden lg:flex overflow-y-auto overscroll-contain"
+                className="sticky top-[calc(4rem+0.5rem)] flex flex-col py-stack-lg gap-stack-sm bg-surface dark:bg-background border-r border-outline-variant dark:border-outline h-[calc(100vh-4rem-0.5rem)] hidden lg:flex overflow-y-auto overscroll-contain"
             >
                 <div className="px-4 pb-2">
-                    <h2 className="font-label-mono text-label-mono text-outline font-bold tracking-wider mb-1">CỘNG ĐỒNG</h2>
+                    <h2 className="font-label-mono text-label-mono text-outline font-bold tracking-wider mb-1 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[14px]">groups</span>
+                        CỘNG ĐỒNG
+                    </h2>
                     <p className="font-body-sm text-body-sm text-secondary">Diễn đàn cộng đồng</p>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -72,32 +75,61 @@ const LeftSidebar = () => {
                         <span className="material-symbols-outlined text-[18px]">sell</span>
                         <span>Thẻ</span>
                     </NavLink>
-                    <NavLink
-                        to="/reports/history"
-                        className={navLinkClass}
-                    >
-                        <span className="material-symbols-outlined text-[18px]">history</span>
-                        <span>Báo cáo</span>
-                    </NavLink>
-                    {user && (
-                        <>
-                            <NavLink
-                                to="/trash"
-                                className={navLinkClass}
-                            >
-                                <span className="material-symbols-outlined text-[18px]">delete</span>
-                                <span>Thùng rác</span>
-                            </NavLink>
-                            <NavLink
-                                to="/user/account"
-                                className={navLinkClass}
-                            >
-                                <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
-                                <span>Quản lý tài khoản</span>
-                            </NavLink>
-                        </>
-                    )}
                 </div>
+
+                {user && (
+                    <>
+                        <div className="mt-4 px-4 pb-2 border-t border-outline-variant pt-4">
+                            <h2 className="font-label-mono text-label-mono text-outline font-bold tracking-wider mb-1 flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[14px]">person</span>
+                                CÁ NHÂN
+                            </h2>
+                            <p className="font-body-sm text-body-sm text-secondary">Hoạt động cá nhân</p>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            {isAdmin ? (
+                                <NavLink
+                                    to="/trash"
+                                    className={navLinkClass}
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                    <span>Thùng rác</span>
+                                </NavLink>
+                            ) : (
+                                <>
+                                    <NavLink
+                                        to="/user/saves"
+                                        className={navLinkClass}
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">folder_open</span>
+                                        <span>Thư mục lưu trữ</span>
+                                    </NavLink>
+                                    <NavLink
+                                        to="/trash"
+                                        className={navLinkClass}
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                                        <span>Thùng rác</span>
+                                    </NavLink>
+                                    <NavLink
+                                        to="/reports/history"
+                                        className={navLinkClass}
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">history</span>
+                                        <span>Báo cáo</span>
+                                    </NavLink>
+                                    <NavLink
+                                        to="/user/account"
+                                        className={navLinkClass}
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
+                                        <span>Quản lý tài khoản</span>
+                                    </NavLink>
+                                </>
+                            )}
+                        </div>
+                    </>
+                )}
 
                 {isAdmin && (
                     <>
@@ -106,6 +138,7 @@ const LeftSidebar = () => {
                                 <span className="material-symbols-outlined text-[14px]">admin_panel_settings</span>
                                 QUẢN TRỊ
                             </h2>
+                            <p className="font-body-sm text-body-sm text-secondary">Quản lý hệ thống</p>
                         </div>
                         <div className="flex flex-col gap-1">
                             {ADMIN_TABS.map((item) => {
