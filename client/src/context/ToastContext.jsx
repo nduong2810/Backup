@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const ToastContext = createContext(null);
 
@@ -25,6 +25,18 @@ export function ToastProvider({ children }) {
       removeToast(id);
     }, duration);
   }, [removeToast]);
+
+  useEffect(() => {
+    const handleRateLimit = (event) => {
+      const message = event.detail?.message || 'Bạn đang thao tác quá nhanh. Vui lòng thử lại sau.';
+      addToast(message, 'warning');
+    };
+
+    window.addEventListener('api-rate-limit', handleRateLimit);
+    return () => {
+      window.removeEventListener('api-rate-limit', handleRateLimit);
+    };
+  }, [addToast]);
 
   const toast = {
     success: (msg, dur) => addToast(msg, 'success', dur),

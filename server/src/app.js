@@ -16,6 +16,10 @@ const app = express()
 app.set('trust proxy', 1)
 
 // --- Global Middlewares ---
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
 app.use(cors(corsOptions))         // CORS
 
 // Cho phép upload media dạng base64 trong JSON body.
@@ -32,10 +36,27 @@ app.use('/api', routes)
 
 // --- 404 Handler ---
 app.use((req, res) => {
-  res.status(404).json({
+  res.status(404);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.json({
     success: false,
     message: `Route ${req.originalUrl} không tồn tại`,
   })
 })
+
+// --- Global Error Handler ---
+app.use((err, req, res, next) => {
+  console.error('[GlobalErrorHandler] Unhandled error:', err);
+  const status = err.status || 500;
+  const message = err.message || 'Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.';
+  
+  res.status(status);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.json({
+    success: false,
+    message,
+    errors: err.errors || undefined
+  });
+});
 
 export default app

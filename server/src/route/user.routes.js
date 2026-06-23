@@ -39,6 +39,21 @@ router.put('/profile',
         body('fullName').optional().notEmpty().withMessage('Tên không được để trống'), // Lớp 1 
         body('phone').optional({ checkFalsy: true }).isMobilePhone('vi-VN').withMessage('SĐT không hợp lệ'),
         body('bio').optional().isLength({ max: 500 }).withMessage('Bio tối đa 500 ký tự'),
+        body('avatar').optional({ checkFalsy: true }).isString().withMessage('Avatar phải là chuỗi base64')
+            .custom((value) => {
+                if (!value.startsWith('data:image/')) {
+                    throw new Error('Avatar phải là hình ảnh (JPEG, PNG, GIF, WEBP,...)');
+                }
+                const base64Content = value.split(',')[1];
+                if (!base64Content) {
+                    throw new Error('Định dạng ảnh base64 không hợp lệ');
+                }
+                const sizeInBytes = (base64Content.length * 0.75);
+                if (sizeInBytes > 10 * 1024 * 1024) {
+                    throw new Error('Ảnh đại diện không được vượt quá 10MB');
+                }
+                return true;
+            }),
         body('bankName').optional().trim().isLength({ max: 120 }).withMessage('Tên ngân hàng tối đa 120 ký tự'),
         body('bankAccountNumber').optional().trim().matches(/^[0-9A-Za-z .-]{0,40}$/).withMessage('Số tài khoản không hợp lệ')
     ],

@@ -8,15 +8,16 @@ import userRepository from '../repository/user.repository.js';
 import { getRankInfo, getTodayStart, getThisWeekStart } from './reputation.service.js';
 import { uploadToCloudinary } from '../util/cloudinary.js';
 import SystemSetting from '../model/systemSetting.model.js';
+import { stripHtmlTags } from '../util/sanitize.js';
 
 const normalizeBankProfileFields = (data = {}) => ({
-    fullName: typeof data.fullName === 'string' ? data.fullName.trim() : data.fullName,
-    phone: typeof data.phone === 'string' ? data.phone.trim() : data.phone,
-    major: typeof data.major === 'string' ? data.major.trim() : data.major,
-    bio: typeof data.bio === 'string' ? data.bio.trim() : data.bio,
+    fullName: typeof data.fullName === 'string' ? stripHtmlTags(data.fullName) : data.fullName,
+    phone: typeof data.phone === 'string' ? stripHtmlTags(data.phone) : data.phone,
+    major: typeof data.major === 'string' ? stripHtmlTags(data.major) : data.major,
+    bio: typeof data.bio === 'string' ? stripHtmlTags(data.bio) : data.bio,
     avatar: data.avatar,
-    bankName: typeof data.bankName === 'string' ? data.bankName.trim() : data.bankName,
-    bankAccountNumber: typeof data.bankAccountNumber === 'string' ? data.bankAccountNumber.trim() : data.bankAccountNumber,
+    bankName: typeof data.bankName === 'string' ? stripHtmlTags(data.bankName) : data.bankName,
+    bankAccountNumber: typeof data.bankAccountNumber === 'string' ? stripHtmlTags(data.bankAccountNumber) : data.bankAccountNumber,
 });
 
 class UserService {

@@ -31,6 +31,10 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (error.response && error.response.status === 429) {
+      const message = error.response.data?.message || 'Bạn đang thao tác quá nhanh. Vui lòng thử lại sau.';
+      window.dispatchEvent(new CustomEvent('api-rate-limit', { detail: { message } }));
+    }
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       const url = error.config?.url || '';
       // Tránh tự động logout trên các API thuộc luồng xác thực/đăng nhập/quên mật khẩu

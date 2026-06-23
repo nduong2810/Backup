@@ -7,6 +7,7 @@ import reputationService, { getThisWeekStart } from './reputation.service.js';
 import { uploadToCloudinary } from '../util/cloudinary.js';
 import { slugify } from '../util/slugify.js';
 import * as moderation from '../util/moderation.js';
+import { stripHtmlTags, sanitizeHtml } from '../util/sanitize.js';
 
 const PUBLIC_POST_STATUS_FILTER = { $nin: ['hidden', 'deleted'] };
 const PUBLIC_FILTERABLE_STATUSES = new Set(['unresolved', 'resolved']);
@@ -210,7 +211,7 @@ class PostService {
     }
 
     async createComment(postId, userId, payload, files = {}) {
-        const content = String(payload.content || '').trim();
+        const content = sanitizeHtml(String(payload.content || '').trim());
         const parentComment = payload.parentComment || null;
 
         moderation.validateComment(content);
@@ -303,8 +304,8 @@ class PostService {
     }
 
     async createPost(userId, payload, files = {}) {
-        const title = String(payload.title || '').trim();
-        const content = String(payload.content || '').trim();
+        const title = stripHtmlTags(String(payload.title || '').trim());
+        const content = sanitizeHtml(String(payload.content || '').trim());
         const postType = payload.postType || 'question';
         const tags = normalizeTags(payload.tags);
 
@@ -607,8 +608,8 @@ class PostService {
             throw { status: 423, message: 'Bài viết đang bị khóa hoặc không hợp lệ' };
         }
 
-        const title = String(payload.title || '').trim();
-        const content = String(payload.content || '').trim();
+        const title = stripHtmlTags(String(payload.title || '').trim());
+        const content = sanitizeHtml(String(payload.content || '').trim());
         const tags = normalizeTags(payload.tags);
 
         moderation.validatePost(title, content);
@@ -708,7 +709,7 @@ class PostService {
             throw { status: 423, message: 'Bài viết đang bị khóa hoặc không hợp lệ' };
         }
 
-        const content = String(payload.content || '').trim();
+        const content = sanitizeHtml(String(payload.content || '').trim());
         moderation.validateComment(content);
 
         // Xử lý media cũ và mới
