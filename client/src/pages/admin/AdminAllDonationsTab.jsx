@@ -122,6 +122,62 @@ function MiniDonationChart({ timeline = [], title, subtitle }) {
 }
 
 export default function AdminAllDonationsTab({ embedded = false }) {
+  const [colWidths, setColWidths] = useState({
+    id: 180,
+    donor: 180,
+    recipient: 180,
+    amount: 150,
+    method: 130,
+    status: 170,
+    date: 170,
+    post: 260,
+  });
+
+  const handleMouseDown = (colKey, event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = colWidths[colKey];
+
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = Math.max(80, startWidth + deltaX);
+      setColWidths((prev) => ({
+        ...prev,
+        [colKey]: newWidth,
+      }));
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleDoubleClick = (colKey) => {
+    const cells = document.querySelectorAll(`[data-col="${colKey}"]`);
+    let maxWidth = 80;
+    cells.forEach((cell) => {
+      const contentEl = cell.querySelector('.w-max');
+      if (contentEl) {
+        const contentWidth = contentEl.scrollWidth + 42;
+        if (contentWidth > maxWidth) maxWidth = contentWidth;
+      } else {
+        const textWidth = cell.scrollWidth;
+        if (textWidth > maxWidth) maxWidth = textWidth;
+      }
+    });
+    const finalWidth = Math.min(600, Math.max(80, maxWidth));
+    setColWidths((prev) => ({
+      ...prev,
+      [colKey]: finalWidth,
+    }));
+  };
+
+  const totalWidth = useMemo(() => Object.values(colWidths).reduce((a, b) => a + b, 0), [colWidths]);
+
   const [donations, setDonations] = useState([]);
   const [summary, setSummary] = useState({});
   const [timeline, setTimeline] = useState([]);
@@ -359,31 +415,95 @@ export default function AdminAllDonationsTab({ embedded = false }) {
       />
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-[1280px] divide-y divide-slate-100">
+        <div className="overflow-x-auto scrollbar-custom pb-2">
+          <table className="table-fixed w-full divide-y divide-slate-100" style={{ minWidth: `${totalWidth}px` }}>
             <thead className="bg-slate-50/80">
               <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                <th className="w-[180px] px-5 py-4 align-middle">Mã giao dịch</th>
-                <th className="w-[180px] px-5 py-4 align-middle">Người gửi</th>
-                <th className="w-[180px] px-5 py-4 align-middle">Người nhận</th>
-                <th className="w-[150px] px-5 py-4 text-right align-middle">Số tiền</th>
-                <th className="w-[130px] px-5 py-4 text-center align-middle">Phương thức</th>
-                <th className="w-[170px] px-5 py-4 text-center align-middle">Trạng thái</th>
-                <th className="w-[170px] px-5 py-4 align-middle">Ngày tạo</th>
-                <th className="px-5 py-4 align-middle">Bài viết</th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden align-middle" style={{ width: `${colWidths.id}px` }} data-col="id">
+                  <div className="w-max">Mã giao dịch</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('id', e)}
+                    onDoubleClick={() => handleDoubleClick('id')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden align-middle" style={{ width: `${colWidths.donor}px` }} data-col="donor">
+                  <div className="w-max">Người gửi</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('donor', e)}
+                    onDoubleClick={() => handleDoubleClick('donor')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden align-middle" style={{ width: `${colWidths.recipient}px` }} data-col="recipient">
+                  <div className="w-max">Người nhận</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('recipient', e)}
+                    onDoubleClick={() => handleDoubleClick('recipient')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden text-right align-middle" style={{ width: `${colWidths.amount}px` }} data-col="amount">
+                  <div className="w-max ml-auto">Số tiền</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('amount', e)}
+                    onDoubleClick={() => handleDoubleClick('amount')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden text-center align-middle" style={{ width: `${colWidths.method}px` }} data-col="method">
+                  <div className="w-max mx-auto">Phương thức</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('method', e)}
+                    onDoubleClick={() => handleDoubleClick('method')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden text-center align-middle" style={{ width: `${colWidths.status}px` }} data-col="status">
+                  <div className="w-max mx-auto">Trạng thái</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('status', e)}
+                    onDoubleClick={() => handleDoubleClick('status')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden align-middle" style={{ width: `${colWidths.date}px` }} data-col="date">
+                  <div className="w-max">Ngày tạo</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('date', e)}
+                    onDoubleClick={() => handleDoubleClick('date')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden align-middle" style={{ width: `${colWidths.post}px` }} data-col="post">
+                  <div className="w-max">Bài viết</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('post', e)}
+                    onDoubleClick={() => handleDoubleClick('post')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading && Array.from({ length: 6 }).map((_, index) => (
                 <tr key={index} className="animate-pulse">
-                  <td className="px-5 py-5"><div className="h-4 w-32 rounded bg-slate-100" /></td>
-                  <td className="px-5 py-5"><div className="h-4 w-36 rounded bg-slate-100" /></td>
-                  <td className="px-5 py-5"><div className="h-4 w-36 rounded bg-slate-100" /></td>
-                  <td className="px-5 py-5"><div className="ml-auto h-4 w-20 rounded bg-slate-100" /></td>
-                  <td className="px-5 py-5"><div className="mx-auto h-7 w-20 rounded-full bg-slate-100" /></td>
-                  <td className="px-5 py-5"><div className="mx-auto h-7 w-32 rounded-full bg-slate-100" /></td>
-                  <td className="px-5 py-5"><div className="h-4 w-28 rounded bg-slate-100" /></td>
-                  <td className="px-5 py-5"><div className="h-4 w-40 rounded bg-slate-100" /></td>
+                  <td className="px-5 py-5" data-col="id"><div className="h-4 w-32 rounded bg-slate-100" /></td>
+                  <td className="px-5 py-5" data-col="donor"><div className="h-4 w-36 rounded bg-slate-100" /></td>
+                  <td className="px-5 py-5" data-col="recipient"><div className="h-4 w-36 rounded bg-slate-100" /></td>
+                  <td className="px-5 py-5" data-col="amount"><div className="ml-auto h-4 w-20 rounded bg-slate-100" /></td>
+                  <td className="px-5 py-5" data-col="method"><div className="mx-auto h-7 w-20 rounded-full bg-slate-100" /></td>
+                  <td className="px-5 py-5" data-col="status"><div className="mx-auto h-7 w-32 rounded-full bg-slate-100" /></td>
+                  <td className="px-5 py-5" data-col="date"><div className="h-4 w-28 rounded bg-slate-100" /></td>
+                  <td className="px-5 py-5" data-col="post"><div className="h-4 w-40 rounded bg-slate-100" /></td>
                 </tr>
               ))}
 
@@ -401,38 +521,54 @@ export default function AdminAllDonationsTab({ embedded = false }) {
 
               {!loading && donations.map((donation) => (
                 <tr key={donation._id} className="transition hover:bg-slate-50">
-                  <td className="px-5 py-5 align-top">
-                    <div className="max-w-[160px] truncate text-sm font-bold leading-6 text-slate-800" title={donation.orderId || donation.requestId || donation._id}>{donation.orderId || donation.requestId || donation._id}</div>
-                    <div className="mt-1 max-w-[160px] truncate text-xs leading-5 text-slate-400" title={donation._id}>{donation._id}</div>
+                  <td className="px-5 py-5 align-top overflow-hidden" data-col="id">
+                    <div className="w-max">
+                      <div className="text-sm font-bold leading-6 text-slate-800" title={donation.orderId || donation.requestId || donation._id}>{donation.orderId || donation.requestId || donation._id}</div>
+                      <div className="mt-1 text-xs leading-5 text-slate-400" title={donation._id}>{donation._id}</div>
+                    </div>
                   </td>
-                  <td className="px-5 py-5 align-top">
-                    <div className="max-w-[170px] truncate text-sm font-semibold leading-6 text-slate-800" title={getUserName(donation, 'donor')}>{getUserName(donation, 'donor')}</div>
-                    <div className="max-w-[170px] truncate text-xs leading-5 text-slate-400" title={getUserEmail(donation, 'donor')}>{getUserEmail(donation, 'donor')}</div>
+                  <td className="px-5 py-5 align-top overflow-hidden" data-col="donor">
+                    <div className="w-max">
+                      <div className="text-sm font-semibold leading-6 text-slate-800" title={getUserName(donation, 'donor')}>{getUserName(donation, 'donor')}</div>
+                      <div className="text-xs leading-5 text-slate-400" title={getUserEmail(donation, 'donor')}>{getUserEmail(donation, 'donor')}</div>
+                    </div>
                   </td>
-                  <td className="px-5 py-5 align-top">
-                    <div className="max-w-[170px] truncate text-sm font-semibold leading-6 text-slate-800" title={getUserName(donation, 'author')}>{getUserName(donation, 'author')}</div>
-                    <div className="max-w-[170px] truncate text-xs leading-5 text-slate-400" title={getUserEmail(donation, 'author')}>{getUserEmail(donation, 'author')}</div>
+                  <td className="px-5 py-5 align-top overflow-hidden" data-col="recipient">
+                    <div className="w-max">
+                      <div className="text-sm font-semibold leading-6 text-slate-800" title={getUserName(donation, 'author')}>{getUserName(donation, 'author')}</div>
+                      <div className="text-xs leading-5 text-slate-400" title={getUserEmail(donation, 'author')}>{getUserEmail(donation, 'author')}</div>
+                    </div>
                   </td>
-                  <td className="whitespace-nowrap px-5 py-5 text-right align-top text-sm font-extrabold leading-6 text-slate-900">{formatCurrency(donation.amount)}</td>
-                  <td className="px-5 py-5 text-center align-top">
-                    <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold leading-none ${METHOD_STYLES[donation.paymentMethod] || 'border-slate-200 bg-slate-50 text-slate-600'}`}>
-                      {METHOD_LABELS[donation.paymentMethod] || donation.paymentMethod}
-                    </span>
+                  <td className="whitespace-nowrap px-5 py-5 text-right align-top text-sm font-extrabold leading-6 text-slate-900 overflow-hidden" data-col="amount">
+                    <div className="w-max ml-auto">{formatCurrency(donation.amount)}</div>
                   </td>
-                  <td className="px-5 py-5 text-center align-top">
-                    <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold leading-none ${STATUS_STYLES[donation.status] || 'border-slate-200 bg-slate-50 text-slate-600'}`}>
-                      {STATUS_LABELS[donation.status] || donation.status}
-                    </span>
+                  <td className="px-5 py-5 text-center align-top overflow-hidden" data-col="method">
+                    <div className="w-max mx-auto">
+                      <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold leading-none ${METHOD_STYLES[donation.paymentMethod] || 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                        {METHOD_LABELS[donation.paymentMethod] || donation.paymentMethod}
+                      </span>
+                    </div>
                   </td>
-                  <td className="whitespace-nowrap px-5 py-5 align-top text-sm font-semibold leading-6 text-slate-500">{formatDateTime(donation.createdAt)}</td>
-                  <td className="px-5 py-5 align-top">
-                    {donation.post?._id ? (
-                      <Link to={`/posts/${donation.post._id}`} className="line-clamp-2 max-w-[300px] text-sm font-semibold leading-6 text-primary hover:underline">
-                        {donation.post?.title || donation.postSnapshot?.title || 'Bài viết'}
-                      </Link>
-                    ) : (
-                      <span className="line-clamp-2 max-w-[300px] text-sm leading-6 text-slate-500">{donation.postSnapshot?.title || '—'}</span>
-                    )}
+                  <td className="px-5 py-5 text-center align-top overflow-hidden" data-col="status">
+                    <div className="w-max mx-auto">
+                      <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold leading-none ${STATUS_STYLES[donation.status] || 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                        {STATUS_LABELS[donation.status] || donation.status}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-5 align-top text-sm font-semibold leading-6 text-slate-500 overflow-hidden" data-col="date">
+                    <div className="w-max">{formatDateTime(donation.createdAt)}</div>
+                  </td>
+                  <td className="px-5 py-5 align-top overflow-hidden" data-col="post">
+                    <div className="w-max">
+                      {donation.post?._id ? (
+                        <Link to={`/posts/${donation.post._id}`} className="line-clamp-2 text-sm font-semibold leading-6 text-primary hover:underline">
+                          {donation.post?.title || donation.postSnapshot?.title || 'Bài viết'}
+                        </Link>
+                      ) : (
+                        <span className="line-clamp-2 text-sm leading-6 text-slate-500">{donation.postSnapshot?.title || '—'}</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

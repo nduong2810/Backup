@@ -20,7 +20,7 @@ export default function CommentSection({
   onReactComment,
   reactingCommentId = '',
   onDeleteComment,
-  postStatus = 'active',
+  postStatus = 'unresolved',
   onCommentUpdated,
   onReportComment,
   bestAnswerId = null,
@@ -35,7 +35,7 @@ export default function CommentSection({
   const [replyingToId, setReplyingToId] = useState('');
   const [replyContent, setReplyContent] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
-  const isLocked = postStatus === 'closed' || postStatus === 'hidden' || postStatus === 'deleted';
+  const isLocked = postStatus === 'resolved' || postStatus === 'hidden' || postStatus === 'deleted';
 
   const resetMainForm = () => {
     setContent('');

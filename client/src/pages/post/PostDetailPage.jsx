@@ -161,7 +161,7 @@ export default function PostDetailPage() {
 
   if (!post) return null;
   const isPostOwner = user?._id && post?.author?._id && user._id === post.author._id;
-  const isPostLocked = post.status === 'closed' || post.status === 'hidden' || post.status === 'deleted';
+  const isPostLocked = post.status === 'resolved' || post.status === 'hidden' || post.status === 'deleted';
 
   const handleSubmitPostReport = async (selectedFlagType) => {
     if (!user?._id) {

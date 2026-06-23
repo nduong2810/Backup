@@ -92,9 +92,9 @@ export default function PostContent({
   const isOwner = currentUserId && post.author?._id && String(currentUserId) === String(post.author._id);
   const isAdmin = currentUserRole === 'admin';
   const canManageVisibility = isOwner || isAdmin;
-  const isClosed = post.status === 'resolved' || post.status === 'closed';
-  const canEditPost = isOwner && (post.status === 'active' || post.status === 'unresolved');
-  const canChangeVisibility = canManageVisibility && ['active', 'unresolved', 'resolved', 'closed'].includes(post.status);
+  const isClosed = post.status === 'resolved';
+  const canEditPost = isOwner && post.status === 'unresolved';
+  const canChangeVisibility = canManageVisibility && ['unresolved', 'resolved'].includes(post.status);
   const nextVisibilityStatus = isClosed ? 'unresolved' : 'resolved';
   const nextVisibilityLabel = isClosed ? 'Mở lại bài viết' : 'Đóng bài viết';
   const isLocked = isClosed || post.status === 'hidden' || post.status === 'deleted';

@@ -40,7 +40,7 @@ export default function CommentItem({
   onSubmitReply,
   submittingReply = false,
   onDeleteComment,
-  postStatus = 'active',
+  postStatus = 'unresolved',
   onCommentUpdated,
   onReportComment,
   bestAnswerId = null,
@@ -174,7 +174,7 @@ export default function CommentItem({
 
   const isBestAnswer = bestAnswerId && String(comment._id) === String(bestAnswerId);
   const isPostAuthor = currentUserId && postAuthorId && String(currentUserId) === String(postAuthorId);
-  const isPostLocked = postStatus === 'closed' || postStatus === 'hidden' || postStatus === 'deleted';
+  const isPostLocked = postStatus === 'resolved' || postStatus === 'hidden' || postStatus === 'deleted';
   const showAcceptOption = isPostAuthor && postType === 'question' && depth === 0 && !isPostLocked;
   const isReacting = reactingCommentId === comment._id;
   const isReplying = String(replyingToId) === String(comment._id);
@@ -340,7 +340,7 @@ export default function CommentItem({
                   )}
                   {isCommentOwner ? (
                     <>
-                      {postStatus === 'active' && (
+                      {postStatus === 'unresolved' && (
                         <button
                           type="button"
                           onClick={() => {

@@ -4,30 +4,30 @@ import { getAdminPosts, updateAdminPostStatus } from '../../services/userService
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả bài đăng' },
-  { value: 'active', label: 'Đang hiển thị' },
-  { value: 'closed', label: 'Đã khóa' },
+  { value: 'unresolved', label: 'Đang hiển thị' },
+  { value: 'resolved', label: 'Đã khóa' },
   { value: 'hidden', label: 'Đang bị ẩn' },
   { value: 'deleted', label: 'Đã bị xóa' },
 ];
 
 const STATUS_STYLES = {
-  active: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  closed: 'border-amber-200 bg-amber-50 text-amber-700',
+  unresolved: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  resolved: 'border-amber-200 bg-amber-50 text-amber-700',
   hidden: 'border-sky-200 bg-sky-50 text-sky-700',
   deleted: 'border-rose-200 bg-rose-50 text-rose-700',
 };
 
 const STATUS_LABELS = {
-  active: 'Bài viết đang hiển thị',
-  closed: 'Bài viết đã bị khóa',
+  unresolved: 'Bài viết đang hiển thị',
+  resolved: 'Bài viết đã bị khóa',
   hidden: 'Bài viết đang bị ẩn',
   deleted: 'Bài viết đã bị xóa',
 };
 
 const ACTION_CONFIG = {
-  active: [
+  unresolved: [
     {
-      status: 'closed',
+      status: 'resolved',
       label: 'Khóa',
       icon: 'lock',
       className: 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100',
@@ -45,9 +45,9 @@ const ACTION_CONFIG = {
       className: 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
     },
   ],
-  closed: [
+  resolved: [
     {
-      status: 'active',
+      status: 'unresolved',
       label: 'Mở khóa',
       icon: 'lock_open',
       className: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
@@ -67,7 +67,7 @@ const ACTION_CONFIG = {
   ],
   hidden: [
     {
-      status: 'active',
+      status: 'unresolved',
       label: 'Hiện lại',
       icon: 'visibility',
       className: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
@@ -81,7 +81,7 @@ const ACTION_CONFIG = {
   ],
   deleted: [
     {
-      status: 'active',
+      status: 'unresolved',
       label: 'Khôi phục',
       icon: 'restore',
       className: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
@@ -103,6 +103,68 @@ const formatDate = (value) => {
 const needsReason = (status) => ['resolved', 'unresolved'].includes(status);
 
 export default function AdminPostsTab({ embedded = false }) {
+  const [colWidths, setColWidths] = useState({
+    post: 360,
+    author: 180,
+    upvotes: 90,
+    comments: 110,
+    status: 190,
+    actions: 280,
+  });
+
+  const handleMouseDown = (colKey, event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = colWidths[colKey];
+
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = Math.max(80, startWidth + deltaX);
+      setColWidths((prev) => ({
+        ...prev,
+        [colKey]: newWidth,
+      }));
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleDoubleClick = (colKey) => {
+    const cells = document.querySelectorAll(`[data-col="${colKey}"]`);
+    let maxWidth = 80;
+    cells.forEach((cell) => {
+      const contentEl = cell.querySelector('.w-max');
+      if (contentEl) {
+        const contentWidth = contentEl.scrollWidth + 42;
+        if (contentWidth > maxWidth) maxWidth = contentWidth;
+      } else {
+        // Measure natural content width via off-screen clone
+        const clone = cell.cloneNode(true);
+        Object.assign(clone.style, { position: 'absolute', left: '-9999px', top: '0', width: 'max-content', visibility: 'hidden', pointerEvents: 'none' });
+        clone.querySelectorAll('.truncate, .line-clamp-2, .line-clamp-3').forEach((el) => {
+          Object.assign(el.style, { overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap', webkitLineClamp: 'unset', display: 'block' });
+        });
+        document.body.appendChild(clone);
+        const contentWidth = clone.scrollWidth + 12;
+        document.body.removeChild(clone);
+        if (contentWidth > maxWidth) maxWidth = contentWidth;
+      }
+    });
+    const finalWidth = Math.min(600, Math.max(80, maxWidth));
+    setColWidths((prev) => ({
+      ...prev,
+      [colKey]: finalWidth,
+    }));
+  };
+
+  const totalWidth = useMemo(() => Object.values(colWidths).reduce((a, b) => a + b, 0), [colWidths]);
+
   const [posts, setPosts] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -300,16 +362,64 @@ export default function AdminPostsTab({ embedded = false }) {
       )}
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-[1180px] divide-y divide-slate-100">
+        <div className="overflow-x-auto scrollbar-custom pb-2">
+          <table className="table-fixed w-full divide-y divide-slate-100" style={{ minWidth: `${totalWidth}px` }}>
             <thead className="bg-slate-50/80">
               <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                <th className="w-[360px] px-5 py-4 align-middle">Bài đăng</th>
-                <th className="w-[240px] px-5 py-4 align-middle">Tác giả</th>
-                <th className="w-[90px] px-5 py-4 text-center align-middle">Upvote</th>
-                <th className="w-[110px] px-5 py-4 text-center align-middle">Bình luận</th>
-                <th className="w-[190px] px-5 py-4 text-center align-middle">Trạng thái</th>
-                <th className="w-[220px] px-5 py-4 text-right align-middle">Thao tác</th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden align-middle" style={{ width: `${colWidths.post}px` }} data-col="post">
+                  <div className="w-max">Bài đăng</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('post', e)}
+                    onDoubleClick={() => handleDoubleClick('post')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden align-middle" style={{ width: `${colWidths.author}px` }} data-col="author">
+                  <div className="w-max">Tác giả</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('author', e)}
+                    onDoubleClick={() => handleDoubleClick('author')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden text-center align-middle" style={{ width: `${colWidths.upvotes}px` }} data-col="upvotes">
+                  <div className="w-max mx-auto">Upvote</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('upvotes', e)}
+                    onDoubleClick={() => handleDoubleClick('upvotes')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden text-center align-middle" style={{ width: `${colWidths.comments}px` }} data-col="comments">
+                  <div className="w-max mx-auto">Bình luận</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('comments', e)}
+                    onDoubleClick={() => handleDoubleClick('comments')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden text-center align-middle" style={{ width: `${colWidths.status}px` }} data-col="status">
+                  <div className="w-max mx-auto">Trạng thái</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('status', e)}
+                    onDoubleClick={() => handleDoubleClick('status')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden text-center align-middle" style={{ width: `${colWidths.actions}px` }} data-col="actions">
+                  <div className="w-max mx-auto">Thao tác</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('actions', e)}
+                    onDoubleClick={() => handleDoubleClick('actions')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
               </tr>
             </thead>
 
@@ -317,12 +427,12 @@ export default function AdminPostsTab({ embedded = false }) {
               {loading && (
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={index} className="animate-pulse">
-                    <td className="px-5 py-5"><div className="h-4 w-64 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-5"><div className="h-4 w-32 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-5"><div className="mx-auto h-4 w-10 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-5"><div className="mx-auto h-4 w-10 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-5"><div className="mx-auto h-7 w-40 rounded-full bg-slate-100" /></td>
-                    <td className="px-5 py-5"><div className="ml-auto h-9 w-44 rounded-full bg-slate-100" /></td>
+                    <td className="px-5 py-5" data-col="post"><div className="h-4 w-64 rounded bg-slate-100" /></td>
+                    <td className="px-5 py-5" data-col="author"><div className="h-4 w-32 rounded bg-slate-100" /></td>
+                    <td className="px-5 py-5" data-col="upvotes"><div className="mx-auto h-4 w-10 rounded bg-slate-100" /></td>
+                    <td className="px-5 py-5" data-col="comments"><div className="mx-auto h-4 w-10 rounded bg-slate-100" /></td>
+                    <td className="px-5 py-5" data-col="status"><div className="mx-auto h-7 w-40 rounded-full bg-slate-100" /></td>
+                    <td className="px-5 py-5" data-col="actions"><div className="mx-auto h-9 w-44 rounded-full bg-slate-100" /></td>
                   </tr>
                 ))
               )}
@@ -346,7 +456,7 @@ export default function AdminPostsTab({ embedded = false }) {
               {!loading && posts.map((post) => {
                 const isUpdating = updatingId === post._id;
                 const isRecent = recentlyUpdatedId === post._id;
-                const actions = ACTION_CONFIG[post.status] || ACTION_CONFIG.active;
+                const actions = ACTION_CONFIG[post.status] || ACTION_CONFIG.unresolved;
 
                 return (
                   <tr
@@ -355,85 +465,96 @@ export default function AdminPostsTab({ embedded = false }) {
                       isRecent ? 'bg-emerald-50/60' : ''
                     }`}
                   >
-                    <td className="px-5 py-5 align-top">
-                      <Link
-                        to={`/posts/${post._id}`}
-                        className="line-clamp-2 max-w-[340px] text-sm font-bold leading-6 text-slate-900 transition hover:text-primary"
-                      >
-                        {post.title}
-                      </Link>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs leading-5 text-slate-400">
-                        <span className="font-medium">{formatDate(post.createdAt)}</span>
-                        {post.postType && (
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-500">
-                            {post.postType}
-                          </span>
+                    <td className="px-5 py-5 align-top overflow-hidden" data-col="post">
+                      <div>
+                        <Link
+                          to={`/posts/${post._id}`}
+                          className="line-clamp-2 text-sm font-bold leading-6 text-slate-900 transition hover:text-primary"
+                          title={post.title}
+                        >
+                          {post.title}
+                        </Link>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs leading-5 text-slate-400">
+                          <span className="font-medium">{formatDate(post.createdAt)}</span>
+                          {post.postType && (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-500">
+                              {post.postType}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-5 py-5 align-top overflow-hidden" data-col="author">
+                      <div>
+                        <div
+                          className="truncate text-sm font-semibold leading-6 text-slate-700"
+                          title={post.author?.fullName || post.authorLabel || 'Không rõ tác giả'}
+                        >
+                          {post.author?.fullName || post.authorLabel || 'Không rõ tác giả'}
+                        </div>
+                        <div
+                          className="truncate text-xs leading-5 text-slate-400"
+                          title={post.author?.email || '—'}
+                        >
+                          {post.author?.email || '—'}
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="whitespace-nowrap px-5 py-5 text-center align-middle text-sm font-extrabold text-slate-800 overflow-hidden" data-col="upvotes">
+                      <div className="w-max mx-auto">
+                        {post.upvoteCount || 0}
+                      </div>
+                    </td>
+
+                    <td className="whitespace-nowrap px-5 py-5 text-center align-middle text-sm font-extrabold text-slate-800 overflow-hidden" data-col="comments">
+                      <div className="w-max mx-auto">
+                        {post.commentCount || 0}
+                      </div>
+                    </td>
+
+                    <td className="px-5 py-5 text-center align-middle overflow-hidden" data-col="status">
+                      <div className="w-max mx-auto">
+                        <span
+                          className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold leading-none ${
+                            STATUS_STYLES[post.status] || 'border-slate-200 bg-slate-50 text-slate-600'
+                          }`}
+                        >
+                          {STATUS_LABELS[post.status] || post.status}
+                        </span>
+                        {post.statusReason && (
+                          <p className="mx-auto mt-2 line-clamp-2 text-[11px] leading-4 text-slate-500" title={post.statusReason}>
+                            Lý do: {post.statusReason}
+                          </p>
                         )}
                       </div>
                     </td>
 
-                    <td className="px-5 py-5 align-top">
-                      <div
-                        className="max-w-[220px] truncate text-sm font-semibold leading-6 text-slate-700"
-                        title={post.author?.fullName || post.authorLabel || 'Không rõ tác giả'}
-                      >
-                        {post.author?.fullName || post.authorLabel || 'Không rõ tác giả'}
-                      </div>
-                      <div
-                        className="max-w-[220px] truncate text-xs leading-5 text-slate-400"
-                        title={post.author?.email || '—'}
-                      >
-                        {post.author?.email || '—'}
-                      </div>
-                    </td>
-
-                    <td className="whitespace-nowrap px-5 py-5 text-center align-middle text-sm font-extrabold text-slate-800">
-                      {post.upvoteCount || 0}
-                    </td>
-
-                    <td className="whitespace-nowrap px-5 py-5 text-center align-middle text-sm font-extrabold text-slate-800">
-                      {post.commentCount || 0}
-                    </td>
-
-                    <td className="px-5 py-5 text-center align-middle">
-                      <span
-                        className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold leading-none ${
-                          STATUS_STYLES[post.status] || 'border-slate-200 bg-slate-50 text-slate-600'
-                        }`}
-                      >
-                        {STATUS_LABELS[post.status] || post.status}
-                      </span>
-                      {post.statusReason && (
-                        <p className="mx-auto mt-2 line-clamp-2 max-w-[180px] text-[11px] leading-4 text-slate-500" title={post.statusReason}>
-                          Lý do: {post.statusReason}
-                        </p>
-                      )}
-                    </td>
-
-                    <td className="px-5 py-5 text-right align-middle">
-                      <div className="ml-auto grid w-[188px] grid-cols-2 gap-2">
-                        {actions.map((action) => (
-                          <button
-                            key={`${post._id}-${action.status}`}
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleSetPostStatus(post, action.status)}
-                            className={`group inline-flex h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-extrabold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
-                              actions.length === 1 ? 'col-span-2' : ''
-                            } ${action.className}`}
-                          >
-                            <span
-                              className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${
-                                isUpdating ? 'animate-spin' : 'group-hover:rotate-6'
-                              }`}
+                    <td className="px-5 py-5 text-center align-middle overflow-hidden" data-col="actions">
+                      <div className="w-max mx-auto">
+                        <div className="flex flex-wrap justify-center gap-2 w-[190px] mx-auto">
+                          {actions.map((action) => (
+                            <button
+                              key={`${post._id}-${action.status}`}
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => handleSetPostStatus(post, action.status)}
+                              className={`group inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-extrabold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${action.className}`}
                             >
-                              {isUpdating ? 'progress_activity' : action.icon}
-                            </span>
-                            <span className="whitespace-nowrap">
-                              {isUpdating ? 'Đang xử lý' : action.label}
-                            </span>
-                          </button>
-                        ))}
+                              <span
+                                className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${
+                                  isUpdating ? 'animate-spin' : 'group-hover:rotate-6'
+                                }`}
+                              >
+                                {isUpdating ? 'progress_activity' : action.icon}
+                              </span>
+                              <span className="whitespace-nowrap">
+                                {isUpdating ? 'Đang xử lý' : action.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </td>
                   </tr>

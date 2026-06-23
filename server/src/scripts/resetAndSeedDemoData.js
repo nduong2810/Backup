@@ -374,7 +374,7 @@ async function seed() {
                 author: user2._id,
                 postType: 'question',
                 tags: ['mongodb'],
-                status: 'unresolved',
+                status: 'resolved',
                 bestAnswer: null, // Sẽ gán sau khi tạo bình luận
                 viewCount: 88,
                 upvotes: [user1._id],

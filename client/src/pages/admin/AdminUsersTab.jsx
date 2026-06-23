@@ -109,6 +109,68 @@ const getRiskEvaluation = (stats, user) => {
 };
 
 export default function AdminUsersTab({ embedded = false }) {
+  const [colWidths, setColWidths] = useState({
+    user: 230,
+    major: 220,
+    reputation: 130,
+    status: 180,
+    joinDate: 150,
+    actions: 210,
+  });
+
+  const handleMouseDown = (colKey, event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = colWidths[colKey];
+
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = Math.max(80, startWidth + deltaX);
+      setColWidths((prev) => ({
+        ...prev,
+        [colKey]: newWidth,
+      }));
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleDoubleClick = (colKey) => {
+    const cells = document.querySelectorAll(`[data-col="${colKey}"]`);
+    let maxWidth = 80;
+    cells.forEach((cell) => {
+      const contentEl = cell.querySelector('.w-max');
+      if (contentEl) {
+        const contentWidth = contentEl.scrollWidth + 42;
+        if (contentWidth > maxWidth) maxWidth = contentWidth;
+      } else {
+        // Measure natural content width via off-screen clone
+        const clone = cell.cloneNode(true);
+        Object.assign(clone.style, { position: 'absolute', left: '-9999px', top: '0', width: 'max-content', visibility: 'hidden', pointerEvents: 'none' });
+        clone.querySelectorAll('.truncate, .line-clamp-2, .line-clamp-3').forEach((el) => {
+          Object.assign(el.style, { overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap', webkitLineClamp: 'unset', display: 'block' });
+        });
+        document.body.appendChild(clone);
+        const contentWidth = clone.scrollWidth + 12;
+        document.body.removeChild(clone);
+        if (contentWidth > maxWidth) maxWidth = contentWidth;
+      }
+    });
+    const finalWidth = Math.min(600, Math.max(80, maxWidth));
+    setColWidths((prev) => ({
+      ...prev,
+      [colKey]: finalWidth,
+    }));
+  };
+
+  const totalWidth = useMemo(() => Object.values(colWidths).reduce((a, b) => a + b, 0), [colWidths]);
+
   // ===== List state =====
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
@@ -347,24 +409,64 @@ export default function AdminUsersTab({ embedded = false }) {
 
       {/* Users Table */}
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1120px] table-fixed divide-y divide-slate-100">
-            <colgroup>
-              <col className="w-[27%]" />
-              <col className="w-[13%]" />
-              <col className="w-[12%]" />
-              <col className="w-[16%]" />
-              <col className="w-[13%]" />
-              <col className="w-[19%]" />
-            </colgroup>
+        <div className="overflow-x-auto scrollbar-custom pb-2">
+          <table className="table-fixed w-full divide-y divide-slate-100" style={{ minWidth: `${totalWidth}px` }}>
             <thead className="bg-slate-50/80">
               <tr className="text-center text-xs font-bold uppercase tracking-wider text-slate-500">
-                <th className="px-6 py-4 text-left">Thành viên</th>
-                <th className="px-5 py-4">Chuyên ngành</th>
-                <th className="px-5 py-4">Uy tín</th>
-                <th className="px-5 py-4">Trạng thái</th>
-                <th className="px-5 py-4">Ngày tham gia</th>
-                <th className="px-6 py-4 text-center">Thao tác</th>
+                <th className="relative px-6 py-4 text-left select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden" style={{ width: `${colWidths.user}px` }} data-col="user">
+                  <div className="w-max">Thành viên</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('user', e)}
+                    onDoubleClick={() => handleDoubleClick('user')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden" style={{ width: `${colWidths.major}px` }} data-col="major">
+                  <div className="w-max mx-auto">Chuyên ngành</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('major', e)}
+                    onDoubleClick={() => handleDoubleClick('major')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden" style={{ width: `${colWidths.reputation}px` }} data-col="reputation">
+                  <div className="w-max mx-auto">Uy tín</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('reputation', e)}
+                    onDoubleClick={() => handleDoubleClick('reputation')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden" style={{ width: `${colWidths.status}px` }} data-col="status">
+                  <div className="w-max mx-auto">Trạng thái</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('status', e)}
+                    onDoubleClick={() => handleDoubleClick('status')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-5 py-4 select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden" style={{ width: `${colWidths.joinDate}px` }} data-col="joinDate">
+                  <div className="w-max mx-auto">Ngày tham gia</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('joinDate', e)}
+                    onDoubleClick={() => handleDoubleClick('joinDate')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
+                <th className="relative px-6 py-4 text-center select-none border-r border-slate-200/50 last:border-r-0 overflow-hidden" style={{ width: `${colWidths.actions}px` }} data-col="actions">
+                  <div className="w-max mx-auto">Thao tác</div>
+                  <div
+                    onMouseDown={(e) => handleMouseDown('actions', e)}
+                    onDoubleClick={() => handleDoubleClick('actions')}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 active:bg-primary transition-colors z-10"
+                    title="Kéo hoặc nhấp đúp để tự động chỉnh độ rộng"
+                  />
+                </th>
               </tr>
             </thead>
             <tbody className={`divide-y divide-slate-100 transition-opacity duration-200 ${loading && users.length > 0 ? 'opacity-50' : 'opacity-100'}`}>
@@ -372,7 +474,7 @@ export default function AdminUsersTab({ embedded = false }) {
               {loading && users.length === 0 &&
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={index} className="animate-pulse">
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4" data-col="user">
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-full bg-slate-100" />
                         <div className="space-y-1.5">
@@ -381,11 +483,11 @@ export default function AdminUsersTab({ embedded = false }) {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4"><div className="h-4 w-24 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-4"><div className="mx-auto h-4 w-16 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-4"><div className="h-7 w-28 rounded-full bg-slate-100" /></td>
-                    <td className="px-5 py-4"><div className="h-4 w-24 rounded bg-slate-100" /></td>
-                    <td className="px-5 py-4"><div className="mx-auto h-9 w-32 rounded-full bg-slate-100" /></td>
+                    <td className="px-5 py-4" data-col="major"><div className="h-4 w-24 rounded bg-slate-100" /></td>
+                    <td className="px-5 py-4" data-col="reputation"><div className="mx-auto h-4 w-16 rounded bg-slate-100" /></td>
+                    <td className="px-5 py-4" data-col="status"><div className="h-7 w-28 rounded-full bg-slate-100" /></td>
+                    <td className="px-5 py-4" data-col="joinDate"><div className="h-4 w-24 rounded bg-slate-100" /></td>
+                    <td className="px-5 py-4" data-col="actions"><div className="mx-auto h-9 w-32 rounded-full bg-slate-100" /></td>
                   </tr>
                 ))
               }
@@ -413,7 +515,7 @@ export default function AdminUsersTab({ embedded = false }) {
                 return (
                   <tr key={user._id} className={`transition-all duration-300 hover:bg-slate-50 ${isRecent ? 'bg-emerald-50/60' : ''}`}>
                     {/* User info */}
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-4 overflow-hidden" data-col="user">
                       <div className="flex items-center gap-3">
                         <div className="relative h-9 w-9 flex-shrink-0">
                           {avatarUrl ? (
@@ -435,89 +537,97 @@ export default function AdminUsersTab({ embedded = false }) {
                         <div className="min-w-0">
                           <Link
                             to={`/users/${user._id}`}
-                            className="text-sm font-bold text-slate-900 truncate hover:text-primary transition-colors"
+                            className="text-sm font-bold text-slate-900 hover:text-primary transition-colors block truncate"
                             title={`Mở hồ sơ công khai của ${user.fullName}`}
                           >
                             {user.fullName}
                           </Link>
-                          <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                          <p className="text-xs text-slate-400 truncate" title={user.email}>{user.email}</p>
                         </div>
                       </div>
                     </td>
 
                     {/* Major */}
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-5 py-4 text-center overflow-hidden" data-col="major">
                       <span className="block truncate text-sm font-medium text-slate-600" title={user.major || 'Chưa cập nhật'}>
                         {user.major || '—'}
                       </span>
                     </td>
 
                     {/* Reputation */}
-                    <td className="px-5 py-4 text-center">
-                      <div className="flex flex-col items-center gap-0.5">
-                        <span className="text-sm font-extrabold text-slate-800">{user.reputation || 1}</span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${rank.bg} ${rank.color}`}>
-                          {rank.label}
-                        </span>
+                    <td className="px-5 py-4 text-center overflow-hidden" data-col="reputation">
+                      <div className="w-max mx-auto">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-sm font-extrabold text-slate-800">{user.reputation || 1}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${rank.bg} ${rank.color}`}>
+                            {rank.label}
+                          </span>
+                        </div>
                       </div>
                     </td>
 
                     {/* Status badge */}
-                    <td className="px-5 py-4 text-center">
-                      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold ${
-                        user.isActive
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                          : 'border-rose-200 bg-rose-50 text-rose-700'
-                      }`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                        {user.isActive ? 'Đang hoạt động' : 'Đã bị khóa'}
-                      </span>
+                    <td className="px-5 py-4 text-center overflow-hidden" data-col="status">
+                      <div className="w-max mx-auto">
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold ${
+                          user.isActive
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            : 'border-rose-200 bg-rose-50 text-rose-700'
+                        }`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                          {user.isActive ? 'Đang hoạt động' : 'Đã bị khóa'}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Join date */}
-                    <td className="px-5 py-4 text-center">
-                      <span className="text-sm text-slate-500 font-medium">{formatDate(user.createdAt)}</span>
+                    <td className="px-5 py-4 text-center overflow-hidden" data-col="joinDate">
+                      <div className="w-max mx-auto">
+                        <span className="text-sm text-slate-500 font-medium">{formatDate(user.createdAt)}</span>
+                      </div>
                     </td>
 
                     {/* Actions */}
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex flex-nowrap justify-center gap-2">
-                        {/* View detail */}
-                        <button
-                          type="button"
-                          onClick={() => handleViewDetail(user._id)}
-                          className="group inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-extrabold text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-slate-50 active:scale-95"
-                        >
-                          <span className="material-symbols-outlined text-[16px] transition-transform duration-200 group-hover:rotate-6">visibility</span>
-                          Chi tiết
-                        </button>
+                    <td className="px-6 py-4 text-center overflow-hidden" data-col="actions">
+                      <div className="w-max mx-auto">
+                        <div className="flex flex-nowrap justify-center gap-2">
+                          {/* View detail */}
+                          <button
+                            type="button"
+                            onClick={() => handleViewDetail(user._id)}
+                            className="group inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-extrabold text-slate-600 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-slate-50 active:scale-95"
+                          >
+                            <span className="material-symbols-outlined text-[16px] transition-transform duration-200 group-hover:rotate-6">visibility</span>
+                            Chi tiết
+                          </button>
 
-                        {/* Lock/Unlock */}
-                        {user.isActive ? (
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleConfirmToggle(user, false)}
-                            className="group inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-extrabold text-rose-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-rose-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${isUpdating ? 'animate-spin' : 'group-hover:rotate-6'}`}>
-                              {isUpdating ? 'progress_activity' : 'lock'}
-                            </span>
-                            {isUpdating ? 'Đang xử lý' : 'Khóa'}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleConfirmToggle(user, true)}
-                            className="group inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-extrabold text-emerald-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-emerald-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${isUpdating ? 'animate-spin' : 'group-hover:rotate-6'}`}>
-                              {isUpdating ? 'progress_activity' : 'lock_open'}
-                            </span>
-                            {isUpdating ? 'Đang xử lý' : 'Mở khóa'}
-                          </button>
-                        )}
+                          {/* Lock/Unlock */}
+                          {user.isActive ? (
+                            <button
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => handleConfirmToggle(user, false)}
+                              className="group inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-extrabold text-rose-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-rose-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${isUpdating ? 'animate-spin' : 'group-hover:rotate-6'}`}>
+                                {isUpdating ? 'progress_activity' : 'lock'}
+                              </span>
+                              {isUpdating ? 'Đang xử lý' : 'Khóa'}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => handleConfirmToggle(user, true)}
+                              className="group inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-extrabold text-emerald-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-emerald-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${isUpdating ? 'animate-spin' : 'group-hover:rotate-6'}`}>
+                                {isUpdating ? 'progress_activity' : 'lock_open'}
+                              </span>
+                              {isUpdating ? 'Đang xử lý' : 'Mở khóa'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

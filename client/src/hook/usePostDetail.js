@@ -56,7 +56,7 @@ export default function usePostDetail(postId) {
   const dispatch = useDispatch();
   const [showFreeVotesModal, setShowFreeVotesModal] = useState(false);
 
-  const isPostLocked = post?.status === 'closed' || post?.status === 'hidden' || post?.status === 'deleted';
+  const isPostLocked = post?.status === 'resolved' || post?.status === 'hidden' || post?.status === 'deleted';
 
   const fetchPostDetail = useCallback(async (showLoading = true) => {
     if (!postId) return;
@@ -84,7 +84,7 @@ export default function usePostDetail(postId) {
       setLikeCount(postData.likeCount || postData.likes?.length || 0);
       setDislikeCount(postData.dislikeCount || postData.dislikes?.length || 0);
       setUserReaction(postData.userReaction || null);
-      const isLocked = postData.status === 'closed' || postData.status === 'hidden' || postData.status === 'deleted';
+      const isLocked = postData.status === 'resolved' || postData.status === 'hidden' || postData.status === 'deleted';
       setCommentError(isLocked ? LOCKED_POST_MESSAGE : '');
     } catch (err) {
       const message = getErrorMessage(err, 'Không thể tải bài viết.');
