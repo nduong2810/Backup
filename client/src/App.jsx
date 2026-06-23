@@ -14,6 +14,7 @@ import AdminAllDonationsTab from './pages/admin/AdminAllDonationsTab';
 import ProfilePage from './pages/profile/ProfilePage';
 import AuthorProfilePage from './pages/profile/AuthorProfilePage';
 import SavedPostsPage from './pages/profile/SavedPostsPage';
+import AccountManagementPage from './pages/profile/AccountManagementPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import PostDetailPage from './pages/post/PostDetailPage';
@@ -33,6 +34,7 @@ function App() {
         <Route path="tags" element={<TagsPage />} />
         <Route path="reports/history" element={<ReportHistoryPage />} />
         <Route path="trash" element={<TrashPage />} />
+        <Route path="user/account" element={<AccountManagementPage />} />
         <Route path="donate/checkout" element={<DonateCheckoutPage />} />
         <Route path="donate/result" element={<DonateResultPage />} />
 

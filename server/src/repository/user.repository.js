@@ -31,6 +31,7 @@ class UserRepository {
 
         return await User.find({
             role: 'user',
+            isActive: true,
             fullName: new RegExp(escapeRegex(keyword), 'i'),
         })
             .select('_id fullName avatar reputation')

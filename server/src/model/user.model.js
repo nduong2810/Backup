@@ -6,6 +6,12 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, default: 'user' },
     isActive: { type: Boolean, default: false },
+    status: { 
+        type: String, 
+        enum: ['active', 'banned', 'deactivated', 'pending_delete'], 
+        default: 'active' 
+    },
+    deletionScheduledAt: { type: Date, default: null },
     
     // Các trường mới cho Profile
     phone: { type: String, default: "" },
