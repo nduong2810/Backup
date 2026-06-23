@@ -124,7 +124,7 @@ class PostRepository {
                     from: 'comments',
                     let: { postId: '$_id' },
                     pipeline: [
-                        { $match: { $expr: { $eq: ['$post', '$$postId'] } } },
+                        { $match: { $expr: { $eq: ['$post', '$$postId'] }, parentComment: null, isAuthorActive: { $ne: false } } },
                         { $count: 'count' },
                     ],
                     as: 'answerMeta',
@@ -163,6 +163,7 @@ class PostRepository {
                     likeCount: 1,
                     dislikeCount: 1,
                     answerCount: 1,
+                    bestAnswer: 1,
                     createdAt: 1,
                     author: { _id: 1, fullName: 1, avatar: 1, email: 1, reputation: 1 },
                 },
@@ -262,7 +263,7 @@ class PostRepository {
                     from: 'comments',
                     let: { postId: '$_id' },
                     pipeline: [
-                        { $match: { $expr: { $eq: ['$post', '$$postId'] } } },
+                        { $match: { $expr: { $eq: ['$post', '$$postId'] }, parentComment: null, isAuthorActive: { $ne: false } } },
                         { $count: 'count' },
                     ],
                     as: 'commentMeta',

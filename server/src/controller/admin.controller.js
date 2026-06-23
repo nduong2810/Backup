@@ -131,7 +131,7 @@ class AdminController {
                     { $match: PUBLIC_POST_MATCH },
                     { $group: { _id: '$postType', count: { $sum: 1 } } },
                 ]),
-                Comment.distinct('post'),
+                Comment.distinct('post', { parentComment: null, isAuthorActive: { $ne: false } }),
             ]);
 
             const postTypeDist = postTypes.reduce((acc, curr) => {
@@ -252,7 +252,7 @@ class AdminController {
                         from: 'comments',
                         let: { postId: '$_id' },
                         pipeline: [
-                            { $match: { $expr: { $eq: ['$post', '$$postId'] } } },
+                            { $match: { $expr: { $eq: ['$post', '$$postId'] }, parentComment: null, isAuthorActive: { $ne: false } } },
                             { $count: 'count' },
                         ],
                         as: 'commentMeta',

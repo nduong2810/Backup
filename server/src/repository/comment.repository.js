@@ -17,7 +17,7 @@ class CommentRepository {
     async findById(commentId) {
         return await Comment.findById(commentId)
             .populate('author', 'fullName avatar major email reputation')
-            .populate('post', 'title author');
+            .populate('post', 'title author status');
     }
 
     async create(data) {
@@ -38,6 +38,10 @@ class CommentRepository {
     // Đếm tổng số comment của 1 bài viết
     async countByPostId(postId) {
         return await Comment.countDocuments({ post: postId, isAuthorActive: { $ne: false } });
+    }
+
+    async countRootByPostId(postId) {
+        return await Comment.countDocuments({ post: postId, parentComment: null, isAuthorActive: { $ne: false } });
     }
 
     async updateComment(commentId, updateData, editHistoryItem) {

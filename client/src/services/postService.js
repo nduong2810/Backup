@@ -35,3 +35,4 @@ export const updatePostApi = (postId, payload) => apiClient.put(`/posts/${postId
 export const updatePostVisibilityApi = (postId, payload) => apiClient.patch(`/posts/${postId}/visibility`, payload);
 export const updateCommentApi = (commentId, payload) => apiClient.put(`/posts/comments/${commentId}`, payload);
 export const deleteCommentApi = (commentId) => apiClient.delete(`/posts/comments/${commentId}`);
+export const acceptCommentApi = (commentId) => apiClient.patch(`/posts/comments/${commentId}/accept`);

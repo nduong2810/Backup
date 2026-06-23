@@ -233,7 +233,7 @@ class StatisticsRepository {
                     from: 'comments',
                     let: { postId: '$_id' },
                     pipeline: [
-                        { $match: { $expr: { $eq: ['$post', '$$postId'] } } },
+                        { $match: { $expr: { $eq: ['$post', '$$postId'] }, parentComment: null, isAuthorActive: { $ne: false } } },
                         { $count: 'count' },
                     ],
                     as: 'commentMeta',
@@ -295,7 +295,7 @@ class StatisticsRepository {
                     from: 'comments',
                     let: { postId: '$_id' },
                     pipeline: [
-                        { $match: { $expr: { $eq: ['$post', '$$postId'] } } },
+                        { $match: { $expr: { $eq: ['$post', '$$postId'] }, parentComment: null, isAuthorActive: { $ne: false } } },
                         { $count: 'count' },
                     ],
                     as: 'commentMeta',

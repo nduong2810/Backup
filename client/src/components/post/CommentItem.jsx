@@ -43,6 +43,8 @@ export default function CommentItem({
   postStatus = 'active',
   onCommentUpdated,
   onReportComment,
+  bestAnswerId = null,
+  onAcceptComment,
 }) {
   const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
@@ -169,6 +171,11 @@ export default function CommentItem({
   const hasDisliked = currentUserId && dislikedUserIds.includes(String(currentUserId));
   const likeCount = comment.likeCount ?? likedUserIds.length ?? 0;
   const dislikeCount = comment.dislikeCount ?? dislikedUserIds.length ?? 0;
+
+  const isBestAnswer = bestAnswerId && String(comment._id) === String(bestAnswerId);
+  const isPostAuthor = currentUserId && postAuthorId && String(currentUserId) === String(postAuthorId);
+  const isPostLocked = postStatus === 'closed' || postStatus === 'hidden' || postStatus === 'deleted';
+  const showAcceptOption = isPostAuthor && postType === 'question' && depth === 0 && !isPostLocked;
   const isReacting = reactingCommentId === comment._id;
   const isReplying = String(replyingToId) === String(comment._id);
 
@@ -232,7 +239,12 @@ export default function CommentItem({
         onCommentUpdated();
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật bình luận.';
+      let errMsg = 'Có lỗi xảy ra khi cập nhật bình luận.';
+      if (err.response?.data?.message) {
+        errMsg = err.response.data.message;
+      } else if (err.response?.data?.errors && Array.isArray(err.response.data.errors) && err.response.data.errors.length > 0) {
+        errMsg = err.response.data.errors[0].msg;
+      }
       toast.error(errMsg);
     } finally {
       setUpdating(false);
@@ -241,7 +253,13 @@ export default function CommentItem({
 
   return (
     <div
-      className={`flex gap-3 pb-4 ${depth > 0 ? 'border-l-2 border-outline-variant pl-4' : 'border-b border-outline-variant'}`}
+      className={`flex gap-3 pb-4 ${
+        isBestAnswer
+          ? 'bg-emerald-50/40 border-2 border-emerald-500/20 rounded-xl p-4 shadow-sm'
+          : depth > 0
+            ? 'border-l-2 border-outline-variant pl-4'
+            : 'border-b border-outline-variant'
+      }`}
       style={{ marginLeft: depth > 0 && depth <= maxDepth ? '0' : '0' }}
     >
       <img
@@ -256,6 +274,12 @@ export default function CommentItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 mb-1 font-body-sm text-body-sm flex-wrap">
+            {isBestAnswer && (
+              <span className="font-label-mono text-xs font-semibold uppercase px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-700 bg-emerald-50 flex items-center gap-0.5">
+                <span className="material-symbols-outlined text-[14px] font-bold text-emerald-600">check</span>
+                Tốt nhất
+              </span>
+            )}
             {isAuthor && (
               <span className="font-label-mono text-label-mono font-semibold uppercase px-1.5 py-0.5 rounded border border-primary text-primary bg-primary-fixed">
                 Tác giả
@@ -294,10 +318,29 @@ export default function CommentItem({
               </button>
 
               {showMenu && (
-                <div className="absolute right-0 mt-0.5 w-36 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
+                <div className="absolute right-0 mt-0.5 w-44 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
+                  {showAcceptOption && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMenu(false);
+                        onAcceptComment?.(comment._id);
+                      }}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold border-b border-slate-100 whitespace-nowrap ${
+                        isBestAnswer 
+                          ? 'text-amber-750 hover:bg-amber-50' 
+                          : 'text-emerald-700 hover:bg-emerald-50'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-base">
+                        {isBestAnswer ? 'close' : 'check_circle'}
+                      </span>
+                      {isBestAnswer ? 'Hủy chọn tốt nhất' : 'Chọn tốt nhất'}
+                    </button>
+                  )}
                   {isCommentOwner ? (
                     <>
-                      {(postStatus === 'active' || postStatus === 'unresolved') && (
+                      {postStatus === 'active' && (
                         <button
                           type="button"
                           onClick={() => {
@@ -554,16 +597,18 @@ export default function CommentItem({
               </>
             )}
 
-            <button
-              type="button"
-              onClick={handleStartReply}
-              className="inline-flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container-low px-3 py-1.5 text-xs font-semibold text-secondary transition hover:bg-primary-fixed/30 hover:text-primary"
-            >
-              <span className="material-symbols-outlined text-[16px]">reply</span>
-              Bình luận
-            </button>
+            {!isPostLocked && (
+              <button
+                type="button"
+                onClick={handleStartReply}
+                className="inline-flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container-low px-3 py-1.5 text-xs font-semibold text-secondary transition hover:bg-primary-fixed/30 hover:text-primary"
+              >
+                <span className="material-symbols-outlined text-[16px]">reply</span>
+                Bình luận
+              </button>
+            )}
 
-            {depth === 0 && typeof onDonate === 'function' && comment.author?._id && (
+            {!isPostLocked && depth === 0 && typeof onDonate === 'function' && comment.author?._id && (
               <button
                 type="button"
                 onClick={() => onDonate(comment)}
@@ -640,6 +685,8 @@ export default function CommentItem({
                 postStatus={postStatus}
                 onCommentUpdated={onCommentUpdated}
                 onReportComment={onReportComment}
+                bestAnswerId={bestAnswerId}
+                onAcceptComment={onAcceptComment}
               />
             ))}
           </div>

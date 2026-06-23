@@ -36,8 +36,8 @@ export const createCommentValidation = [
         .trim()
         .notEmpty()
         .withMessage('Nội dung bình luận không được để trống')
-        .isLength({ min: 3, max: 2000 })
-        .withMessage('Nội dung bình luận phải từ 3 đến 2000 ký tự'),
+        .isLength({ min: 2, max: 2000 })
+        .withMessage('Nội dung bình luận phải từ 2 đến 2000 ký tự'),
     body('parentComment')
         .optional({ nullable: true, checkFalsy: true })
         .isMongoId()
@@ -111,6 +111,6 @@ export const updateCommentValidation = [
         .trim()
         .notEmpty()
         .withMessage('Nội dung bình luận không được để trống')
-        .isLength({ min: 3, max: 2000 })
-        .withMessage('Nội dung bình luận phải từ 3 đến 2000 ký tự')
+        .isLength({ min: 2, max: 2000 })
+        .withMessage('Nội dung bình luận phải từ 2 đến 2000 ký tự')
 ];

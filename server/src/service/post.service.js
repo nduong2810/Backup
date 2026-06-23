@@ -9,10 +9,7 @@ import { slugify } from '../util/slugify.js';
 import * as moderation from '../util/moderation.js';
 
 const PUBLIC_POST_STATUS_FILTER = { $nin: ['hidden', 'deleted'] };
-
-const mapStatusFilter = (status) => {
-    return status.toLowerCase();
-};
+const PUBLIC_FILTERABLE_STATUSES = new Set(['active', 'closed']);
 
 const VN_TZ_OFFSET_MIN = 7 * 60;
 
@@ -45,6 +42,30 @@ const getUserReaction = (post, userId) => {
     return null;
 };
 
+const normalizeTags = (tags) => {
+    const rawTags = Array.isArray(tags)
+        ? tags
+        : typeof tags === 'string'
+            ? (() => {
+                const trimmed = tags.trim();
+                if (!trimmed) return [];
+
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (Array.isArray(parsed)) return parsed;
+                } catch {
+                    // Fallback to comma-separated input
+                }
+
+                return trimmed.split(',');
+            })()
+            : [];
+
+    return rawTags
+        .map((tag) => slugify(tag))
+        .filter(Boolean);
+};
+
 class PostService {
     async getPosts(query, userId = null) {
         const {
@@ -74,7 +95,21 @@ class PostService {
             if (tagArray.length > 0) filter.tags = { $in: tagArray };
         }
 
-        if (status && status !== 'All') filter.status = mapStatusFilter(status);
+        let isAnswerStatusFilter = false;
+        if (status && status !== 'All') {
+            const statusLower = status.toLowerCase();
+            if (statusLower === 'resolved') {
+                isAnswerStatusFilter = true;
+                filter.postType = 'question';
+                filter.bestAnswer = { $ne: null };
+            } else if (statusLower === 'unresolved') {
+                isAnswerStatusFilter = true;
+                filter.postType = 'question';
+                filter.bestAnswer = null;
+            } else if (PUBLIC_FILTERABLE_STATUSES.has(statusLower)) {
+                filter.status = statusLower;
+            }
+        }
         if (minViews !== '' && !isNaN(Number(minViews))) filter.viewCount = { ...filter.viewCount, $gte: Number(minViews) };
 
         if (minUpvotes !== '' && !isNaN(Number(minUpvotes))) {
@@ -94,8 +129,12 @@ class PostService {
             filter.author = { $in: userIds };
         }
 
-        if (postType && postType !== 'All') {
-            filter.postType = postType;
+        if (postType && postType !== 'All' && ['question', 'advice'].includes(postType)) {
+            if (isAnswerStatusFilter && postType !== 'question') {
+                filter.postType = '__no_public_post_type__';
+            } else {
+                filter.postType = postType;
+            }
         }
 
         if (startDate || endDate) {
@@ -156,7 +195,7 @@ class PostService {
         }
 
         const comments = await commentRepository.findByPostId(postId);
-        const commentCount = await commentRepository.countByPostId(postId);
+        const commentCount = await commentRepository.countRootByPostId(postId);
 
         return {
             post: {
@@ -165,7 +204,7 @@ class PostService {
                 userVote: getUserVote(post, userId),
                 userReaction: getUserReaction(post, userId),
             },
-            comments: this._buildCommentTree(comments),
+            comments: this._buildCommentTree(comments, post.bestAnswer),
             commentCount,
         };
     }
@@ -178,8 +217,14 @@ class PostService {
 
         const post = await postRepository.findById(postId);
         if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
-        if (post.status === 'resolved') throw { status: 423, message: 'Bài viết đang bị khóa' };
-        if (post.status !== 'unresolved') throw { status: 400, message: 'Không thể bình luận trên bài viết này' };
+
+        const isLocked = post.status === 'resolved' || post.status === 'hidden' || post.status === 'deleted';
+        if (isLocked) {
+            throw { status: 423, message: 'Bài viết đang bị khóa hoặc không hợp lệ' };
+        }
+        if (post.status !== 'unresolved') {
+            throw { status: 400, message: 'Không thể bình luận trên bài viết này' };
+        }
 
         if (parentComment) {
             const parent = await commentRepository.findById(parentComment);
@@ -261,9 +306,7 @@ class PostService {
         const title = String(payload.title || '').trim();
         const content = String(payload.content || '').trim();
         const postType = payload.postType || 'question';
-        const tags = Array.isArray(payload.tags)
-            ? payload.tags.map(t => slugify(t)).filter(Boolean)
-            : [];
+        const tags = normalizeTags(payload.tags);
 
         moderation.validatePost(title, content);
         if (!['question', 'advice'].includes(postType)) throw { status: 400, message: 'Loại bài viết không hợp lệ' };
@@ -345,7 +388,10 @@ class PostService {
     async toggleVote(postId, userId, voteType) {
         const post = await postRepository.findById(postId);
         if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
-        if (post.status === 'resolved') throw { status: 423, message: 'Bài viết đang bị khóa' };
+
+        const isLocked = post.status === 'resolved' || post.status === 'hidden' || post.status === 'deleted';
+
+        if (isLocked) throw { status: 423, message: 'Bài viết đang bị khóa hoặc không hợp lệ' };
         if (post.status !== 'unresolved') throw { status: 400, message: 'Không thể vote bài viết này' };
 
         const authorId = post.author?._id?.toString() || post.author?.toString();
@@ -373,7 +419,7 @@ class PostService {
             const weekStart = getThisWeekStart();
             const sameWeek = voter.weeklyFreeVotesDate &&
                 new Date(voter.weeklyFreeVotesDate).getTime() === weekStart.getTime();
-            
+
             if (!sameWeek) {
                 voter.weeklyFreeVotesUsed = 0;
                 voter.weeklyFreeVotesDate = weekStart;
@@ -386,7 +432,7 @@ class PostService {
                     throw { status: 403, message: 'Bạn đã sử dụng hết 5 lượt bình chọn miễn phí của tuần này. Hãy đóng góp tích cực để nhận upvote và mở khóa toàn bộ quyền bình chọn!' };
                 }
                 voter.weeklyFreeVotesUsed = (voter.weeklyFreeVotesUsed || 0) + 1;
-                
+
                 // Nếu chưa từng xem popup giới thiệu, bật cờ và lưu lại
                 if (!voter.hasSeenFreeVotesModal) {
                     showFreeVotesModal = true;
@@ -465,10 +511,10 @@ class PostService {
 
         if (Object.keys(dailyUpdates).length > 0) await postRepository.updateDailyVoteStats(postId, dailyUpdates);
         const updatedPost = await postRepository.findById(postId);
-        return { 
-            postId: updatedPost._id, 
-            upvoteCount: updatedPost.upvotes.length, 
-            downvoteCount: updatedPost.downvotes.length, 
+        return {
+            postId: updatedPost._id,
+            upvoteCount: updatedPost.upvotes.length,
+            downvoteCount: updatedPost.downvotes.length,
             userVote,
             // Trả về thêm thông tin cho Free Votes
             showFreeVotesModal,
@@ -481,7 +527,10 @@ class PostService {
     async toggleReaction(postId, userId, reactionType) {
         const post = await postRepository.findById(postId);
         if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
-        if (post.status === 'resolved') throw { status: 423, message: 'Bài viết đang bị khóa' };
+
+        const isLocked = post.status === 'resolved' || post.status === 'hidden' || post.status === 'deleted';
+
+        if (isLocked) throw { status: 423, message: 'Bài viết đang bị khóa hoặc không hợp lệ' };
         if (post.status !== 'unresolved') throw { status: 400, message: 'Không thể like/dislike bài viết này' };
 
         const authorId = post.author?._id?.toString() || post.author?.toString();
@@ -553,15 +602,14 @@ class PostService {
         }
 
         // Kiểm tra trạng thái bài đăng
-        if (post.status === 'deleted') throw { status: 400, message: 'Không thể chỉnh sửa bài viết đã bị xóa' };
-        if (post.status === 'closed') throw { status: 400, message: 'Không thể chỉnh sửa bài viết đã bị khóa' };
-        if (post.status === 'hidden') throw { status: 400, message: 'Không thể chỉnh sửa bài viết đã bị ẩn' };
+        const isLocked = post.status === 'resolved' || post.status === 'hidden' || post.status === 'deleted';
+        if (isLocked) {
+            throw { status: 423, message: 'Bài viết đang bị khóa hoặc không hợp lệ' };
+        }
 
         const title = String(payload.title || '').trim();
         const content = String(payload.content || '').trim();
-        const tags = Array.isArray(payload.tags)
-            ? payload.tags.map(t => String(t).trim().toLowerCase()).filter(Boolean)
-            : [];
+        const tags = normalizeTags(payload.tags);
 
         moderation.validatePost(title, content);
 
@@ -655,9 +703,10 @@ class PostService {
         // Kiểm tra trạng thái bài đăng chứa bình luận
         const post = await postRepository.findById(comment.post?._id || comment.post);
         if (!post) throw { status: 404, message: 'Bài viết chứa bình luận không tồn tại' };
-        if (post.status === 'deleted') throw { status: 400, message: 'Không thể chỉnh sửa bình luận trong bài viết đã bị xóa' };
-        if (post.status === 'closed') throw { status: 400, message: 'Không thể chỉnh sửa bình luận trong bài viết đã bị khóa' };
-        if (post.status === 'hidden') throw { status: 400, message: 'Không thể chỉnh sửa bình luận trong bài viết đã bị ẩn' };
+        const isLocked = post.status === 'resolved' || post.status === 'hidden' || post.status === 'deleted';
+        if (isLocked) {
+            throw { status: 423, message: 'Bài viết đang bị khóa hoặc không hợp lệ' };
+        }
 
         const content = String(payload.content || '').trim();
         moderation.validateComment(content);
@@ -737,7 +786,7 @@ class PostService {
         return await commentRepository.updateComment(commentId, updateData, editHistoryItem);
     }
 
-    _buildCommentTree(comments) {
+    _buildCommentTree(comments, bestAnswerId = null) {
         const commentMap = {};
         const rootComments = [];
         comments.forEach(comment => {
@@ -754,6 +803,17 @@ class PostService {
                 rootComments.push(commentObj);
             }
         });
+
+        // If there is an accepted answer, sort it to the top of rootComments
+        if (bestAnswerId) {
+            const bestAnswerStr = bestAnswerId.toString();
+            const bestIndex = rootComments.findIndex(c => c._id.toString() === bestAnswerStr);
+            if (bestIndex > 0) {
+                const [bestComment] = rootComments.splice(bestIndex, 1);
+                rootComments.unshift(bestComment);
+            }
+        }
+
         return rootComments;
     }
 
@@ -763,6 +823,10 @@ class PostService {
 
         if (String(post.author?._id || post.author) !== String(userId)) {
             throw { status: 403, message: 'Bạn không có quyền xóa bài viết này' };
+        }
+
+        if (post.status === 'hidden' || post.status === 'deleted') {
+            throw { status: 400, message: 'Bài viết không thể xóa ở trạng thái hiện tại' };
         }
 
         return await postRepository.softDelete(postId, 'owner');
@@ -795,6 +859,10 @@ class PostService {
             throw { status: 403, message: 'Bạn không có quyền xóa vĩnh viễn bài viết này' };
         }
 
+        if (post.status !== 'deleted') {
+            throw { status: 400, message: 'Bài viết phải nằm trong thùng rác trước khi xóa vĩnh viễn' };
+        }
+
         await postRepository.permanentlyDelete(postId);
         await Comment.deleteMany({ post: postId });
         return { success: true, message: 'Xóa vĩnh viễn bài viết thành công' };
@@ -812,6 +880,15 @@ class PostService {
             throw { status: 403, message: 'Bạn không có quyền xóa bình luận này' };
         }
 
+        const postId = comment.post?._id || comment.post;
+        if (postId) {
+            const post = await postRepository.findById(postId);
+            if (post && post.bestAnswer && String(post.bestAnswer) === String(commentId)) {
+                post.bestAnswer = null;
+                await post.save();
+            }
+        }
+
         const deleteCommentAndReplies = async (id) => {
             const replies = await Comment.find({ parentComment: id });
             for (const reply of replies) {
@@ -822,6 +899,50 @@ class PostService {
 
         await deleteCommentAndReplies(commentId);
         return { success: true, message: 'Xóa bình luận thành công' };
+    }
+
+    async acceptComment(commentId, userId) {
+        const comment = await commentRepository.findById(commentId);
+        if (!comment) throw { status: 404, message: 'Bình luận không tồn tại' };
+
+        const post = await postRepository.findById(comment.post?._id || comment.post);
+        if (!post) throw { status: 404, message: 'Bài viết không tồn tại' };
+
+        if (post.postType !== 'question') {
+            throw { status: 400, message: 'Chỉ có thể đánh dấu câu trả lời tốt nhất cho bài viết dạng câu hỏi' };
+        }
+
+        if (String(post.author?._id || post.author) !== String(userId)) {
+            throw { status: 403, message: 'Chỉ chủ bài viết mới có quyền đánh dấu câu trả lời tốt nhất' };
+        }
+
+        if (comment.parentComment) {
+            throw { status: 400, message: 'Chỉ có thể đánh dấu câu trả lời chính làm câu trả lời tốt nhất' };
+        }
+
+        const isLockedOrInvalid = post.status === 'resolved' || post.status === 'hidden' || post.status === 'deleted';
+        if (isLockedOrInvalid) {
+            throw { status: 400, message: 'Không thể thay đổi trạng thái giải quyết của bài viết này' };
+        }
+
+        let message = '';
+        let bestAnswer = null;
+
+        if (post.bestAnswer && String(post.bestAnswer) === String(commentId)) {
+            post.bestAnswer = null;
+            message = 'Đã hủy đánh dấu câu trả lời tốt nhất';
+        } else {
+            post.bestAnswer = commentId;
+            message = 'Đã đánh dấu câu trả lời tốt nhất thành công';
+            bestAnswer = commentId;
+        }
+
+        await post.save();
+        return {
+            postId: post._id,
+            bestAnswer,
+            message
+        };
     }
 }
 

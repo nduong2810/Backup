@@ -62,6 +62,7 @@ export default function PostContent({
   isAuthenticated = false,
   userReputation = 1,
   onReportPost,
+  isAdmin = false,
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -97,6 +98,7 @@ export default function PostContent({
   const canChangeVisibility = canManageVisibility && ['active', 'unresolved', 'resolved', 'closed'].includes(post.status);
   const nextVisibilityStatus = isClosed ? 'unresolved' : 'resolved';
   const nextVisibilityLabel = isClosed ? 'Mở lại bài viết' : 'Đóng bài viết';
+  const isLocked = isClosed || post.status === 'hidden' || post.status === 'deleted';
 
   const handleDeleteClick = () => {
     setShowMenu(false);
@@ -208,7 +210,7 @@ export default function PostContent({
                           setShowMenu(false);
                           setIsEditModalOpen(true);
                         }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 border-t border-slate-100 whitespace-nowrap"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 border-t border-slate-100 first:border-t-0 whitespace-nowrap"
                       >
                         <span className="material-symbols-outlined text-base text-slate-500">edit</span>
                         Sửa bài viết
@@ -217,7 +219,7 @@ export default function PostContent({
                     <button
                       type="button"
                       onClick={handleDeleteClick}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 border-t border-slate-100 whitespace-nowrap"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 border-t border-slate-100 first:border-t-0 whitespace-nowrap"
                     >
                       <span className="material-symbols-outlined text-base">delete</span>
                       Xóa bài viết
@@ -231,7 +233,7 @@ export default function PostContent({
                         setShowMenu(false);
                         onReportPost();
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 border-t border-slate-100 whitespace-nowrap"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 border-t border-slate-100 first:border-t-0 whitespace-nowrap"
                     >
                       <span className="material-symbols-outlined text-base text-rose-500 font-semibold">report</span>
                       Báo cáo bài viết
@@ -310,7 +312,7 @@ export default function PostContent({
             <div className="ml-auto flex shrink-0 items-center gap-2">
               <SmallReactionButton
                 active={userReaction === 'like'}
-                disabled={reactionLoading}
+                disabled={reactionLoading || isLocked}
                 onClick={() => onPostReaction?.('like')}
                 icon="thumb_up"
                 label="Thích"
@@ -320,7 +322,7 @@ export default function PostContent({
               />
               <SmallReactionButton
                 active={userReaction === 'dislike'}
-                disabled={reactionLoading}
+                disabled={reactionLoading || isLocked}
                 onClick={() => onPostReaction?.('dislike')}
                 icon="thumb_down"
                 label="Không thích"

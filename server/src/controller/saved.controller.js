@@ -13,6 +13,10 @@ class SavedController {
     async getSavedIds(req, res) {
         try {
             const userId = req.user.userId;
+            const role = req.user?.role;
+            if (role === 'admin') {
+                return res.status(200).json({ success: true, data: [] });
+            }
             const ids = await savedService.getSavedPostIds(userId);
             res.status(200).json({ success: true, data: ids });
         } catch (error) {
@@ -23,6 +27,10 @@ class SavedController {
     async getCollections(req, res) {
         try {
             const userId = req.user.userId;
+            const role = req.user?.role;
+            if (role === 'admin') {
+                return res.status(200).json({ success: true, data: [] });
+            }
             const collections = await savedService.getCollections(userId);
             res.status(200).json({ success: true, data: collections });
         } catch (error) {
@@ -90,11 +98,16 @@ class SavedController {
 
         try {
             const userId = req.user.userId;
+            const role = req.user?.role;
+            if (role === 'admin') {
+                return res.status(403).json({ success: false, message: 'Quản trị viên không thể thực hiện chức năng lưu bài viết' });
+            }
             const { postId, collectionId } = req.body;
             const result = await savedService.savePost(userId, postId, collectionId || null);
             res.status(200).json({ success: true, data: result });
         } catch (error) {
-            res.status(400).json({ success: false, message: error.message });
+            const status = error.status || 400;
+            res.status(status).json({ success: false, message: error.message });
         }
     }
 

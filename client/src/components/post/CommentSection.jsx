@@ -23,6 +23,8 @@ export default function CommentSection({
   postStatus = 'active',
   onCommentUpdated,
   onReportComment,
+  bestAnswerId = null,
+  onAcceptComment,
 }) {
   const [content, setContent] = useState('');
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -33,6 +35,7 @@ export default function CommentSection({
   const [replyingToId, setReplyingToId] = useState('');
   const [replyContent, setReplyContent] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
+  const isLocked = postStatus === 'closed' || postStatus === 'hidden' || postStatus === 'deleted';
 
   const resetMainForm = () => {
     setContent('');
@@ -194,14 +197,22 @@ export default function CommentSection({
       </h3>
 
       <form onSubmit={handleSubmit} className="mb-5 rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm">
+        {isLocked && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 animate-fadeIn">
+            <span className="material-symbols-outlined text-amber-600 text-xl font-bold">lock</span>
+            <div>
+              <span className="font-bold">Bài viết đã khóa:</span> Bài viết này đã bị đóng hoặc ẩn. Không thể thêm bình luận mới.
+            </div>
+          </div>
+        )}
         <label className="mb-2 block text-sm font-semibold text-on-surface">{formLabel}</label>
         <textarea
           value={content}
           onChange={(event) => setContent(event.target.value)}
           rows={3}
           maxLength={2000}
-          placeholder={isAuthenticated ? placeholderAuth : placeholderGuest}
-          disabled={submittingComment}
+          placeholder={isLocked ? "Bài viết đã bị khóa, không thể thêm bình luận." : (isAuthenticated ? placeholderAuth : placeholderGuest)}
+          disabled={submittingComment || isLocked}
           className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100"
         />
 
@@ -247,13 +258,13 @@ export default function CommentSection({
             <label className="flex h-8 items-center gap-1.5 rounded-full border border-outline-variant px-3 text-[12px] font-semibold text-secondary hover:bg-surface-container-low transition cursor-pointer">
               <span className="material-symbols-outlined text-[16px] leading-none">image</span>
               <span>Thêm ảnh</span>
-              <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" disabled={submittingComment} />
+              <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" disabled={submittingComment || isLocked} />
             </label>
 
             <label className="flex h-8 items-center gap-1.5 rounded-full border border-outline-variant px-3 text-[12px] font-semibold text-secondary hover:bg-surface-container-low transition cursor-pointer">
               <span className="material-symbols-outlined text-[16px] leading-none">videocam</span>
               <span>Thêm video</span>
-              <input type="file" accept="video/*" multiple onChange={handleVideoChange} className="hidden" disabled={submittingComment} />
+              <input type="file" accept="video/*" multiple onChange={handleVideoChange} className="hidden" disabled={submittingComment || isLocked} />
             </label>
           </div>
 
@@ -261,7 +272,7 @@ export default function CommentSection({
             <p className="text-xs text-secondary">{content.length}/2000 ký tự</p>
             <button
               type="submit"
-              disabled={submittingComment || (!content.trim() && imageFiles.length === 0 && videoFiles.length === 0)}
+              disabled={submittingComment || isLocked || (!content.trim() && imageFiles.length === 0 && videoFiles.length === 0)}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submittingComment ? 'Đang gửi...' : isAuthenticated ? submitLabel : loginLabel}
@@ -298,6 +309,8 @@ export default function CommentSection({
               postStatus={postStatus}
               onCommentUpdated={onCommentUpdated}
               onReportComment={onReportComment}
+              bestAnswerId={bestAnswerId}
+              onAcceptComment={onAcceptComment}
             />
           ))}
         </div>

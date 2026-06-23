@@ -7,13 +7,14 @@ import Comment from '../model/comment.model.js';
 import ReportTicket from '../model/reportTicket.model.js';
 import ReputationHistory from '../model/reputationHistory.model.js';
 import SystemSetting from '../model/systemSetting.model.js';
+import DonationTransaction from '../model/donationTransaction.model.js';
 import { slugify } from '../util/slugify.js';
 
 dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/it_student_forum';
 
-// Shared password hash as requested by the user
+// Shared password hash (123456 hoặc password tùy thuộc vào hash ban đầu)
 const demoPassword = "$2b$10$mwaKuCxlJMyWTyvJ8dvNruvvJXvEfsXb81Myqfp1qhcrTihUdkOtS";
 
 async function seed() {
@@ -31,7 +32,8 @@ async function seed() {
             Comment.deleteMany({}),
             ReportTicket.deleteMany({}),
             ReputationHistory.deleteMany({}),
-            SystemSetting.deleteMany({})
+            SystemSetting.deleteMany({}),
+            DonationTransaction.deleteMany({})
         ]);
         try {
             await ReportTicket.collection.dropIndex('post_1_reporter_1_flagType_1');
@@ -66,12 +68,12 @@ async function seed() {
             }
         ];
         await SystemSetting.insertMany(defaultSettings);
-        console.log('System settings seeded.');
 
-        // 2. Seed Users (varied signup dates, reputation scores, active statuses)
+        // 2. Seed Users
         console.log('Seeding users...');
         const userDatas = [
             {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7d0'),
                 fullName: 'Admin Administrator',
                 email: 'admin@itforum.local',
                 password: demoPassword,
@@ -82,9 +84,10 @@ async function seed() {
                 avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=admin',
                 major: 'Công nghệ thông tin',
                 reputation: 999,
-                createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 30 days ago
+                createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
             },
             {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7d1'),
                 fullName: 'Nguyễn Văn An',
                 email: 'user1@itforum.local',
                 password: demoPassword,
@@ -95,9 +98,10 @@ async function seed() {
                 avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=user1',
                 major: 'Kỹ thuật phần mềm',
                 reputation: 150,
-                createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000) // 15 days ago
+                createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)
             },
             {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7d2'),
                 fullName: 'Trần Thị Bình',
                 email: 'user2@itforum.local',
                 password: demoPassword,
@@ -108,9 +112,10 @@ async function seed() {
                 avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=user2',
                 major: 'Hệ thống thông tin',
                 reputation: 80,
-                createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) // 10 days ago
+                createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
             },
             {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7d3'),
                 fullName: 'Lê Hoàng Cường',
                 email: 'user3@itforum.local',
                 password: demoPassword,
@@ -121,22 +126,24 @@ async function seed() {
                 avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=user3',
                 major: 'Khoa học máy tính',
                 reputation: 210,
-                createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
+                createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
             },
             {
-                fullName: 'Phạm Minh Duy',
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7d4'),
+                fullName: 'Trần Quốc Bảo',
                 email: 'user4@itforum.local',
                 password: demoPassword,
                 role: 'user',
                 isActive: true,
                 phone: '0945678901',
-                bio: 'Người mới học lập trình, mong muốn giao lưu học hỏi.',
+                bio: 'Người mới học lập trình, thích tìm tòi React và học hỏi kinh nghiệm.',
                 avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=user4',
                 major: 'An toàn thông tin',
-                reputation: 15,
-                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) // 5 days ago
+                reputation: 96,
+                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
             },
             {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7d5'),
                 fullName: 'Hoàng Đức Em',
                 email: 'user5@itforum.local',
                 password: demoPassword,
@@ -147,7 +154,7 @@ async function seed() {
                 avatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=user5',
                 major: 'Công nghệ phần mềm',
                 reputation: 60,
-                createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
+                createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
             }
         ];
         const users = await User.insertMany(userDatas);
@@ -157,10 +164,10 @@ async function seed() {
         const user1 = users[1];
         const user2 = users[2];
         const user3 = users[3];
-        const user4 = users[4];
+        const user4 = users[4]; // Trần Quốc Bảo
         const user5 = users[5];
 
-        // 3. Seed Tags (automatically slugified)
+        // 3. Seed Tags
         console.log('Seeding tags...');
         const tagDatas = [
             { name: 'JavaScript', description: 'Các bài viết về ngôn ngữ JavaScript và hệ sinh thái liên quan.' },
@@ -172,7 +179,8 @@ async function seed() {
             { name: 'C#', description: 'Ngôn ngữ lập trình hướng đối tượng phát triển bởi Microsoft chạy trên .NET.' },
             { name: 'SQL', description: 'Ngôn ngữ truy vấn chuẩn hóa cho các cơ sở dữ liệu quan hệ.' },
             { name: 'MongoDB', description: 'Hệ quản trị cơ sở dữ liệu NoSQL hướng tài liệu linh hoạt.' },
-            { name: 'Docker', description: 'Công cụ giúp tạo lập, đóng gói và triển khai ứng dụng bằng Container.' }
+            { name: 'Docker', description: 'Công cụ giúp tạo lập, đóng gói và triển khai ứng dụng bằng Container.' },
+            { name: 'Git', description: 'Hệ thống quản lý phiên bản phân tán phổ biến nhất.' }
         ];
 
         const tags = await Tag.insertMany(
@@ -183,355 +191,307 @@ async function seed() {
         );
         console.log(`Seeded ${tags.length} tags.`);
 
-        // 4. Seed Posts
+        // 4. Seed Posts (using the exact IDs from the user's DB, matching unresolved/resolved statuses)
         console.log('Seeding posts...');
         const postsData = [
-            // Question 1: Active
             {
-                title: 'Làm thế nào để tối ưu hiệu năng của component React?',
-                content: 'Tôi đang phát triển một ứng dụng React lớn nhưng gặp vấn đề về render lại component liên tục làm giảm hiệu năng. Mọi người có thể gợi ý các cách tối ưu như React.memo, useMemo, useCallback hay ảo hóa danh sách không?',
-                author: user1._id,
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7e8'),
+                title: 'React useEffect bị gọi 2 lần khi chạy dev là lỗi hay bình thường?',
+                content: 'Mình đang dùng React StrictMode và thấy useEffect gọi hai lần trong môi trường dev. Điều này có ảnh hưởng production không, và nên xử lý API call như thế nào cho sạch?',
+                author: user4._id, // Trần Quốc Bảo
                 postType: 'question',
                 tags: ['react', 'javascript'],
                 status: 'unresolved',
-                viewCount: 154,
-                upvotes: [user2._id, user3._id, user5._id],
-                downvotes: [],
-                likes: [user2._id, user3._id],
+                viewCount: 57,
+                dailyViewCount: 4,
+                dailyViewDate: new Date(),
+                upvotes: [user1._id],
+                downvotes: [user5._id],
+                likes: [],
                 dislikes: [],
-                createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+                createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
             },
-            // Advice 1: Active
             {
-                title: 'Tổng hợp lộ trình tự học Python cho người mới bắt đầu',
-                content: 'Python là ngôn ngữ rất thân thiện cho người mới bắt đầu. Dưới đây là lộ trình từ căn bản (Biến, Kiểu dữ liệu, Cấu trúc rẽ nhánh) đến nâng cao (OOP, File, RegEx) và làm quen với các thư viện phổ biến như Pandas, NumPy cho khoa học dữ liệu.',
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7e9'),
+                title: 'Thiết kế schema MongoDB cho bài viết có tag và bình luận lồng nhau',
+                content: 'Mình cần thiết kế một schema cho một forum IT có bài viết, các tags và hệ thống bình luận lồng nhau nhiều cấp (nested comments). Nên nhúng (embed) hay tham chiếu (reference) bình luận? Mong mọi người tư vấn.',
+                author: user1._id,
+                postType: 'question',
+                tags: ['mongodb', 'nodejs'],
+                status: 'unresolved',
+                viewCount: 142,
+                upvotes: [user2._id, user3._id],
+                downvotes: [],
+                likes: [user2._id],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7ea'),
+                title: 'Kinh nghiệm tự học NodeJS backend trong 4 tuần',
+                content: 'Chia sẻ lộ trình mình tự học NodeJS hiệu quả từ Zero. Bắt đầu từ hiểu Event Loop, Modules, sau đó viết API cơ bản với Express, kết nối cơ sở dữ liệu MongoDB và cuối cùng triển khai lên VPS.',
                 author: user3._id,
                 postType: 'advice',
-                tags: ['python'],
+                tags: ['nodejs', 'javascript'],
                 status: 'unresolved',
-                viewCount: 420,
+                viewCount: 532,
                 upvotes: [user1._id, user2._id, user4._id, user5._id],
                 downvotes: [],
                 likes: [user1._id, user2._id, user4._id, user5._id],
                 dislikes: [],
                 createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000)
             },
-            // Question 2: Resolved (locked)
             {
-                title: 'Tại sao kết nối MongoDB Atlas bị timeout lỗi MongooseServerSelectionError?',
-                content: 'Tôi cố gắng kết nối ứng dụng Node.js của mình lên MongoDB Atlas nhưng liên tục nhận lỗi timeout. Tôi đã điền đúng URL kết nối. Có ai biết nguyên nhân và cách khắc phục lỗi này không?',
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7eb'),
+                title: 'JWT nên lưu ở localStorage hay cookie httpOnly?',
+                content: 'Vấn đề bảo mật thông tin đăng nhập: Lưu JWT token ở localStorage dễ bị tấn công XSS, còn lưu ở Cookie httpOnly + Secure thì bị ảnh hưởng bởi CSRF. Giải pháp nào là tối ưu nhất cho SPA?',
                 author: user2._id,
                 postType: 'question',
-                tags: ['mongodb', 'nodejs'],
-                status: 'resolved',
-                viewCount: 88,
-                upvotes: [user1._id],
-                downvotes: [],
-                likes: [user1._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000)
-            },
-            // Question 3: Hidden (Bị ẩn)
-            {
-                title: 'Quảng cáo mua bán phần mềm giá rẻ tại Hà Nội',
-                content: 'Chúng tôi chuyên cung cấp bản quyền phần mềm Office, Windows giá siêu rẻ chỉ từ 50k. Vui lòng liên hệ số điện thoại 0900000000 để biết thêm chi tiết. Ship COD toàn quốc nhanh chóng.',
-                author: user4._id,
-                postType: 'question',
-                tags: ['javascript'],
-                status: 'hidden',
-                viewCount: 22,
-                upvotes: [],
-                downvotes: [user1._id, user2._id, user3._id],
-                likes: [],
-                dislikes: [user1._id, user2._id],
-                createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
-            },
-            // Advice 2: Deleted (Xóa bởi Admin)
-            {
-                title: 'Hướng dẫn sử dụng các lệnh Docker cơ bản cho người bắt đầu',
-                content: 'Docker giúp đóng gói và chạy ứng dụng bất kỳ một cách dễ dàng. Các lệnh phổ biến bao gồm docker run, docker build, docker ps, docker images, docker exec. Cùng tìm hiểu cách sử dụng chúng hiệu quả nhất.',
-                author: user5._id,
-                postType: 'advice',
-                tags: ['docker'],
-                status: 'deleted',
-                deletedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-                deletedBy: 'admin',
-                viewCount: 95,
-                upvotes: [user1._id, user3._id],
-                downvotes: [],
-                likes: [user1._id, user3._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
-            },
-            // Question 4: Deleted (Xóa bởi Owner - Trash)
-            {
-                title: 'Hỏi về việc cài đặt môi trường C++ trên Windows 11',
-                content: 'Tôi muốn cài đặt trình biên dịch MinGW để chạy code C++ trên Windows nhưng cấu hình biến môi trường PATH mãi không được. Có ai hướng dẫn cụ thể từng bước được không?',
-                author: user1._id,
-                postType: 'question',
-                tags: ['cpp'],
-                status: 'deleted',
-                deletedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-                deletedBy: 'owner',
-                viewCount: 15,
-                upvotes: [],
-                downvotes: [],
-                likes: [],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
-            },
-            // Question 5: Active
-            {
-                title: 'Tìm hiểu về điểm khác biệt giữa C# và Java',
-                content: 'Tôi thấy C# và Java có cấu trúc cú pháp rất giống nhau, tuy nhiên đều có những hướng đi riêng biệt. Mọi người có thể liệt kê điểm khác biệt chính về bộ nhớ, các tính năng ngôn ngữ và hệ sinh thái được không?',
-                author: user5._id,
-                postType: 'question',
-                tags: ['csharp', 'java'],
-                status: 'unresolved',
-                viewCount: 120,
-                upvotes: [user1._id, user3._id],
-                downvotes: [],
-                likes: [user1._id, user3._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
-            },
-            // Advice 3: Active
-            {
-                title: 'Cách thiết kế cơ sở dữ liệu quan hệ chuẩn hóa 3NF',
-                content: 'Thiết kế cơ sở dữ liệu chuẩn hóa giúp giảm thiểu dư thừa dữ liệu. Dưới đây là cách đưa một bảng từ dạng thô về 1NF (Kiểu dữ liệu nguyên tố), 2NF (Loại bỏ phụ thuộc hàm bộ phận) và 3NF (Loại bỏ phụ thuộc hàm bắc cầu).',
-                author: user2._id,
-                postType: 'advice',
-                tags: ['sql'],
+                tags: ['javascript', 'nodejs'],
                 status: 'unresolved',
                 viewCount: 310,
-                upvotes: [user1._id, user3._id, user5._id],
-                downvotes: [],
-                likes: [user1._id, user3._id, user5._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
-            },
-            // Question 6: Active
-            {
-                title: 'Làm thế nào để Git clone chỉ lấy 1 commit gần nhất (Shallow clone)?',
-                content: 'Dự án tôi đang tải về rất lớn và có lịch sử commit lâu đời. Tôi chỉ cần code hiện tại để deploy, làm sao để clone nhanh nhất mà không phải tải toàn bộ lịch sử commit về máy?',
-                author: user3._id,
-                postType: 'question',
-                tags: ['git'],
-                status: 'unresolved',
-                viewCount: 75,
-                upvotes: [user1._id, user2._id],
-                downvotes: [],
-                likes: [user1._id, user2._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
-            },
-            // 10. ES2024 features
-            {
-                title: 'Các tính năng mới đáng chú ý trong ES2024 (ECMAScript 2024)',
-                content: 'ECMAScript 2024 giới thiệu nhiều tính năng thú vị như Object.groupBy, Map.groupBy, Promise.withResolvers, và các cải tiến về Regex. Hãy cùng xem các ví dụ thực tế cách dùng chúng để viết code ngắn gọn hơn.',
-                author: user1._id,
-                postType: 'advice',
-                tags: ['javascript'],
-                status: 'unresolved',
-                viewCount: 180,
-                upvotes: [user2._id, user3._id],
-                downvotes: [],
-                likes: [user2._id, user3._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000)
-            },
-            // 11. Docker CMD vs ENTRYPOINT
-            {
-                title: 'Sự khác nhau giữa Docker RUN, CMD và ENTRYPOINT?',
-                content: 'Tôi thường xuyên nhầm lẫn giữa 3 chỉ thị này trong Dockerfile. RUN chạy khi build image, trong khi CMD và ENTRYPOINT chạy khi container khởi động. Bài viết này sẽ phân tích chi tiết khi nào nên dùng CMD và khi nào dùng ENTRYPOINT.',
-                author: user5._id,
-                postType: 'question',
-                tags: ['docker'],
-                status: 'unresolved',
-                viewCount: 290,
-                upvotes: [user1._id, user2._id, user3._id],
-                downvotes: [],
-                likes: [user1._id, user2._id, user3._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000)
-            },
-            // 12. SQL optimization
-            {
-                title: 'Làm thế nào để tối ưu truy vấn SQL SELECT với JOIN lớn?',
-                content: 'Tôi đang thực hiện truy vấn trên 3 bảng lớn với tổng số dòng hơn 10 triệu. Hệ thống phản hồi rất chậm. Làm sao để tối ưu hóa truy vấn này? Nên tạo index như thế nào trên các khóa ngoại?',
-                author: user2._id,
-                postType: 'question',
-                tags: ['sql'],
-                status: 'unresolved',
-                viewCount: 204,
-                upvotes: [user1._id, user3._id],
-                downvotes: [],
-                likes: [user1._id, user3._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
-            },
-            // 13. MongoDB schema design
-            {
-                title: 'Các mô hình thiết kế Schema trong NoSQL MongoDB: Embedding vs Referencing',
-                content: 'Khi nào nên lưu tài liệu con bên trong (Embedding) và khi nào nên tham chiếu bằng ID (Referencing)? Quyết định này ảnh hưởng trực tiếp đến hiệu năng đọc/ghi. Dưới đây là các ví dụ cụ thể.',
-                author: user3._id,
-                postType: 'advice',
-                tags: ['mongodb'],
-                status: 'unresolved',
-                viewCount: 340,
-                upvotes: [user1._id, user2._id, user5._id],
-                downvotes: [],
-                likes: [user1._id, user2._id, user5._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
-            },
-            // 14. C++ memory leak & smart pointers
-            {
-                title: 'Lỗi giải phóng bộ nhớ (Memory Leak) trong C++ và cách dùng Smart Pointers',
-                content: 'Trong C++ hiện đại, chúng ta không nên dùng con trỏ thô và lệnh delete thủ công nữa. Thay vào đó, hãy sử dụng std::unique_ptr, std::shared_ptr và std::weak_ptr từ thư viện memory để tự động hóa việc quản lý vòng đời đối tượng.',
-                author: user1._id,
-                postType: 'question',
-                tags: ['cpp'],
-                status: 'unresolved',
-                viewCount: 112,
-                upvotes: [user3._id, user5._id],
-                downvotes: [],
-                likes: [user3._id, user5._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-            },
-            // 15. React Context + useReducer
-            {
-                title: 'Hướng dẫn sử dụng React Context kết hợp useReducer hiệu quả',
-                content: 'React Context kết hợp useReducer là giải pháp quản lý trạng thái toàn cục rất tốt cho các ứng dụng vừa và nhỏ mà không cần cài đặt Redux. Bài viết hướng dẫn chi tiết cách tạo State Provider và dispatch actions.',
-                author: user2._id,
-                postType: 'advice',
-                tags: ['react', 'javascript'],
-                status: 'unresolved',
-                viewCount: 228,
                 upvotes: [user1._id, user3._id],
                 downvotes: [],
                 likes: [user1._id, user3._id],
                 dislikes: [],
                 createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)
             },
-            // 16. Git resolve conflict
             {
-                title: 'Cách giải quyết Merge Conflict trong Git khi làm việc nhóm?',
-                content: 'Khi nhiều người cùng sửa đổi trên cùng một dòng của một file, Git sẽ báo lỗi conflict khi merge. Làm thế nào để giải quyết thủ công bằng VS Code hoặc Git CLI một cách an toàn nhất?',
-                author: user4._id,
-                postType: 'question',
-                tags: ['git'],
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7ec'),
+                title: 'Checklist trước khi nộp đồ án môn Công nghệ phần mềm',
+                content: 'Dưới đây là một số mục cần tự rà soát trước khi đóng gói đồ án để thuyết trình trước hội đồng: cấu hình ENV, validate dữ liệu đầy đủ, phân quyền middleware và đặc biệt là chuẩn bị dữ liệu mẫu hợp lý.',
+                author: user5._id,
+                postType: 'advice',
+                tags: ['javascript', 'react'],
                 status: 'unresolved',
-                viewCount: 94,
+                viewCount: 88,
+                upvotes: [user1._id],
+                downvotes: [],
+                likes: [user1._id],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7ed'),
+                title: 'Vite build báo chunk lớn hơn 500kB thì có cần xử lý ngay không?',
+                content: 'Khi chạy build dự án React bằng Vite, terminal cảnh báo một số chunk có dung lượng vượt quá 500kB. Việc này có gây ảnh hưởng đáng kể đến tốc độ load trang đầu không và xử lý bằng manualChunks như thế nào?',
+                author: user1._id,
+                postType: 'question',
+                tags: ['react'],
+                status: 'unresolved',
+                viewCount: 95,
+                upvotes: [user2._id],
+                downvotes: [],
+                likes: [],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7ee'),
+                title: 'Cách phân trang danh sách bài viết theo tag cho mượt?',
+                content: 'Tôi muốn viết API phân trang bài viết kèm theo lọc tag. Cách sử dụng skip và limit trong MongoDB có bị chậm khi dữ liệu lớn không? Có giải pháp phân trang theo Cursor nào tối ưu hơn không?',
+                author: user2._id,
+                postType: 'question',
+                tags: ['mongodb', 'sql'],
+                status: 'unresolved',
+                viewCount: 110,
+                upvotes: [user3._id],
+                downvotes: [],
+                likes: [],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7ef'),
+                title: 'Một số lỗi UI thường gặp khi làm dashboard admin',
+                content: 'Tổng hợp các vấn đề hiển thị thường thấy ở trang quản trị: bảng biểu quá rộng gây tràn trang, sidebar thiếu responsive trên mobile, thời gian loading lâu và không có placeholder skeleton.',
+                author: user5._id,
+                postType: 'advice',
+                tags: ['react'],
+                status: 'unresolved',
+                viewCount: 65,
+                upvotes: [user1._id],
+                downvotes: [],
+                likes: [],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7f0'),
+                title: 'Nên dùng populate hay aggregate khi cần đếm bình luận???????',
+                content: 'Trong Mongoose, khi hiển thị danh sách bài viết kèm số lượng bình luận, việc dùng populate(\'comments\') rồi đo độ dài mảng có làm tốn RAM quá không? Nên dùng aggregate $lookup và $size thay thế đúng không?',
+                author: user1._id,
+                postType: 'question',
+                tags: ['mongodb'],
+                status: 'unresolved',
+                viewCount: 154,
+                upvotes: [user2._id, user3._id],
+                downvotes: [],
+                likes: [user2._id],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7f1'),
+                title: 'Cách debug CORS giữa Vite và Express',
+                content: 'Mình chạy client Vite ở port 5173 và server Express ở port 5000, gọi API bị lỗi Blocked by CORS policy. Đã dùng app.use(cors()) nhưng vẫn bị. Làm sao cấu hình đúng origins và credentials?',
+                author: user2._id,
+                postType: 'question',
+                tags: ['nodejs', 'javascript'],
+                status: 'unresolved',
+                viewCount: 204,
+                upvotes: [user1._id, user3._id],
+                downvotes: [],
+                likes: [user1._id],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7f2'),
+                title: 'Gợi ý viết CV thực tập backend cho sinh viên năm 3',
+                content: 'Lời khuyên cho các bạn chuẩn bị đi thực tập: Tập trung vào các project cá nhân có thực tế, ghi rõ công nghệ sử dụng, giải thích kiến trúc DB và kỹ năng giải quyết vấn đề thay vì viết chung chung.',
+                author: user3._id,
+                postType: 'advice',
+                tags: ['python', 'java'],
+                status: 'unresolved',
+                viewCount: 420,
+                upvotes: [user1._id, user2._id, user4._id],
+                downvotes: [],
+                likes: [user1._id, user2._id],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7f3'),
+                title: 'Index MongoDB nào phù hợp cho tìm bài viết theo tag và thời gian?',
+                content: 'Bài đăng có chứa nhiều tag và sắp xếp theo ngày tạo giảm dần. Mình nên tạo Single index { tags: 1 } hay Compound index { tags: 1, createdAt: -1 } để tối ưu query?',
+                author: user2._id,
+                postType: 'question',
+                tags: ['mongodb'],
+                status: 'unresolved',
+                bestAnswer: null, // Sẽ gán sau khi tạo bình luận
+                viewCount: 88,
+                upvotes: [user1._id],
+                downvotes: [],
+                likes: [user1._id],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7f4'),
+                title: 'Cách đặt tên component React dễ đọc hơn',
+                content: 'Sử dụng PascalCase cho Component, camelCase cho hooks, và tổ chức cấu trúc thư mục dạng Domain-driven để dự án dễ bảo trì hơn khi mở rộng quy mô.',
+                author: user5._id,
+                postType: 'advice',
+                tags: ['react'],
+                status: 'unresolved',
+                viewCount: 160,
+                upvotes: [user1._id],
+                downvotes: [],
+                likes: [],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7f5'),
+                title: 'Socket.io có cần thiết cho thông báo bình luận mới không?',
+                content: 'Chúng tôi đang phân vân giữa WebSockets (Socket.io) và Server-Sent Events (SSE) để làm tính năng realtime notify khi có bình luận mới. Lựa chọn nào nhẹ hơn cho backend?',
+                author: user1._id,
+                postType: 'question',
+                tags: ['nodejs'],
+                status: 'unresolved',
+                viewCount: 92,
+                upvotes: [user3._id],
+                downvotes: [],
+                likes: [],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7f6'),
+                title: 'Phân biệt upvote/downvote với like/dislike trong forum',
+                content: 'Upvote/Downvote ảnh hưởng trực tiếp đến thứ hạng bài đăng và điểm uy tín của tác giả (Reputation), còn Like/Dislike chỉ thể hiện cảm xúc đơn thuần mà không làm thay đổi điểm số hệ thống.',
+                author: user3._id,
+                postType: 'advice',
+                tags: ['javascript'],
+                status: 'unresolved',
+                viewCount: 180,
                 upvotes: [user1._id, user2._id],
                 downvotes: [],
                 likes: [user1._id, user2._id],
                 dislikes: [],
-                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+                createdAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000)
             },
-            // 17. NodeJS Express vs Fastify
             {
-                title: 'So sánh hiệu năng thực tế giữa ExpressJS và Fastify',
-                content: 'ExpressJS đã quá quen thuộc, nhưng Fastify tự hào là framework có tốc độ xử lý nhanh gấp nhiều lần nhờ tối ưu hóa JSON schema và giảm overhead. Chúng ta hãy so sánh qua bài benchmark thực tế.',
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7f7'),
+                title: 'Học networking qua việc tự trace một request HTTP',
+                content: 'Hãy dùng Wireshark để bắt và phân tích gói tin khi gõ google.com trên trình duyệt. Bạn sẽ hiểu rõ cơ chế bắt tay 3 bước TCP, quá trình phân giải DNS và bản tin HTTP thực sự trông như thế nào.',
                 author: user5._id,
-                postType: 'question',
-                tags: ['nodejs', 'javascript'],
+                postType: 'advice',
+                tags: ['javascript'],
                 status: 'unresolved',
-                viewCount: 172,
+                viewCount: 290,
                 upvotes: [user1._id, user2._id, user3._id],
                 downvotes: [],
                 likes: [user1._id, user2._id, user3._id],
                 dislikes: [],
-                createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+                createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
             },
-            // 18. Java thread-safe Singleton
             {
-                title: 'Cách triển khai Design Pattern Singleton trong Java an toàn đa luồng (Thread-safe)',
-                content: 'Singleton đảm bảo một class chỉ có duy nhất một instance. Tuy nhiên trong môi trường đa luồng, làm sao để khởi tạo instance đó an toàn? Hãy cùng xem cách dùng Double-Checked Locking và Bill Pugh Singleton.',
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7f8'),
+                title: 'Reset password bằng OTP nên hết hạn sau bao lâu?',
+                content: 'Thông thường mã OTP gửi qua SMS hoặc email chỉ nên có hiệu lực từ 2 đến 5 phút để tránh nguy cơ tấn công brute-force. Đồng thời nên giới hạn gửi lại mã tối đa 3 lần mỗi 15 phút.',
+                author: user2._id,
+                postType: 'question',
+                tags: ['nodejs'],
+                status: 'unresolved',
+                viewCount: 112,
+                upvotes: [user1._id],
+                downvotes: [],
+                likes: [],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7f9'),
+                title: 'Cách chuẩn bị dữ liệu mẫu để demo đồ án',
+                content: 'Nên viết sẵn một script seed CSDL bằng Javascript sử dụng thư viện như Faker để tự động sinh ra hàng trăm bài viết, hàng ngàn bình luận, giúp giao diện trông thực tế và sinh động hơn khi demo.',
                 author: user3._id,
                 postType: 'advice',
-                tags: ['java'],
+                tags: ['javascript', 'mongodb'],
                 status: 'unresolved',
-                viewCount: 160,
-                upvotes: [user1._id, user5._id],
+                viewCount: 172,
+                upvotes: [user1._id, user2._id, user5._id],
                 downvotes: [],
-                likes: [user1._id, user5._id],
+                likes: [],
                 dislikes: [],
-                createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+                createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
             },
-            // 19. Python Scrapy vs BeautifulSoup
             {
-                title: 'Nên sử dụng thư viện Scrapy hay BeautifulSoup để cào dữ liệu web?',
-                content: 'Tôi muốn viết một script cào dữ liệu sản phẩm từ một trang thương mại điện tử lớn. Thư viện BeautifulSoup có vẻ dễ viết hơn nhưng Scrapy lại mạnh mẽ và hỗ trợ bất đồng bộ. Mọi người khuyên dùng loại nào?',
-                author: user4._id,
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7fa'),
+                title: 'Python có phù hợp để viết script seed database không?',
+                content: 'Hoàn toàn phù hợp. Thư viện pymongo và Faker trong Python rất mạnh mẽ và dễ viết. Tuy nhiên, nếu toàn bộ dự án viết bằng Node.js, nên dùng luôn Javascript để tái sử dụng các Models của Mongoose.',
+                author: user1._id,
                 postType: 'question',
-                tags: ['python'],
+                tags: ['python', 'mongodb'],
                 status: 'unresolved',
                 viewCount: 82,
                 upvotes: [user3._id],
                 downvotes: [],
-                likes: [user3._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
-            },
-            // 20. ASP.NET Core Web API
-            {
-                title: 'Bắt đầu với ASP.NET Core Web API: Các bước thiết lập ban đầu',
-                content: 'ASP.NET Core là framework mạnh mẽ cho backend API. Bài viết hướng dẫn cấu hình Dependency Injection, Entity Framework Core kết nối với SQL Server và thiết lập các Route cơ bản cho Controller.',
-                author: user1._id,
-                postType: 'advice',
-                tags: ['csharp', 'sql'],
-                status: 'unresolved',
-                viewCount: 135,
-                upvotes: [user2._id, user5._id],
-                downvotes: [],
-                likes: [user2._id, user5._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
-            },
-            // 21. JavaScript closure
-            {
-                title: 'Closure trong JavaScript là gì và ví dụ thực tế?',
-                content: 'Closure là một hàm nhớ được môi trường bên ngoài nơi nó được tạo ra, ngay cả khi môi trường đó đã thực thi xong. Đây là khái niệm quan trọng nhưng dễ gây nhầm lẫn. Cùng tìm hiểu qua ví dụ hàm đếm counter.',
-                author: user2._id,
-                postType: 'question',
-                tags: ['javascript'],
-                status: 'unresolved',
-                viewCount: 92,
-                upvotes: [user1._id, user3._id],
-                downvotes: [],
-                likes: [user1._id, user3._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000)
-            },
-            // 22. Another spam post (hidden)
-            {
-                title: 'Nhận viết thuê luận văn, đồ án tốt nghiệp công nghệ thông tin giá rẻ',
-                content: 'Dịch vụ làm hộ đồ án tốt nghiệp React, Node.js, PHP giá sinh viên. Cam kết qua môn 100%, bảo mật thông tin khách hàng tuyệt đối. Inbox Zalo hoặc Telegram để được tư vấn báo giá trực tiếp.',
-                author: user4._id,
-                postType: 'question',
-                tags: ['react', 'nodejs'],
-                status: 'hidden',
-                viewCount: 30,
-                upvotes: [],
-                downvotes: [user1._id, user2._id, user3._id, user5._id],
                 likes: [],
-                dislikes: [user1._id, user2._id],
+                dislikes: [],
                 createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
             },
-            // 23. Another deleted post (admin)
             {
-                title: 'Chia sẻ khóa học lập trình React Native Full Stack lậu miễn phí',
-                content: 'Tổng hợp link tải Google Drive toàn bộ các video khóa học React Native chất lượng cao trị giá 5 triệu đồng. Link tải ở đây: http://sharedcourse-leak.xyz',
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff7fb'),
+                title: 'Tối ưu trang hồ sơ công khai cho diễn đàn sinh viên',
+                content: 'Hồ sơ cá nhân nên hiển thị các thống kê trực quan về bài viết đã đăng, tổng số lượt xem, upvote nhận được, các tag thế mạnh và lịch sử tăng điểm danh tiếng của thành viên.',
                 author: user5._id,
                 postType: 'advice',
                 tags: ['react'],
-                status: 'deleted',
-                deletedAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-                deletedBy: 'admin',
-                viewCount: 77,
-                upvotes: [],
+                status: 'unresolved',
+                viewCount: 135,
+                upvotes: [user1._id, user2._id],
                 downvotes: [],
                 likes: [],
                 dislikes: [],
@@ -541,214 +501,151 @@ async function seed() {
         const posts = await Post.insertMany(postsData);
         console.log(`Seeded ${posts.length} posts.`);
 
-        const postReactMemo = posts[0];
-        const postPython = posts[1];
-        const postMongoTimeout = posts[2];
-        const postSpam = posts[3];
-        const postSql = posts[7];
-        const postGit = posts[8];
+        const postReactUnresolved = posts[0]; // useEffect 2 times
+        const postMongoSchema = posts[1];
+        const postMongoIndexResolved = posts[11]; // Index MongoDB
 
         // 5. Seed Comments & Nested Replies
         console.log('Seeding comments...');
-        const commentsData = [
-            // Comments for React post
+        const commentDatas = [
+            // Comments for React useEffect post
             {
-                content: 'Bạn nên sử dụng React.memo để bao bọc component con, tránh render lại khi props không đổi. Kết hợp useCallback cho các hàm callback truyền xuống component con đó.',
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff8a0'),
+                content: 'Đây là cơ chế hoàn toàn bình thường của React 18+ khi chạy trong môi trường development với StrictMode nhằm phát hiện các hiệu ứng phụ (side effects) chưa được dọn dẹp sạch sẽ.',
+                author: user1._id,
+                post: postReactUnresolved._id,
+                parentComment: null,
+                likes: [user3._id, user2._id],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff8a1'),
+                content: 'Chuẩn luôn! Khi chạy ở Production thì nó chỉ gọi một lần duy nhất thôi nên bạn không cần quá lo lắng nhé.',
                 author: user2._id,
-                post: postReactMemo._id,
+                post: postReactUnresolved._id,
+                parentComment: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff8a0'), // Reply to above
+                likes: [user1._id],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+            },
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff8a2'),
+                content: 'Cảm ơn hai bạn nhiều! Giờ mình đã hiểu tại sao nó lại gọi 2 lần rồi. Mình sẽ viết cleanup function để hủy các API request chưa hoàn thành.',
+                author: user4._id, // Tác giả bài viết (Trần Quốc Bảo) trả lời/bình luận
+                post: postReactUnresolved._id,
+                parentComment: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff8a1'),
+                likes: [user1._id, user2._id],
+                dislikes: [],
+                createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+            },
+
+            // Comments for MongoDB Schema post
+            {
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff8a3'),
+                content: 'Đối với hệ thống bình luận lồng nhau nhiều cấp, không nên dùng Embedding vì tài liệu MongoDB có giới hạn kích thước 16MB. Bạn nên dùng Referencing kết hợp thuộc tính parentComment ID.',
+                author: user2._id,
+                post: postMongoSchema._id,
                 parentComment: null,
                 likes: [user1._id, user3._id],
                 dislikes: [],
-                createdAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000)
+                createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
             },
+
+            // Comments for MongoDB Index resolved post
             {
-                content: 'Đúng vậy! Tuy nhiên lưu ý không lạm dụng React.memo vì bản thân việc so sánh props nông (shallow comparison) cũng tốn chi phí CPU.',
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff8a4'),
+                content: 'Bạn nên sử dụng Compound index { tags: 1, createdAt: -1 } vì query của bạn thực hiện filter theo tag trước rồi mới sắp xếp theo thời gian giảm dần.',
                 author: user3._id,
-                post: postReactMemo._id,
+                post: postMongoIndexResolved._id,
                 parentComment: null,
-                likes: [user2._id],
+                likes: [user2._id, user1._id],
                 dislikes: [],
-                createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000)
-            },
-            // Comments for MongoDB Timeout post (Resolved)
-            {
-                content: 'Bạn đã mở Whitelist IP trong MongoDB Atlas chưa? Thường mặc định Atlas chặn tất cả các IP lạ truy cập vào cụm CSDL.',
-                author: user1._id,
-                post: postMongoTimeout._id,
-                parentComment: null,
-                likes: [user2._id, user3._id],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+                createdAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000)
             },
             {
-                content: 'A, đúng rồi! Tôi vừa thêm cấu hình IP 0.0.0.0/0 (cho phép tất cả IP) trên MongoDB Atlas và đã kết nối thành công. Cảm ơn bạn rất nhiều!',
-                author: user2._id,
-                post: postMongoTimeout._id,
-                parentComment: null,
-                likes: [user1._id],
+                _id: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff8a5'),
+                content: 'Cảm ơn anh Cường nhé, giải thích rất dễ hiểu. Em đã tạo index này và tốc độ truy vấn từ 120ms giảm xuống còn dưới 5ms!',
+                author: user2._id, // Tác giả bài viết
+                post: postMongoIndexResolved._id,
+                parentComment: new mongoose.Types.ObjectId('6a364719a1b07db4bbeff8a4'),
+                likes: [user3._id],
                 dislikes: [],
-                createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
-            },
-            // Comments for SQL post
-            {
-                content: 'Bài viết chia sẻ rất chi tiết, dễ hiểu. Cảm ơn tác giả nhiều nhé!',
-                author: user4._id,
-                post: postSql._id,
-                parentComment: null,
-                likes: [],
-                dislikes: [],
-                createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+                createdAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000)
             }
         ];
-
-        const comments = await Comment.insertMany(commentsData);
+        const comments = await Comment.insertMany(commentDatas);
         console.log(`Seeded ${comments.length} comments.`);
 
-        const comment1 = comments[0];
-        const comment2 = comments[1];
-        const commentMongoAnswer = comments[2];
-        const commentMongoReply = comments[3];
-
-        // Link child replies
-        await Comment.updateOne({ _id: comment2._id }, { $set: { parentComment: comment1._id } });
-        await Comment.updateOne({ _id: commentMongoReply._id }, { $set: { parentComment: commentMongoAnswer._id } });
-        console.log('Linked nested comment replies.');
+        // Cập nhật accepted answer cho post resolved
+        const bestComment = comments.find(c => c._id.toString() === '6a364719a1b07db4bbeff8a4');
+        if (bestComment) {
+            await Post.findByIdAndUpdate(postMongoIndexResolved._id, { $set: { bestAnswer: bestComment._id } });
+            console.log('Set bestAnswer for MongoDB Index resolved post.');
+        }
 
         // 6. Seed Report Tickets (Flags)
         console.log('Seeding report tickets (flags)...');
         const reportTicketsData = [
-            // Spam post report tickets (4 reports -> hides automatically)
             {
-                post: postSpam._id,
-                reporter: user1._id,
-                flagType: 'spam',
-                details: 'Đây hoàn toàn là nội dung rác quảng cáo, vi phạm nghiêm trọng quy định cộng đồng.',
-                status: 'action_taken',
-                outcome: 'helpful',
-                history: [
-                    { status: 'submitted', note: 'Người dùng gửi cờ: spam.', actorRole: 'user', actor: user1._id, createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) },
-                    { status: 'action_taken', note: 'Tự động ẩn bài viết vì quá số cờ tối thiểu.', actorRole: 'system', createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) }
-                ],
-                createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
-            },
-            {
-                post: postSpam._id,
+                post: postReactUnresolved._id,
                 reporter: user2._id,
-                flagType: 'spam',
-                details: 'Spam bán hàng online, vui lòng xóa bỏ bài này.',
-                status: 'action_taken',
-                outcome: 'helpful',
-                history: [
-                    { status: 'submitted', note: 'Người dùng gửi cờ: spam.', actorRole: 'user', actor: user2._id, createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) }
-                ],
-                createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
-            },
-            {
-                post: postSpam._id,
-                reporter: user3._id,
-                flagType: 'spam',
-                details: 'Báo cáo quảng cáo rác.',
-                status: 'action_taken',
-                outcome: 'helpful',
-                history: [
-                    { status: 'submitted', note: 'Người dùng gửi cờ: spam.', actorRole: 'user', actor: user3._id, createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) }
-                ],
-                createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
-            },
-            // Pending report ticket for review on Git post
-            {
-                post: postGit._id,
-                reporter: user4._id,
-                flagType: 'duplicate',
-                details: 'Câu hỏi này đã có người hỏi trước đây rồi, trùng lặp nội dung.',
+                flagType: 'needs_detail',
+                details: 'Thiếu thông tin chi tiết về phiên bản React đang chạy.',
                 status: 'submitted',
                 outcome: 'pending',
                 history: [
-                    { status: 'submitted', note: 'Người dùng gửi cờ báo cáo trùng lặp.', actorRole: 'user', actor: user4._id, createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000) }
+                    { status: 'submitted', note: 'Người dùng gửi cờ báo cáo thiếu thông tin.', actorRole: 'user', actor: user2._id, createdAt: new Date() }
                 ],
-                createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000)
-            },
-            // Resolved ticket (declined) on Python roadmap
-            {
-                post: postPython._id,
-                reporter: user4._id,
-                flagType: 'very_low_quality',
-                details: 'Không có thông tin hữu ích lắm, viết sơ sài.',
-                status: 'closed',
-                outcome: 'declined',
-                history: [
-                    { status: 'submitted', note: 'Người dùng gửi cờ: very_low_quality.', actorRole: 'user', actor: user4._id, createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) },
-                    { status: 'in_review', note: 'Admin đang xem xét cờ báo cáo này.', actorRole: 'admin', actor: adminUser._id, createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) },
-                    { status: 'closed', note: 'Cờ bị từ chối: Bài viết chất lượng tốt và chi tiết.', actorRole: 'admin', actor: adminUser._id, createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000) }
-                ],
-                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+                createdAt: new Date()
             }
         ];
-        const tickets = await ReportTicket.insertMany(reportTicketsData);
-        console.log(`Seeded ${tickets.length} report tickets.`);
+        await ReportTicket.insertMany(reportTicketsData);
 
         // 7. Seed Reputation History
         console.log('Seeding reputation history...');
         const reputationHistoriesData = [
-            // User 1 gets upvotes on React Performance post (+30)
             {
-                user: user1._id,
+                user: user4._id, // Trần Quốc Bảo nhận điểm từ upvote bài React useEffect
                 type: 'post_upvoted',
                 title: 'Bài viết nhận được Upvote',
                 reputationEarned: 10,
-                targetId: postReactMemo._id,
-                voter: user2._id,
-                createdAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000)
-            },
-            {
-                user: user1._id,
-                type: 'post_upvoted',
-                title: 'Bài viết nhận được Upvote',
-                reputationEarned: 10,
-                targetId: postReactMemo._id,
-                voter: user3._id,
-                createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000)
-            },
-            {
-                user: user1._id,
-                type: 'post_upvoted',
-                title: 'Bài viết nhận được Upvote',
-                reputationEarned: 10,
-                targetId: postReactMemo._id,
-                voter: user5._id,
-                createdAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000)
-            },
-            // User 3 gets upvotes on Python roadmap (+40)
-            {
-                user: user3._id,
-                type: 'post_upvoted',
-                title: 'Bài viết nhận được Upvote',
-                reputationEarned: 10,
-                targetId: postPython._id,
+                targetId: postReactUnresolved._id,
                 voter: user1._id,
-                createdAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000)
-            },
-            {
-                user: user3._id,
-                type: 'post_upvoted',
-                title: 'Bài viết nhận được Upvote',
-                reputationEarned: 10,
-                targetId: postPython._id,
-                voter: user2._id,
-                createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
-            },
-            // User 4 spam penalty (-10)
-            {
-                user: user4._id,
-                type: 'post_deleted_by_report',
-                title: 'Bài viết đã ẩn/xóa (Bị báo cáo)',
-                reputationEarned: -10,
-                targetId: postSpam._id,
                 createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+            },
+            {
+                user: user4._id, // Trần Quốc Bảo bị trừ điểm từ downvote
+                type: 'post_downvoted',
+                title: 'Bài viết bị Downvote',
+                reputationEarned: -2,
+                targetId: postReactUnresolved._id,
+                voter: user5._id,
+                createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
             }
         ];
         await ReputationHistory.insertMany(reputationHistoriesData);
-        console.log('Reputation histories seeded.');
+
+        // 8. Seed Donation Transactions
+        console.log('Seeding donation transactions...');
+        const donationDatas = [
+            {
+                donor: user1._id,
+                author: user4._id, // Nguyễn Văn An quyên góp ủng hộ Trần Quốc Bảo
+                post: postReactUnresolved._id,
+                amount: 50000,
+                paymentMethod: 'cod',
+                status: 'completed',
+                note: 'Cảm ơn bài chia sẻ rất thực tế!',
+                donorSnapshot: { fullName: user1.fullName, avatar: user1.avatar, major: user1.major },
+                authorSnapshot: { fullName: user4.fullName, avatar: user4.avatar, major: user4.major },
+                postSnapshot: { title: postReactUnresolved.title },
+                completedAt: new Date(),
+                createdAt: new Date()
+            }
+        ];
+        await DonationTransaction.insertMany(donationDatas);
+        console.log('Donation transactions seeded.');
 
         console.log('🌱 Database seeding completed successfully!');
     } catch (error) {

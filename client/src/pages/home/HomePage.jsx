@@ -11,8 +11,8 @@ function TagBadge({ tag }) {
   );
 }
 
-function StatusBadge({ status, answerCount }) {
-  if (status === 'resolved') {
+function StatusBadge({ hasBestAnswer, answerCount }) {
+  if (hasBestAnswer) {
     return (
       <span className="flex items-center gap-1 text-xs font-semibold text-green-700 border border-green-400 bg-green-50 px-2 py-0.5 rounded-md">
         <span>✓</span>
@@ -35,7 +35,7 @@ function PostCard({ post }) {
         <div className="text-xs text-slate-600">
           <span className="font-bold text-sm">{post.upvotes ?? 0}</span> votes
         </div>
-        <StatusBadge status={post.status} answerCount={post.answerCount} />
+        <StatusBadge hasBestAnswer={!!post.bestAnswer} answerCount={post.answerCount} />
         <div className="text-xs text-slate-400">
           <span className="font-semibold">{post.views ?? 0}</span> views
         </div>

@@ -4,30 +4,30 @@ import { getAdminPosts, updateAdminPostStatus } from '../../services/userService
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả bài đăng' },
-  { value: 'unresolved', label: 'Đang hiển thị' },
-  { value: 'resolved', label: 'Đã khóa' },
+  { value: 'active', label: 'Đang hiển thị' },
+  { value: 'closed', label: 'Đã khóa' },
   { value: 'hidden', label: 'Đang bị ẩn' },
   { value: 'deleted', label: 'Đã bị xóa' },
 ];
 
 const STATUS_STYLES = {
-  unresolved: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  resolved: 'border-amber-200 bg-amber-50 text-amber-700',
+  active: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  closed: 'border-amber-200 bg-amber-50 text-amber-700',
   hidden: 'border-sky-200 bg-sky-50 text-sky-700',
   deleted: 'border-rose-200 bg-rose-50 text-rose-700',
 };
 
 const STATUS_LABELS = {
-  unresolved: 'Bài viết đang hiển thị',
-  resolved: 'Bài viết đã bị khóa',
+  active: 'Bài viết đang hiển thị',
+  closed: 'Bài viết đã bị khóa',
   hidden: 'Bài viết đang bị ẩn',
   deleted: 'Bài viết đã bị xóa',
 };
 
 const ACTION_CONFIG = {
-  unresolved: [
+  active: [
     {
-      status: 'resolved',
+      status: 'closed',
       label: 'Khóa',
       icon: 'lock',
       className: 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100',
@@ -45,9 +45,9 @@ const ACTION_CONFIG = {
       className: 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
     },
   ],
-  resolved: [
+  closed: [
     {
-      status: 'unresolved',
+      status: 'active',
       label: 'Mở khóa',
       icon: 'lock_open',
       className: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
@@ -67,7 +67,7 @@ const ACTION_CONFIG = {
   ],
   hidden: [
     {
-      status: 'unresolved',
+      status: 'active',
       label: 'Hiện lại',
       icon: 'visibility',
       className: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
@@ -81,7 +81,7 @@ const ACTION_CONFIG = {
   ],
   deleted: [
     {
-      status: 'unresolved',
+      status: 'active',
       label: 'Khôi phục',
       icon: 'restore',
       className: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
@@ -340,7 +340,7 @@ export default function AdminPostsTab({ embedded = false }) {
               {!loading && posts.map((post) => {
                 const isUpdating = updatingId === post._id;
                 const isRecent = recentlyUpdatedId === post._id;
-                const actions = ACTION_CONFIG[post.status] || ACTION_CONFIG.unresolved;
+                const actions = ACTION_CONFIG[post.status] || ACTION_CONFIG.active;
 
                 return (
                   <tr

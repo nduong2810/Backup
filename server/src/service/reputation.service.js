@@ -19,6 +19,7 @@ export const getTodayStart = () => {
         vnTime.getUTCDate(),
         0, 0, 0, 0
     );
+    // Trừ lại 7 tiếng để ra mốc thời gian UTC tương ứng với 00:00:00 VN
     return new Date(vnStartUtc - 7 * 60 * 60 * 1000);
 };
 

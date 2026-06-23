@@ -129,6 +129,13 @@ const postSchema = new mongoose.Schema({
         index: true
     },
 
+    // Câu trả lời tốt nhất / accepted answer (chỉ áp dụng cho postType = 'question')
+    bestAnswer: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Comment',
+        default: null
+    },
+
     // URL video đính kèm (nếu có)
     videos: [{
         type: String

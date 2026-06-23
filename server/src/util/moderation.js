@@ -176,7 +176,7 @@ const PROFANITY_VIET_ACCENTED = [
 
 // ---- 4B. Viết tắt thô tục (safe - không trùng từ tiếng Việt chuẩn) ----
 const PROFANITY_ABBREVIATIONS = [
-    'dm', 'dkm', 'vcl', 'vkl', 'clm', 'clme', 'dmm',
+    'dm', 'dkm', 'vcl', 'vkl', 'clm', 'clme', 'dmm', 'cc', 'loz', 'loz', 'lon', 'dit', 'du', 'bu cu', 'bu lon','cl', 'clm', 'clme','djt', 'djt me', 'du me',
 ];
 
 // ---- 4C. Từ thô tục TIẾNG ANH (word boundary matching) ----
@@ -299,7 +299,7 @@ export const validatePost = (title, content) => {
  */
 export const validateComment = (content) => {
     // 1. Kiểm tra độ dài
-    validateLength(content, 3, 2000, 'Nội dung bình luận');
+    validateLength(content, 2, 2000, 'Nội dung bình luận');
 
     // 2. Kiểm duyệt Nội dung
     let result = detectForbiddenKeywords(content);

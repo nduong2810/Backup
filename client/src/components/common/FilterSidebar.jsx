@@ -397,7 +397,7 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
               value={filters.startDate || ''}
               onChange={handleChange}
               aria-label="Từ ngày"
-              className={controlClass}
+              className={`${controlClass} !pl-2 !pr-1 !text-xs`}
             />
             <input
               type="date"
@@ -405,7 +405,7 @@ function FilterSidebar({ filters, onFilterChange, onApply, onClear, embed = fals
               value={filters.endDate || ''}
               onChange={handleChange}
               aria-label="Đến ngày"
-              className={controlClass}
+              className={`${controlClass} !pl-2 !pr-1 !text-xs`}
             />
           </div>
         </div>

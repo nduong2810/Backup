@@ -50,6 +50,7 @@ const flagTypeLabelMap = {
 const postStatusLabelMap = {
   active: 'Đang hiển thị',
   closed: 'Đã khóa',
+  hidden: 'Đang bị ẩn',
   deleted: 'Đã xóa',
 };
 
@@ -122,6 +123,7 @@ export default function PostDetailPage() {
     relatedPosts,
     deleteComment,
     refreshPost,
+    handleAcceptComment,
     showFreeVotesModal,
     setShowFreeVotesModal,
   } = usePostDetail(id);
@@ -159,6 +161,7 @@ export default function PostDetailPage() {
 
   if (!post) return null;
   const isPostOwner = user?._id && post?.author?._id && user._id === post.author._id;
+  const isPostLocked = post.status === 'closed' || post.status === 'hidden' || post.status === 'deleted';
 
   const handleSubmitPostReport = async (selectedFlagType) => {
     if (!user?._id) {
@@ -211,6 +214,11 @@ export default function PostDetailPage() {
       return;
     }
 
+    if (user?.role === 'admin') {
+      toast.warning('Quản trị viên không được phép thực hiện tương tác này.');
+      return;
+    }
+
     if (isSaved) {
       dispatch(toggleSaveThunk(post._id));
       return;
@@ -240,6 +248,11 @@ export default function PostDetailPage() {
   const handleStartDonate = (comment = {}) => {
     if (!isAuthenticated) {
       navigate('/auth/login');
+      return;
+    }
+
+    if (isPostLocked) {
+      toast.warning('Bài viết đã bị khóa hoặc không hợp lệ, không thể thực hiện quyên góp.');
       return;
     }
 
@@ -301,6 +314,7 @@ export default function PostDetailPage() {
               userVote={userVote} 
               onVote={handleVote} 
               loading={voteLoading} 
+              disabled={isPostLocked}
               userReputation={userReputation}
               weeklyFreeVotesUsed={user?.reputationInfo?.weeklyFreeVotesUsed || 0}
               weeklyFreeVotesLimit={user?.reputationInfo?.weeklyFreeVotesLimit || 5}
@@ -323,6 +337,7 @@ export default function PostDetailPage() {
           isAuthenticated={isAuthenticated}
           userReputation={userReputation}
           onReportPost={() => setReportPostModalOpen(true)}
+          isAdmin={user?.role === 'admin'}
         />
       </div>
 
@@ -330,8 +345,8 @@ export default function PostDetailPage() {
         <div className="mt-4 flex items-center justify-center gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest py-3 sm:hidden">
           <button
             onClick={() => handleVote('upvote')}
-            disabled={voteLoading}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'upvote' ? 'border border-primary/30 bg-primary-fixed text-primary' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30'}`}
+            disabled={voteLoading || isPostLocked}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'upvote' ? 'border border-primary/30 bg-primary-fixed text-primary' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30'} ${isPostLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
             {upvoteCount}
@@ -339,9 +354,9 @@ export default function PostDetailPage() {
           <span className="text-lg font-bold text-on-surface">{upvoteCount - downvoteCount}</span>
           <button
             onClick={() => handleVote('downvote')}
-            disabled={voteLoading || (userReputation !== undefined && userReputation >= 15 && userReputation < 100)}
-            title={(userReputation !== undefined && userReputation >= 15 && userReputation < 100) ? 'Bạn cần tối thiểu 100 điểm uy tín để Downvote' : 'Bình chọn xuống'}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'downvote' ? 'border border-error/30 bg-error-container text-error' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'} ${(userReputation !== undefined && userReputation >= 15 && userReputation < 100) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={voteLoading || isPostLocked || (userReputation !== undefined && userReputation >= 15 && userReputation < 100)}
+            title={isPostLocked ? 'Bài viết đã bị khóa, không thể vote' : (userReputation !== undefined && userReputation >= 15 && userReputation < 100) ? 'Bạn cần tối thiểu 100 điểm uy tín để Downvote' : 'Bình chọn xuống'}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'downvote' ? 'border border-error/30 bg-error-container text-error' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'} ${(isPostLocked || (userReputation !== undefined && userReputation >= 15 && userReputation < 100)) ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 20l8-8h-5V4H9v8H4z" /></svg>
             {downvoteCount}
@@ -405,6 +420,8 @@ export default function PostDetailPage() {
         postStatus={post.status}
         onCommentUpdated={refreshPost}
         onReportComment={handleReportComment}
+        bestAnswerId={post.bestAnswer}
+        onAcceptComment={handleAcceptComment}
       />
 
       <RelatedPosts posts={relatedPosts} />

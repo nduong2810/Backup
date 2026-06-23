@@ -3,7 +3,7 @@ import postController from '../controller/post.controller.js';
 import postStatusController from '../controller/postStatus.controller.js';
 import { authenticateToken, optionalAuthenticateToken } from '../middleware/auth.middleware.js';
 import { uploadPostMedia, uploadCommentMedia } from '../middleware/upload.middleware.js';
-import { voteLimiter, postCreationLimiter, commentCreationLimiter } from '../middleware/rateLimit.middleware.js';
+import { voteLimiter, postCreationLimiter, postUpdateLimiter, commentCreationLimiter } from '../middleware/rateLimit.middleware.js';
 import {
   postIdValidation,
   voteValidation,
@@ -33,6 +33,7 @@ router.post('/',
 // PUT /api/posts/:id — Chỉnh sửa bài đăng (Yêu cầu đăng nhập, multer xử lý file, validation)
 router.put('/:id',
   authenticateToken,
+  postUpdateLimiter,
   uploadPostMedia,
   updatePostValidation,
   postController.updatePost.bind(postController)
@@ -107,6 +108,12 @@ router.post('/:id/vote',
 router.delete('/comments/:commentId',
   authenticateToken,
   postController.deleteComment.bind(postController)
+);
+
+// PATCH /api/posts/comments/:commentId/accept — Đánh dấu/bỏ đánh dấu câu trả lời tốt nhất (Yêu cầu đăng nhập)
+router.patch('/comments/:commentId/accept',
+  authenticateToken,
+  postController.acceptComment.bind(postController)
 );
 
 // PUT /api/posts/comments/:commentId — Chỉnh sửa bình luận (Yêu cầu đăng nhập, multer xử lý file, validation)

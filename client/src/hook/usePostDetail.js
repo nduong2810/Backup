@@ -9,12 +9,23 @@ import {
   createPostComment,
   reactPostComment,
   deleteCommentApi,
+  acceptCommentApi,
 } from '../services/postService';
 import { connectSocket, getSocket } from '../lib/socketClient';
 import { useToast } from '../context/ToastContext';
 
 const LOCKED_POST_MESSAGE = 'Bài viết đang bị khóa';
 const ADMIN_INTERACTION_MESSAGE = 'Quản trị viên không được phép thực hiện tương tác này.';
+
+const getErrorMessage = (err, defaultMessage) => {
+  if (err.response?.data?.message) {
+    return err.response.data.message;
+  }
+  if (err.response?.data?.errors && Array.isArray(err.response.data.errors) && err.response.data.errors.length > 0) {
+    return err.response.data.errors[0].msg;
+  }
+  return defaultMessage;
+};
 
 export default function usePostDetail(postId) {
   const [post, setPost] = useState(null);
@@ -45,7 +56,7 @@ export default function usePostDetail(postId) {
   const dispatch = useDispatch();
   const [showFreeVotesModal, setShowFreeVotesModal] = useState(false);
 
-  const isPostLocked = post?.status === 'resolved';
+  const isPostLocked = post?.status === 'closed' || post?.status === 'hidden' || post?.status === 'deleted';
 
   const fetchPostDetail = useCallback(async (showLoading = true) => {
     if (!postId) return;
@@ -73,9 +84,10 @@ export default function usePostDetail(postId) {
       setLikeCount(postData.likeCount || postData.likes?.length || 0);
       setDislikeCount(postData.dislikeCount || postData.dislikes?.length || 0);
       setUserReaction(postData.userReaction || null);
-      setCommentError(postData.status === 'resolved' ? LOCKED_POST_MESSAGE : '');
+      const isLocked = postData.status === 'closed' || postData.status === 'hidden' || postData.status === 'deleted';
+      setCommentError(isLocked ? LOCKED_POST_MESSAGE : '');
     } catch (err) {
-      const message = err.response?.data?.message || 'Không thể tải bài viết.';
+      const message = getErrorMessage(err, 'Không thể tải bài viết.');
       setError(message);
     } finally {
       if (showLoading) {
@@ -144,7 +156,7 @@ export default function usePostDetail(postId) {
       if (err.response?.status === 401) {
         toast.warning('Bạn cần đăng nhập để vote bài viết.');
       } else {
-        toast.error(err.response?.data?.message || 'Không thể vote bài viết.');
+        toast.error(getErrorMessage(err, 'Không thể vote bài viết.'));
       }
     } finally {
       setVoteLoading(false);
@@ -190,7 +202,7 @@ export default function usePostDetail(postId) {
       if (err.response?.status === 401) {
         toast.warning('Bạn cần đăng nhập để like/dislike bài viết.');
       } else {
-        toast.error(err.response?.data?.message || 'Không thể like/dislike bài viết.');
+        toast.error(getErrorMessage(err, 'Không thể like/dislike bài viết.'));
       }
     } finally {
       setReactionLoading(false);
@@ -213,7 +225,7 @@ export default function usePostDetail(postId) {
       await fetchPostDetail(false);
       return true;
     } catch (err) {
-      const message = err.response?.data?.message || 'Không thể gửi bình luận.';
+      const message = getErrorMessage(err, 'Không thể gửi bình luận.');
       setCommentError(message);
       return false;
     } finally {
@@ -244,7 +256,7 @@ export default function usePostDetail(postId) {
       if (err.response?.status === 401) {
         toast.warning('Bạn cần đăng nhập để like/dislike bình luận.');
       } else {
-        toast.error(err.response?.data?.message || 'Không thể cập nhật like/dislike bình luận.');
+        toast.error(getErrorMessage(err, 'Không thể cập nhật like/dislike bình luận.'));
       }
 
       return false;
@@ -261,7 +273,19 @@ export default function usePostDetail(postId) {
       return true;
     } catch (err) {
       console.error('[usePostDetail] Delete comment error:', err);
-      toast.error(err.response?.data?.message || 'Không thể xóa bình luận.');
+      toast.error(getErrorMessage(err, 'Không thể xóa bình luận.'));
+      return false;
+    }
+  }, [fetchPostDetail, toast]);
+
+  const handleAcceptComment = useCallback(async (commentId) => {
+    try {
+      const response = await acceptCommentApi(commentId);
+      toast.success(response.data.message || 'Cập nhật câu trả lời tốt nhất thành công!');
+      await fetchPostDetail(false);
+      return true;
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Không thể chọn câu trả lời tốt nhất.'));
       return false;
     }
   }, [fetchPostDetail, toast]);
@@ -344,6 +368,7 @@ export default function usePostDetail(postId) {
     relatedPosts,
     refreshPost: fetchPostDetail,
     deleteComment,
+    handleAcceptComment,
     showFreeVotesModal,
     setShowFreeVotesModal,
   };

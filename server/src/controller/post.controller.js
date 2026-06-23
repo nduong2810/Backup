@@ -170,6 +170,16 @@ class PostController {
             const comment = await commentRepository.findById(commentId);
             if (!comment) return res.status(404).json({ success: false, message: 'Bình luận không tồn tại' });
 
+            const postStatus = comment.post?.status;
+            const isLocked = postStatus === 'resolved' || postStatus === 'hidden' || postStatus === 'deleted';
+
+            if (isLocked) {
+                return res.status(423).json({ success: false, message: 'Bài viết đang bị khóa hoặc không hợp lệ' });
+            }
+            if (postStatus && postStatus !== 'unresolved') {
+                return res.status(400).json({ success: false, message: 'Không thể tương tác trên bình luận này' });
+            }
+
             const commentAuthorId = comment.author?._id?.toString() || comment.author?.toString();
             if (commentAuthorId && commentAuthorId === userId) {
                 return res.status(400).json({ success: false, message: 'Bạn không thể tự bày tỏ cảm xúc trên bình luận của chính mình.' });
@@ -199,6 +209,11 @@ class PostController {
             }
 
             const updatedComment = await commentRepository.updateReaction(commentId, update);
+            const postId = normalizeObjectId(comment.post);
+            if (postId) {
+                emitToPostRoom(postId, 'comment:updated', { postId, comment: updatedComment });
+            }
+
             return res.status(200).json({
                 success: true,
                 message: 'Cập nhật phản ứng bình luận thành công',
@@ -396,6 +411,29 @@ class PostController {
         } catch (error) {
             const status = error.status || 500;
             return res.status(status).json({ success: false, message: error.message || 'Lỗi server khi xóa bình luận' });
+        }
+    }
+
+    async acceptComment(req, res) {
+        try {
+            const { commentId } = req.params;
+            const userId = req.user.userId;
+            
+            const result = await postService.acceptComment(commentId, userId);
+            
+            // Notify other clients via Socket.io
+            emitToPostRoom(result.postId, 'post:updated', { 
+                postId: result.postId,
+            });
+            
+            return res.status(200).json({ 
+                success: true, 
+                message: result.message, 
+                data: { bestAnswer: result.bestAnswer } 
+            });
+        } catch (error) {
+            const status = error.status || 500;
+            return res.status(status).json({ success: false, message: error.message || 'Lỗi server khi đánh dấu câu trả lời tốt nhất' });
         }
     }
 }

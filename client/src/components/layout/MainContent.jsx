@@ -67,6 +67,7 @@ const QuestionCard = ({
     const isVoting = votingPostId === question._id;
     const isReacting = reactingPostId === question._id;
     const isAdvice = question.postType === 'advice';
+    const isAdmin = currentUser?.role === 'admin';
 
     return (
         <article className="flex flex-col sm:flex-row gap-stack-md sm:gap-6 py-stack-md border-b border-outline-variant hover:bg-surface-container-low transition-colors px-3">
@@ -341,6 +342,10 @@ const MainContent = () => {
 
     const handleToggleSave = (postId, isSaved) => {
         if (!isAuthenticated) return navigate('/auth/login');
+        if (isAdmin) {
+            toast.warning('Quản trị viên không được phép thực hiện tương tác này.');
+            return;
+        }
         if (isSaved) return dispatch(toggleSaveThunk(postId));
         setSavePostId(postId);
         setSaveModalOpen(true);
@@ -637,6 +642,7 @@ const MainContent = () => {
                         onReactPost={handleReactPost}
                         votingPostId={votingPostId}
                         reactingPostId={reactingPostId}
+                        currentUser={currentUser}
                     />
                 ))}
                 {!loading && !error && (!questionsList || questionsList.length === 0) && (
