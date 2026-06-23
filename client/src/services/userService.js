@@ -77,3 +77,9 @@ export const getAdminAllDonations = ({
   apiClient.get('/donations/admin/all', {
     params: { page, limit, keyword, status, paymentMethod, fromDate, toDate },
   });
+
+export const deactivateMyAccount = () =>
+  apiClient.post('/user/deactivate');
+
+export const deleteMyAccount = () =>
+  apiClient.post('/user/delete-account');

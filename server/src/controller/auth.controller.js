@@ -215,6 +215,58 @@ class AuthController {
             res.status(500).json({ success: false, message: error.message });
         }
     }
+
+    async requestReactivateOtp(req, res) {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                return res.status(400).json({ success: false, message: "Email không được để trống" });
+            }
+            await authService.requestReactivateOtp(email.trim());
+            res.status(200).json({ success: true, message: "Mã OTP đã được gửi đến email của bạn" });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async verifyReactivateOtp(req, res) {
+        try {
+            const { email, otp } = req.body;
+            if (!email || !otp) {
+                return res.status(400).json({ success: false, message: "Email và mã OTP không được để trống" });
+            }
+            await authService.verifyReactivateOTP(email.trim(), otp.trim());
+            res.status(200).json({ success: true, message: "Kích hoạt lại tài khoản thành công! Bạn có thể đăng nhập ngay." });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async requestCancelDeletionOtp(req, res) {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                return res.status(400).json({ success: false, message: "Email không được để trống" });
+            }
+            await authService.requestCancelDeletionOtp(email.trim());
+            res.status(200).json({ success: true, message: "Mã OTP đã được gửi đến email của bạn" });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async verifyCancelDeletionOtp(req, res) {
+        try {
+            const { email, otp } = req.body;
+            if (!email || !otp) {
+                return res.status(400).json({ success: false, message: "Email và mã OTP không được để trống" });
+            }
+            await authService.verifyCancelDeletionOtp(email.trim(), otp.trim());
+            res.status(200).json({ success: true, message: "Hủy yêu cầu xóa tài khoản thành công! Bạn có thể đăng nhập ngay." });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
 }
 
 export default new AuthController();

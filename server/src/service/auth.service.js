@@ -1,4 +1,6 @@
 import userRepository from '../repository/user.repository.js';
+import Post from '../model/post.model.js';
+import Comment from '../model/comment.model.js';
 import pendingUserRepository from '../repository/pendingUser.repository.js';
 import sendEmail from '../util/email.util.js';
 import crypto from 'crypto';
@@ -131,6 +133,12 @@ class AuthService {
     async login(email, password) {
         // Tìm user theo email
         const user = await userRepository.findByEmail(email);
+        if (user && user.status === 'pending_delete' && user.deletionScheduledAt && new Date() >= user.deletionScheduledAt) {
+            // Quá hạn 7 ngày, thực hiện xóa vĩnh viễn khỏi CSDL
+            await User.findByIdAndDelete(user._id);
+            throw { status: 401, message: 'Email hoặc mật khẩu không đúng' };
+        }
+
         if (!user) {
             const pendingUser = await pendingUserRepository.findByEmail(email);
             if (pendingUser) {
@@ -161,8 +169,31 @@ class AuthService {
             throw { status: 401, message: 'Email hoặc mật khẩu không đúng' };
         }
 
-        // Kiểm tra tài khoản đã kích hoạt chưa
+        // Kiểm tra tài khoản đã kích hoạt chưa hoặc đang ở các trạng thái đặc biệt
         if (!user.isActive) {
+            if (user.status === 'banned') {
+                throw { status: 403, message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' };
+            } else if (user.status === 'deactivated') {
+                throw {
+                    status: 403,
+                    code: 'ACCOUNT_DEACTIVATED',
+                    email: user.email,
+                    message: 'Tài khoản của bạn hiện đang bị vô hiệu hóa. Bạn có muốn kích hoạt lại tài khoản không?'
+                };
+            } else if (user.status === 'pending_delete') {
+                // Tính toán thời gian còn lại để khôi phục
+                const diffMs = new Date(user.deletionScheduledAt).getTime() - Date.now();
+                const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+                const diffHours = Math.floor((diffMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+                const timeRemainingStr = `${diffDays} ngày ${diffHours} giờ`;
+
+                throw {
+                    status: 403,
+                    code: 'ACCOUNT_PENDING_DELETE',
+                    email: user.email,
+                    message: `Tài khoản của bạn đang trong trạng thái chờ xóa. Thời gian khôi phục còn lại: ${timeRemainingStr}. Bạn có muốn hủy yêu cầu xóa tài khoản không?`
+                };
+            }
             throw { status: 403, message: 'Tài khoản của bạn đã bị vô hiệu hóa, vui lòng liên hệ với quản trị viên để mở lại!' };
         }
 
@@ -254,6 +285,81 @@ class AuthService {
             resetOTPExpiry: null,
             resetToken: null
         });
+    }
+
+    async requestReactivateOtp(email) {
+        const user = await userRepository.findByEmail(email);
+        if (!user) throw new Error("Email không tồn tại");
+        if (user.status !== 'deactivated') {
+            throw new Error("Tài khoản không ở trạng thái vô hiệu hóa");
+        }
+
+        const { otp, otpExpiry } = generateOtpPayload();
+        await userRepository.updateUserByEmail(email, { otp, otpExpiry });
+
+        const message = `Mã OTP kích hoạt lại tài khoản của bạn là: ${otp}\nMã có hiệu lực trong 5 phút.`;
+        await sendEmail(email, "Xác nhận kích hoạt lại tài khoản IT Forum", message);
+    }
+
+    async verifyReactivateOTP(email, otp) {
+        const user = await userRepository.findByEmail(email);
+        if (!user) throw new Error("Email không tồn tại");
+        if (user.status !== 'deactivated') {
+            throw new Error("Tài khoản không ở trạng thái vô hiệu hóa");
+        }
+
+        if (!user.otp || user.otp !== otp) throw new Error("OTP không chính xác");
+        if (Date.now() > user.otpExpiry) throw new Error("OTP đã hết hạn");
+
+        await userRepository.updateUserByEmail(email, {
+            isActive: true,
+            status: 'active',
+            otp: null,
+            otpExpiry: null
+        });
+
+        await Promise.all([
+            Post.updateMany({ author: user._id }, { $set: { isAuthorActive: true } }),
+            Comment.updateMany({ author: user._id }, { $set: { isAuthorActive: true } })
+        ]);
+    }
+
+    async requestCancelDeletionOtp(email) {
+        const user = await userRepository.findByEmail(email);
+        if (!user) throw new Error("Email không tồn tại");
+        if (user.status !== 'pending_delete') {
+            throw new Error("Tài khoản không ở trạng thái chờ xóa");
+        }
+
+        const { otp, otpExpiry } = generateOtpPayload();
+        await userRepository.updateUserByEmail(email, { otp, otpExpiry });
+
+        const message = `Mã OTP xác nhận hủy yêu cầu xóa tài khoản của bạn là: ${otp}\nMã có hiệu lực trong 5 phút.`;
+        await sendEmail(email, "Xác nhận hủy xóa tài khoản IT Forum", message);
+    }
+
+    async verifyCancelDeletionOtp(email, otp) {
+        const user = await userRepository.findByEmail(email);
+        if (!user) throw new Error("Email không tồn tại");
+        if (user.status !== 'pending_delete') {
+            throw new Error("Tài khoản không ở trạng thái chờ xóa");
+        }
+
+        if (!user.otp || user.otp !== otp) throw new Error("OTP không chính xác");
+        if (Date.now() > user.otpExpiry) throw new Error("OTP đã hết hạn");
+
+        await userRepository.updateUserByEmail(email, {
+            isActive: true,
+            status: 'active',
+            deletionScheduledAt: null,
+            otp: null,
+            otpExpiry: null
+        });
+
+        await Promise.all([
+            Post.updateMany({ author: user._id }, { $set: { isAuthorActive: true } }),
+            Comment.updateMany({ author: user._id }, { $set: { isAuthorActive: true } })
+        ]);
     }
 }
 

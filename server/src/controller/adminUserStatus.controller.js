@@ -38,8 +38,9 @@ class AdminUserStatusController {
         return res.status(403).json({ success: false, message: 'Không thể thay đổi trạng thái tài khoản quản trị viên' });
       }
 
-      const previousState = { isActive: targetUser.isActive };
+      const previousState = { isActive: targetUser.isActive, status: targetUser.status };
       targetUser.isActive = isActive;
+      targetUser.status = isActive ? 'active' : 'banned';
       await targetUser.save();
 
       // Nếu tài khoản bị khóa, gửi thông báo qua socket đến người dùng

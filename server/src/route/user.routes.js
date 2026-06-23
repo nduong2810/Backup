@@ -56,4 +56,10 @@ router.put('/change-password',
     userController.changeMyPassword
 );
 
+// Route vô hiệu hóa tài khoản
+router.post('/deactivate', authenticateToken, userController.deactivateAccount.bind(userController));
+
+// Route xóa tài khoản
+router.post('/delete-account', authenticateToken, userController.deleteAccount.bind(userController));
+
 export default router;

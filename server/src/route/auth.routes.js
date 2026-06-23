@@ -63,4 +63,10 @@ router.post('/reset-password',
     authController.resetPassword.bind(authController)
 );
 
+// ==================== REACTIVATE & CANCEL DELETION ====================
+router.post('/request-reactivate-otp', authController.requestReactivateOtp.bind(authController));
+router.post('/reactivate-otp', authController.verifyReactivateOtp.bind(authController));
+router.post('/request-cancel-deletion-otp', authController.requestCancelDeletionOtp.bind(authController));
+router.post('/cancel-deletion-otp', authController.verifyCancelDeletionOtp.bind(authController));
+
 export default router;

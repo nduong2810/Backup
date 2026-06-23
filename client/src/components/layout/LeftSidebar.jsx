@@ -80,13 +80,22 @@ const LeftSidebar = () => {
                         <span>Báo cáo</span>
                     </NavLink>
                     {user && (
-                        <NavLink
-                            to="/trash"
-                            className={navLinkClass}
-                        >
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                            <span>Thùng rác</span>
-                        </NavLink>
+                        <>
+                            <NavLink
+                                to="/trash"
+                                className={navLinkClass}
+                            >
+                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                                <span>Thùng rác</span>
+                            </NavLink>
+                            <NavLink
+                                to="/user/account"
+                                className={navLinkClass}
+                            >
+                                <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
+                                <span>Quản lý tài khoản</span>
+                            </NavLink>
+                        </>
                     )}
                 </div>
 

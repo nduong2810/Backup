@@ -60,6 +60,44 @@ class UserController {
             res.status(status).json({ success: false, message: error.message });
         }
     }
+
+    async deactivateAccount(req, res) {
+        try {
+            await userService.deactivateAccount(req.user.userId);
+            
+            // Xóa cookie
+            const cookieOptions = {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+            };
+            res.clearCookie('accessToken', cookieOptions);
+            res.clearCookie('refreshToken', cookieOptions);
+
+            res.status(200).json({ success: true, message: "Tài khoản của bạn đã được vô hiệu hóa thành công!" });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    async deleteAccount(req, res) {
+        try {
+            await userService.deleteAccount(req.user.userId);
+
+            // Xóa cookie
+            const cookieOptions = {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+            };
+            res.clearCookie('accessToken', cookieOptions);
+            res.clearCookie('refreshToken', cookieOptions);
+
+            res.status(200).json({ success: true, message: "Tài khoản của bạn đã được đưa vào danh sách chờ xóa. Bạn có 7 ngày để khôi phục trước khi tài khoản bị xóa vĩnh viễn!" });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    }
 }
 
 export default new UserController();

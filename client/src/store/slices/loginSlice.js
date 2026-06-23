@@ -19,10 +19,15 @@ const initialState = {
 const extractError = (error) => {
   const errors = error?.response?.data?.errors;
   if (Array.isArray(errors) && errors.length) return errors[0].msg;
-  if (error?.response?.data?.code === 'ACCOUNT_NOT_ACTIVATED') {
-    return error.response.data;
+  const data = error?.response?.data;
+  if (
+    data?.code === 'ACCOUNT_NOT_ACTIVATED' ||
+    data?.code === 'ACCOUNT_DEACTIVATED' ||
+    data?.code === 'ACCOUNT_PENDING_DELETE'
+  ) {
+    return data;
   }
-  return error?.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.';
+  return data?.message || 'Có lỗi xảy ra, vui lòng thử lại.';
 };
 
 const saveUserToLocalStorage = (user) => {
@@ -118,7 +123,15 @@ const loginSlice = createSlice({
         .addCase(loginThunk.rejected, (state, action) => {
           state.loading = false;
           if (typeof action.payload === 'object' && action.payload !== null) {
-            state.errorMessage = action.payload.message || 'Đăng nhập thất bại.';
+            if (
+              action.payload.code === 'ACCOUNT_NOT_ACTIVATED' ||
+              action.payload.code === 'ACCOUNT_DEACTIVATED' ||
+              action.payload.code === 'ACCOUNT_PENDING_DELETE'
+            ) {
+              state.errorMessage = '';
+            } else {
+              state.errorMessage = action.payload.message || 'Đăng nhập thất bại.';
+            }
           } else {
             state.errorMessage = action.payload || 'Đăng nhập thất bại.';
           }

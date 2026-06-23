@@ -1,4 +1,6 @@
 import User from '../model/user.model.js';
+import Post from '../model/post.model.js';
+import Comment from '../model/comment.model.js';
 import bcrypt from 'bcryptjs';
 import donationRepository from '../repository/donation.repository.js';
 import postRepository from '../repository/post.repository.js';
@@ -180,6 +182,35 @@ class UserService {
                 totalPages: Math.max(1, Math.ceil(totalPosts / limitNum)),
             },
         };
+    }
+
+    async deactivateAccount(userId) {
+        await User.findByIdAndUpdate(userId, {
+            $set: {
+                isActive: false,
+                status: 'deactivated'
+            }
+        });
+        await Promise.all([
+            Post.updateMany({ author: userId }, { $set: { isAuthorActive: false } }),
+            Comment.updateMany({ author: userId }, { $set: { isAuthorActive: false } })
+        ]);
+    }
+
+    async deleteAccount(userId) {
+        // Hạn xóa là 7 ngày kể từ hiện tại
+        const deletionScheduledAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await User.findByIdAndUpdate(userId, {
+            $set: {
+                isActive: false,
+                status: 'pending_delete',
+                deletionScheduledAt
+            }
+        });
+        await Promise.all([
+            Post.updateMany({ author: userId }, { $set: { isAuthorActive: false } }),
+            Comment.updateMany({ author: userId }, { $set: { isAuthorActive: false } })
+        ]);
     }
 }
 

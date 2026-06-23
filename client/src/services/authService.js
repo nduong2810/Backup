@@ -28,3 +28,15 @@ export const loginUser = (email, password) =>
 
 export const logoutUser = () =>
   apiClient.post('/auth/logout');
+
+export const requestReactivateOtpApi = (email) =>
+  apiClient.post('/auth/request-reactivate-otp', { email });
+
+export const verifyReactivateOtpApi = (email, otp) =>
+  apiClient.post('/auth/reactivate-otp', { email, otp });
+
+export const requestCancelDeletionOtpApi = (email) =>
+  apiClient.post('/auth/request-cancel-deletion-otp', { email });
+
+export const verifyCancelDeletionOtpApi = (email, otp) =>
+  apiClient.post('/auth/cancel-deletion-otp', { email, otp });
