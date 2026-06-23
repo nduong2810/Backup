@@ -62,7 +62,6 @@ export default function PostContent({
   isAuthenticated = false,
   userReputation = 1,
   onReportPost,
-  isAdmin = false,
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
