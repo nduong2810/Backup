@@ -3,7 +3,7 @@ import postController from '../controller/post.controller.js';
 import postStatusController from '../controller/postStatus.controller.js';
 import { authenticateToken, optionalAuthenticateToken } from '../middleware/auth.middleware.js';
 import { uploadPostMedia, uploadCommentMedia } from '../middleware/upload.middleware.js';
-import { voteLimiter, postCreationLimiter, postUpdateLimiter, commentCreationLimiter } from '../middleware/rateLimit.middleware.js';
+import { voteLimiter, postCreationLimiter, postUpdateLimiter, commentCreationLimiter, postDeletionLimiter, commentDeletionLimiter } from '../middleware/rateLimit.middleware.js';
 import {
   postIdValidation,
   voteValidation,
@@ -107,6 +107,7 @@ router.post('/:id/vote',
 // DELETE /api/posts/comments/:commentId — Xóa vĩnh viễn bình luận (Yêu cầu đăng nhập)
 router.delete('/comments/:commentId',
   authenticateToken,
+  commentDeletionLimiter,
   postController.deleteComment.bind(postController)
 );
 
@@ -127,6 +128,7 @@ router.put('/comments/:commentId',
 // DELETE /api/posts/:id — Xóa mềm bài viết (đưa vào thùng rác) (Yêu cầu đăng nhập)
 router.delete('/:id',
   authenticateToken,
+  postDeletionLimiter,
   postIdValidation,
   postController.softDeletePost.bind(postController)
 );
@@ -134,6 +136,7 @@ router.delete('/:id',
 // PATCH /api/posts/:id/restore — Khôi phục bài viết đã xóa mềm (Yêu cầu đăng nhập)
 router.patch('/:id/restore',
   authenticateToken,
+  postDeletionLimiter,
   postIdValidation,
   postController.restorePost.bind(postController)
 );
@@ -141,6 +144,7 @@ router.patch('/:id/restore',
 // DELETE /api/posts/:id/permanent — Xóa vĩnh viễn bài viết (Yêu cầu đăng nhập)
 router.delete('/:id/permanent',
   authenticateToken,
+  postDeletionLimiter,
   postIdValidation,
   postController.permanentlyDeletePost.bind(postController)
 );

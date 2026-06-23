@@ -9,7 +9,7 @@ import { slugify } from '../util/slugify.js';
 import * as moderation from '../util/moderation.js';
 
 const PUBLIC_POST_STATUS_FILTER = { $nin: ['hidden', 'deleted'] };
-const PUBLIC_FILTERABLE_STATUSES = new Set(['active', 'closed']);
+const PUBLIC_FILTERABLE_STATUSES = new Set(['unresolved', 'resolved']);
 
 const VN_TZ_OFFSET_MIN = 7 * 60;
 

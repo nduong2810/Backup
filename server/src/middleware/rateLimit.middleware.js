@@ -81,7 +81,25 @@ export const commentCreationLimiter = rateLimit({
     legacyHeaders: false
 });
 
-// 10. Giới hạn tạo giao dịch ủng hộ
+// 9a. Giới hạn xóa bài đăng (Post Deletion) - Tránh spam xóa bài & khôi phục liên tục
+export const postDeletionLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 phút
+    max: 20,                  // Tối đa 20 lần xóa/khôi phục bài/15 phút
+    message: { message: "Bạn đang xóa/khôi phục bài viết quá nhanh. Vui lòng thử lại sau 15 phút." },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// 9b. Giới hạn xóa bình luận (Comment Deletion) - Tránh spam xóa bình luận
+export const commentDeletionLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 phút
+    max: 30,                  // Tối đa 30 lần xóa bình luận/15 phút
+    message: { message: "Bạn đang xóa bình luận quá nhanh. Vui lòng thử lại sau 15 phút." },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// 11. Giới hạn tạo giao dịch ủng hộ
 // Nới giới hạn để quá trình test chuyển khoản thủ công không bị lúc được lúc không do rate limit.
 // Các request lỗi validation/network không bị tính vào giới hạn.
 export const donationLimiter = rateLimit({
@@ -93,7 +111,7 @@ export const donationLimiter = rateLimit({
     legacyHeaders: false
 });
 
-// 11. Giới hạn gửi báo cáo (Report/Ticket Creation) - Tránh spam gửi ticket
+// 12. Giới hạn gửi báo cáo (Report/Ticket Creation) - Tránh spam gửi ticket
 export const reportLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 phút
     max: 10,                  // Tối đa 10 báo cáo/15 phút
