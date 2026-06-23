@@ -75,10 +75,51 @@ export default function StatsReputation() {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col h-[480px] lg:h-full">
       {/* Header */}
-      <div className="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between shrink-0">
+      <div className="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between shrink-0 select-none">
         <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
           <span className="material-symbols-outlined text-xl text-slate-500">military_tech</span>
-          Lịch sử uy tín gần đây ({totalCount})
+          <span>Lịch sử uy tín gần đây ({totalCount})</span>
+          
+          {/* Info Icon & Tooltip */}
+          <div className="relative inline-flex items-center cursor-help group ml-0.5 mt-0.5">
+            <span className="material-symbols-outlined text-[15px] text-slate-400 hover:text-slate-600 transition-colors">info</span>
+            
+            {/* Tooltip Card */}
+            <div className="invisible group-hover:visible absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xl z-50 text-xs font-normal text-slate-600 flex flex-col gap-2 transition-all opacity-0 group-hover:opacity-100 duration-200 pointer-events-none">
+              <p className="font-bold text-slate-800 mb-1 border-b border-slate-100 pb-1">
+                Quy tắc điểm uy tín (Reputation)
+              </p>
+              
+              <div className="grid grid-cols-2 gap-y-1 text-[11px]">
+                <span className="font-medium text-emerald-600">Upvote nhận:</span>
+                <span className="text-right font-bold text-emerald-600">+10</span>
+                
+                <span className="font-medium text-emerald-600">Ủng hộ (Donate):</span>
+                <span className="text-right font-bold text-emerald-600">+20</span>
+                
+                <span className="font-medium text-emerald-600">Báo cáo đúng:</span>
+                <span className="text-right font-bold text-emerald-600">+2</span>
+                
+                <span className="font-medium text-rose-600">Bị downvote:</span>
+                <span className="text-right font-bold text-rose-600">-2</span>
+                
+                <span className="font-medium text-rose-600">Gửi downvote:</span>
+                <span className="text-right font-bold text-rose-600">-1</span>
+                
+                <span className="font-medium text-rose-600">Bài bị xóa:</span>
+                <span className="text-right font-bold text-rose-600">-10</span>
+                
+                <span className="font-medium text-rose-600">Bình luận bị xóa:</span>
+                <span className="text-right font-bold text-rose-600">-5</span>
+              </div>
+              
+              <div className="border-t border-slate-100 pt-1.5 mt-0.5 text-[10px] text-slate-400 leading-relaxed flex flex-col gap-0.5">
+                <p>• Dưới 15 rep: Chỉ được dùng 5 lượt Free Vote/tuần.</p>
+                <p>• Từ 15 rep: Mở khóa Upvote & Báo cáo cờ vi phạm.</p>
+                <p>• Từ 100 rep: Mở khóa Downvote.</p>
+              </div>
+            </div>
+          </div>
         </h3>
       </div>
 
