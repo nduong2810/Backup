@@ -23,8 +23,8 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
     setCreateModalOpen(true);
   };
 
-  const handleLogout = () => {
-    dispatch(logoutThunk());
+  const handleLogout = async () => {
+    await dispatch(logoutThunk());
     navigate('/auth/login');
   };
 

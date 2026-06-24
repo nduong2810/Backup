@@ -119,7 +119,7 @@ class PostStatusController {
         updateQuery,
         { new: true },
       )
-        .populate('author', '_id fullName avatar major email reputation')
+        .populate('author', '_id fullName avatar major email reputation role')
         .populate('statusChangedBy', '_id fullName email');
 
       emitToPostRoom(String(postObjectId), 'post:updated', { postId: String(postObjectId), post: updatedPost });

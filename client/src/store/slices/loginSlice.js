@@ -64,11 +64,14 @@ export const logoutThunk = createAsyncThunk(
   'login/logout',
   async (_, { dispatch }) => {
     try {
+      sessionStorage.setItem('is_logging_out', 'true');
+      sessionStorage.removeItem('locked_message');
       await logoutUser();
     } catch (error) {
       console.error('Lỗi khi gọi API đăng xuất phía server:', error);
     }
     dispatch(logout());
+    sessionStorage.setItem('logout_success_message', 'Đăng xuất thành công!');
   }
 );
 

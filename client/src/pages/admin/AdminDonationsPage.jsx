@@ -216,10 +216,10 @@ export default function AdminDonationsPage({ embedded = false }) {
                 </div>
 
                 <div className="p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
+                  <div className="flex flex-wrap items-start justify-between gap-3 w-full min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h2 className="text-lg font-bold text-slate-900">{formatCurrency(donation.amount)}</h2>
-                      <p className="mt-1 text-sm text-slate-600">{donation.postSnapshot?.title || donation.post?.title || 'Bài viết'}</p>
+                      <p className="mt-1 text-sm text-slate-600 break-words">{donation.postSnapshot?.title || donation.post?.title || 'Bài viết'}</p>
                     </div>
                     <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusClasses[donation.status] || 'border-slate-200 bg-slate-50 text-slate-700'}`}>
                       {statusLabels[donation.status] || donation.status}
@@ -227,8 +227,8 @@ export default function AdminDonationsPage({ embedded = false }) {
                   </div>
 
                   <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-slate-700 md:grid-cols-2">
-                    <p><strong>Người ủng hộ:</strong> {donation.donor?.fullName || donation.donorSnapshot?.fullName || 'N/A'} ({donation.donor?.email || 'N/A'})</p>
-                    <p><strong>Tác giả nhận:</strong> {donation.author?.fullName || donation.authorSnapshot?.fullName || 'N/A'} ({donation.author?.email || 'N/A'})</p>
+                    <p className="break-all"><strong>Người ủng hộ:</strong> {donation.donor?.fullName || donation.donorSnapshot?.fullName || 'N/A'} ({donation.donor?.email || 'N/A'})</p>
+                    <p className="break-all"><strong>Tác giả nhận:</strong> {donation.author?.fullName || donation.authorSnapshot?.fullName || 'N/A'} ({donation.author?.email || 'N/A'})</p>
                     <p><strong>Phương thức:</strong> {donation.paymentMethod?.toUpperCase()}</p>
                     <p><strong>Ngày tạo:</strong> {new Date(donation.createdAt).toLocaleString('vi-VN')}</p>
                     {donation.completedAt && <p><strong>Hoàn thành:</strong> {new Date(donation.completedAt).toLocaleString('vi-VN')}</p>}
@@ -237,13 +237,13 @@ export default function AdminDonationsPage({ embedded = false }) {
                   </div>
 
                   {donation.note && (
-                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 break-words whitespace-pre-wrap">
                       <strong>Ghi chú:</strong> {donation.note}
                     </div>
                   )}
 
                   {rejectReasonText && (
-                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 break-words whitespace-pre-wrap">
                       <strong>Lý do không duyệt:</strong> {rejectReasonText}
                     </div>
                   )}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPostApi } from '../../services/postService';
 import { useToast } from '../../context/ToastContext';
+import TagSelector from '../common/TagSelector';
 
 const CREATE_POST_DRAFT_KEY = 'itforum:create-post-draft:v1';
 
@@ -34,7 +35,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
   const [postType, setPostType] = useState('question');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [tagsInput, setTagsInput] = useState('');
+  const [selectedTags, setSelectedTags] = useState([]);
   const [images, setImages] = useState([]);
   const [videos, setVideos] = useState([]);
   const [imageFiles, setImageFiles] = useState([]);
@@ -49,7 +50,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
     setPostType('question');
     setTitle('');
     setContent('');
-    setTagsInput('');
+    setSelectedTags([]);
     setImages([]);
     setVideos([]);
     setImageFiles([]);
@@ -62,7 +63,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
   const hasAnyInput = () => Boolean(
     title.trim()
     || content.trim()
-    || tagsInput.trim()
+    || selectedTags.length > 0
     || postType !== 'question'
     || images.length > 0
     || videos.length > 0
@@ -73,7 +74,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
   const hasDraftText = () => Boolean(
     title.trim()
     || content.trim()
-    || tagsInput.trim()
+    || selectedTags.length > 0
     || postType !== 'question',
   );
 
@@ -90,7 +91,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
       postType,
       title,
       content,
-      tagsInput,
+      selectedTags,
       savedAt,
     }));
     setManualDraftSavedAt(savedAt);
@@ -127,12 +128,12 @@ export default function CreatePostModal({ isOpen, onClose }) {
       document.body.style.overflow = 'hidden';
 
       const draft = readDraft();
-      const formIsEmpty = !title && !content && !tagsInput && images.length === 0 && videos.length === 0;
+      const formIsEmpty = !title && !content && selectedTags.length === 0 && images.length === 0 && videos.length === 0;
       if (draft && formIsEmpty) {
         setPostType(draft.postType || 'question');
         setTitle(draft.title || '');
         setContent(draft.content || '');
-        setTagsInput(draft.tagsInput || '');
+        setSelectedTags(draft.selectedTags || []);
         setDraftNotice(`Đã khôi phục bản nháp lưu lúc ${formatDraftTime(draft.savedAt)}.`);
         setManualDraftSavedAt(draft.savedAt || '');
       }
@@ -158,7 +159,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, postType, title, content, tagsInput]);
+  }, [isOpen, postType, title, content, selectedTags]);
 
   if (!isOpen) return null;
 
@@ -166,6 +167,11 @@ export default function CreatePostModal({ isOpen, onClose }) {
     setMediaError('');
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    if (imageFiles.length + files.length > 10) {
+      setMediaError('Số lượng hình ảnh đính kèm vượt quá giới hạn cho phép (Tối đa: 10 hình ảnh).');
+      return;
+    }
 
     // Check combined size
     const currentVideosSize = videoFiles.reduce((acc, v) => acc + v.size, 0);
@@ -198,6 +204,11 @@ export default function CreatePostModal({ isOpen, onClose }) {
     setMediaError('');
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    if (videoFiles.length + files.length > 5) {
+      setMediaError('Số lượng video đính kèm vượt quá giới hạn cho phép (Tối đa: 5 video).');
+      return;
+    }
 
     // Check combined size
     const currentVideosSize = videoFiles.reduce((acc, v) => acc + v.size, 0);
@@ -258,17 +269,12 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
     setSubmitting(true);
 
-    const tags = tagsInput
-      .split(',')
-      .map((t) => t.trim().toLowerCase())
-      .filter(Boolean);
-
     try {
       const formData = new FormData();
       formData.append('title', cleanTitle);
       formData.append('content', cleanContent);
       formData.append('postType', postType);
-      formData.append('tags', JSON.stringify(tags));
+      formData.append('tags', JSON.stringify(selectedTags));
 
       imageFiles.forEach((file) => {
         formData.append('images', file);
@@ -427,13 +433,10 @@ export default function CreatePostModal({ isOpen, onClose }) {
             <label className="block text-sm font-semibold text-on-surface dark:text-slate-350 mb-1.5">
               Từ khóa (Tags)
             </label>
-            <input
-              type="text"
-              placeholder="Ví dụ: javascript, reactjs, nodejs (phân cách bằng dấu phẩy)"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
+            <TagSelector
+              selectedTags={selectedTags}
+              onChange={setSelectedTags}
               disabled={submitting}
-              className="w-full rounded-xl border border-outline-variant bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -573,7 +576,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
             className="absolute inset-0 bg-black/45 backdrop-blur-sm"
             aria-label="Tiếp tục nhập"
           />
-          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+          <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-start gap-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
                 <span className="material-symbols-outlined">draft</span>
@@ -595,21 +598,21 @@ export default function CreatePostModal({ isOpen, onClose }) {
               <button
                 type="button"
                 onClick={() => setShowCloseConfirm(false)}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="whitespace-nowrap rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Tiếp tục nhập
               </button>
               <button
                 type="button"
                 onClick={handleDiscardAndClose}
-                className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+                className="whitespace-nowrap rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"
               >
                 Thoát không lưu
               </button>
               <button
                 type="button"
                 onClick={handleSaveDraftAndClose}
-                className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary/95"
+                className="whitespace-nowrap rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary/95"
               >
                 Lưu nháp và thoát
               </button>

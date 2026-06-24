@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import AppPagination from '../../components/common/AppPagination';
 import { getAdminAuditLogs } from '../../services/userService';
 
 const ACTION_OPTIONS = [
@@ -398,7 +399,7 @@ export default function AdminAuditLogsTab({ embedded = false }) {
                     <div className="w-max">{formatDateTime(log.createdAt)}</div>
                   </td>
                   <td className="px-5 py-5 align-top min-w-0 overflow-hidden" data-col="admin">
-                    <div className="w-max">
+                    <div className="w-full min-w-0 break-words">
                       <p className="text-sm font-bold text-slate-800" title={log.actor?.fullName || log.actor?.email || 'Không rõ admin'}>{log.actor?.fullName || 'Không rõ admin'}</p>
                       <p className="text-xs text-slate-400" title={log.actor?.email || ''}>{log.actor?.email || '—'}</p>
                     </div>
@@ -411,18 +412,18 @@ export default function AdminAuditLogsTab({ embedded = false }) {
                     </div>
                   </td>
                   <td className="px-5 py-5 align-top min-w-0 overflow-hidden" data-col="target">
-                    <div className="w-max">
+                    <div className="w-full min-w-0 break-words">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{TARGET_LABELS[log.targetType] || log.targetType}</p>
                       <p className="mt-1 text-sm font-semibold text-slate-700" title={log.targetLabel || log.targetId}>{log.targetLabel || log.targetId}</p>
                     </div>
                   </td>
                   <td className="px-5 py-5 align-top min-w-0 overflow-hidden" data-col="reason">
-                    <div className="w-max font-normal">
+                    <div className="w-full min-w-0 break-words font-normal">
                       <p className="line-clamp-3 text-sm leading-5 text-slate-700" title={log.reason || 'Không có lý do'}>{log.reason || 'Không có lý do'}</p>
                     </div>
                   </td>
                   <td className="px-5 py-5 align-top min-w-0 overflow-hidden" data-col="change">
-                    <div className="w-max">
+                    <div className="w-full min-w-0 break-words">
                       <div className="space-y-1.5 text-xs">
                         <div className="flex items-start gap-1">
                           <span className="font-bold text-slate-700 w-12 shrink-0">Trước:</span>
@@ -447,12 +448,17 @@ export default function AdminAuditLogsTab({ embedded = false }) {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-semibold text-slate-500">Tổng <span className="text-slate-900">{pagination.total || 0}</span> nhật ký</p>
-          <div className="flex items-center gap-2">
-            <button type="button" disabled={pagination.page <= 1 || loading} onClick={() => goToPage(pagination.page - 1)} className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Trước</button>
-            <span className="text-sm font-bold text-slate-700">{pagination.page || 1} / {pagination.totalPages || 1}</span>
-            <button type="button" disabled={pagination.page >= pagination.totalPages || loading} onClick={() => goToPage(pagination.page + 1)} className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Sau</button>
+        <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+          <AppPagination
+            page={pagination.page}
+            totalPages={pagination.totalPages || 1}
+            onPageChange={goToPage}
+            limit={pagination.limit}
+            limitOptions={[10, 20, 50]}
+            onLimitChange={(newLimit) => setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }))}
+          />
+          <div className="mt-2 text-center sm:text-left text-xs font-semibold text-slate-500">
+            Tổng <span className="text-slate-900">{pagination.total || 0}</span> nhật ký
           </div>
         </div>
       </div>

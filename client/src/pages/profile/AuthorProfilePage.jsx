@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import AppButton from '../../components/ui/AppButton';
 import FormAlert from '../../components/ui/FormAlert';
 import ReputationBadge from '../../components/ui/ReputationBadge';
+import AppPagination from '../../components/common/AppPagination';
 import { getPublicAuthorProfileApi } from '../../services/donationService';
 
 const POST_LIMIT = 5;
@@ -37,7 +38,7 @@ const getExcerpt = (value = '') => {
 };
 
 const buildPaginationItems = (current, total) => {
-  if (total <= 1) return [];
+  if (total <= 1) return [1];
   if (total <= 5) return Array.from({ length: total }, (_, index) => index + 1);
 
   const items = [1];
@@ -85,19 +86,19 @@ function AuthorPostCard({ post }) {
 
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-primary/30 hover:shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between w-full min-w-0">
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <PostTypeBadge type={post.postType} />
             <span className="text-xs font-medium text-slate-500">Đăng ngày {formatDate(post.createdAt)}</span>
           </div>
-          <Link to={`/posts/${post._id}`} className="text-lg font-extrabold leading-snug text-slate-900 hover:text-primary break-words break-all">
+          <Link to={`/posts/${post._id}`} className="block text-lg font-extrabold leading-snug text-slate-900 hover:text-primary break-words w-full max-w-full">
             {post.title}
           </Link>
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{getExcerpt(post.content)}</p>
+          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600 break-words w-full max-w-full">{getExcerpt(post.content)}</p>
         </div>
-
-        <div className="grid grid-cols-3 gap-2 text-center sm:w-56">
+ 
+        <div className="grid grid-cols-3 gap-2 text-center sm:w-56 shrink-0">
           <div className="rounded-lg bg-slate-50 px-2 py-2"><div className="text-sm font-bold text-slate-900">{formatNumber(reactionCount)}</div><div className="text-[11px] text-slate-500">{reactionLabel}</div></div>
           <div className="rounded-lg bg-slate-50 px-2 py-2"><div className="text-sm font-bold text-slate-900">{formatNumber(post.answerCount)}</div><div className="text-[11px] text-slate-500">{commentLabel}</div></div>
           <div className="rounded-lg bg-slate-50 px-2 py-2"><div className="text-sm font-bold text-slate-900">{formatNumber(post.viewCount)}</div><div className="text-[11px] text-slate-500">lượt xem</div></div>
@@ -148,10 +149,6 @@ export default function AuthorProfilePage() {
     });
   };
 
-  const paginationItems = useMemo(() => {
-    const totalPages = authorProfile?.postsPagination?.totalPages || 1;
-    return buildPaginationItems(page, totalPages);
-  }, [authorProfile?.postsPagination?.totalPages, page]);
 
   if (loading) {
     return (
@@ -215,19 +212,31 @@ export default function AuthorProfilePage() {
                     <span className="material-symbols-outlined text-[15px]">person</span>
                     {roleLabel}
                   </span>
-                  <ReputationBadge reputation={user.reputationInfo?.reputation || user.reputation || 1} size="md" showLabel />
+                  {!isAdminProfile && <ReputationBadge reputation={user.reputationInfo?.reputation || user.reputation || 1} size="md" showLabel />}
                 </div>
                 <h1 className="break-words text-3xl font-black leading-tight sm:text-4xl">{user.fullName}</h1>
-                <p className="mt-2 text-sm font-medium text-white/75">{user.email}</p>
-                <p className="mt-1 text-sm text-white/70">Tham gia từ {memberSince}</p>
+                <p className="mt-2 text-sm font-medium text-white/75 break-words">{user.email}</p>
+                {!isAdminProfile && <p className="mt-1 text-sm text-white/70">Tham gia từ {memberSince}</p>}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:w-[460px]">
-              <div className="rounded-xl bg-white/12 p-3 text-center ring-1 ring-white/15"><div className="text-2xl font-black">{formatNumber(postSummary.totalPosts)}</div><div className="text-xs text-white/70">bài viết</div></div>
-              <div className="rounded-xl bg-white/12 p-3 text-center ring-1 ring-white/15"><div className="text-2xl font-black">{formatNumber(postSummary.totalViews)}</div><div className="text-xs text-white/70">lượt xem</div></div>
-              <div className="rounded-xl bg-white/12 p-3 text-center ring-1 ring-white/15"><div className="text-2xl font-black">{formatNumber(postSummary.totalUpvotes)}</div><div className="text-xs text-white/70">upvote</div></div>
-              <div className="rounded-xl bg-white/12 p-3 text-center ring-1 ring-white/15"><div className="text-2xl font-black">{formatNumber(donationSummary.donationCount)}</div><div className="text-xs text-white/70">ủng hộ</div></div>
+            <div className={`grid gap-3 ${isAdminProfile ? 'grid-cols-1 w-full md:w-[120px]' : 'grid-cols-3 w-full md:w-[340px]'}`}>
+              <div className="rounded-xl bg-white/12 p-3 text-center ring-1 ring-white/15">
+                <div className="text-2xl font-black">{formatNumber(postSummary.totalPosts)}</div>
+                <div className="text-xs text-white/70">bài viết</div>
+              </div>
+              {!isAdminProfile && (
+                <>
+                  <div className="rounded-xl bg-white/12 p-3 text-center ring-1 ring-white/15">
+                    <div className="text-2xl font-black">{formatNumber(postSummary.totalViews)}</div>
+                    <div className="text-xs text-white/70">lượt xem</div>
+                  </div>
+                  <div className="rounded-xl bg-white/12 p-3 text-center ring-1 ring-white/15">
+                    <div className="text-2xl font-black">{formatNumber(donationSummary.donationCount)}</div>
+                    <div className="text-xs text-white/70">ủng hộ</div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -235,28 +244,30 @@ export default function AuthorProfilePage() {
         <div className="grid gap-0 md:grid-cols-[1fr_320px]">
           <div className="border-b border-slate-100 p-6 md:border-b-0 md:border-r sm:p-8">
             <h2 className="text-lg font-extrabold text-slate-900">Giới thiệu công khai</h2>
-            <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-600 text-justify break-words">
               {user.bio || 'Người dùng này chưa cập nhật phần giới thiệu công khai.'}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 p-6 sm:p-8 md:grid-cols-1">
+          <div className={`grid gap-3 p-6 sm:p-8 md:grid-cols-1 ${isAdminProfile ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-1' : 'grid-cols-2'}`}>
             <StatBox label="Câu hỏi" value={formatNumber(postSummary.questionCount)} tone="blue" icon="help_center" />
             <StatBox label="Lời khuyên" value={formatNumber(postSummary.adviceCount)} tone="emerald" icon="tips_and_updates" />
-            <StatBox label="Tổng donate" value={`${formatNumber(donationSummary.totalAmount)}đ`} tone="amber" icon="volunteer_activism" />
-            <StatBox label="Uy tín" value={formatNumber(user.reputationInfo?.reputation || user.reputation || 1)} tone="slate" icon="workspace_premium" />
+            {!isAdminProfile && (
+              <StatBox label="Tổng donate" value={`${formatNumber(donationSummary.totalAmount)}đ`} tone="amber" icon="volunteer_activism" />
+            )}
+            {!isAdminProfile && <StatBox label="Uy tín" value={formatNumber(user.reputationInfo?.reputation || user.reputation || 1)} tone="slate" icon="workspace_premium" />}
           </div>
         </div>
       </section>
 
-      <div className={`mt-6 grid gap-6 ${isAdminProfile ? '' : 'lg:grid-cols-[1fr_340px]'}`}>
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className={`mt-6 grid gap-6 w-full min-w-0 ${isAdminProfile ? '' : 'lg:grid-cols-[1fr_340px]'}`}>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 min-w-0 w-full">
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-xl font-black text-slate-900">Bài viết công khai</h2>
               <p className="mt-1 text-sm text-slate-500">{formatNumber(postsPagination.total)} bài viết đang hiển thị trên diễn đàn</p>
             </div>
-            {totalPages > 1 && <div className="text-sm font-semibold text-slate-500">Trang {page} / {totalPages}</div>}
+            <div className="text-sm font-semibold text-slate-500">Trang {page} / {totalPages}</div>
           </div>
 
           {posts.length === 0 ? (
@@ -265,17 +276,9 @@ export default function AuthorProfilePage() {
             <div className="space-y-3">{posts.map((post) => <AuthorPostCard key={post._id} post={post} />)}</div>
           )}
 
-          {totalPages > 1 && (
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-              <button type="button" onClick={() => setPage(page - 1)} disabled={!canGoPrev} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Trước</button>
-              <div className="flex flex-wrap items-center gap-1">
-                {paginationItems.map((item) => {
-                  if (typeof item !== 'number') return <span key={item} className="px-2 text-slate-400">...</span>;
-                  const isActive = item === page;
-                  return <button key={item} type="button" onClick={() => setPage(item)} className={`min-w-9 rounded-lg border px-3 py-2 text-sm font-bold ${isActive ? 'border-primary bg-primary text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{item}</button>;
-                })}
-              </div>
-              <button type="button" onClick={() => setPage(page + 1)} disabled={!canGoNext} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Sau</button>
+          {posts.length > 0 && (
+            <div className="mt-6">
+              <AppPagination page={page} totalPages={totalPages} onPageChange={setPage} />
             </div>
           )}
         </section>

@@ -254,7 +254,7 @@ export default function CommentItem({
 
   return (
     <div
-      className={`flex gap-3 pb-4 ${
+      className={`flex gap-3 pb-4 w-full min-w-0 ${
         isBestAnswer
           ? 'bg-emerald-50/40 border-2 border-emerald-500/20 rounded-xl p-4 shadow-sm'
           : depth > 0
@@ -501,7 +501,7 @@ export default function CommentItem({
             </div>
           </form>
         ) : (
-          <p className={isDeleted ? "text-outline font-body-sm text-body-sm leading-relaxed italic" : "text-on-surface font-body-sm text-body-sm leading-relaxed whitespace-pre-wrap"}>
+          <p className={isDeleted ? "text-outline font-body-sm text-body-sm leading-relaxed italic break-words w-full max-w-full" : "text-on-surface font-body-sm text-body-sm leading-relaxed whitespace-pre-wrap break-words w-full max-w-full"}>
             {comment.content}
           </p>
         )}
@@ -509,7 +509,7 @@ export default function CommentItem({
         {!isEditing && comment.images && comment.images.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {comment.images.map((imgUrl, idx) => (
-              <a key={idx} href={imgUrl} target="_blank" rel="noopener noreferrer" className="block max-w-[200px] max-h-[140px] overflow-hidden rounded-lg border border-outline-variant hover:opacity-90 transition-opacity">
+              <a key={idx} href={imgUrl} target="_blank" rel="noopener noreferrer" className="block max-w-[200px] max-h-[140px] overflow-hidden rounded-lg border border-outline-variant hover:opacity-90 transition-opacity cursor-zoom-in">
                 <img src={imgUrl} alt={`Đính kèm ${idx + 1}`} className="w-full h-full object-cover" />
               </a>
             ))}
@@ -606,7 +606,7 @@ export default function CommentItem({
                 className="inline-flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container-low px-3 py-1.5 text-xs font-semibold text-secondary transition hover:bg-primary-fixed/30 hover:text-primary"
               >
                 <span className="material-symbols-outlined text-[16px]">reply</span>
-                Bình luận
+                {postType === 'advice' ? 'Bình luận' : 'Trả lời'}
               </button>
             )}
 

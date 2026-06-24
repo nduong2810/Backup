@@ -29,7 +29,7 @@ export const authenticateToken = async (req, res, next) => {
                 };
                 res.clearCookie('accessToken', cookieOptions);
                 res.clearCookie('refreshToken', cookieOptions);
-                return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' });
+                return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ admin để mở khóa tài khoản!' });
             }
 
             return next();
@@ -56,7 +56,7 @@ export const authenticateToken = async (req, res, next) => {
             };
             res.clearCookie('accessToken', cookieOptions);
             res.clearCookie('refreshToken', cookieOptions);
-            return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' });
+            return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ admin để mở khóa tài khoản!' });
         }
 
         // Tạo Access Token mới (15 phút)
@@ -134,7 +134,7 @@ export const optionalAuthenticateToken = async (req, res, next) => {
                 res.clearCookie('accessToken', cookieOptions);
                 res.clearCookie('refreshToken', cookieOptions);
                 delete req.user;
-                return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' });
+                return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ admin để mở khóa tài khoản!' });
             }
 
             return next();
@@ -158,7 +158,7 @@ export const optionalAuthenticateToken = async (req, res, next) => {
                 };
                 res.clearCookie('accessToken', cookieOptions);
                 res.clearCookie('refreshToken', cookieOptions);
-                return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' });
+                return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ admin để mở khóa tài khoản!' });
             }
 
             const newAccessToken = jwt.sign(

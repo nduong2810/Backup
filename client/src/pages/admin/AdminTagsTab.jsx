@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import AppPagination from '../../components/common/AppPagination';
 import {
   fetchTagsThunk,
   createTagThunk,
@@ -8,26 +9,6 @@ import {
   deleteTagThunk,
   clearTagMessages
 } from '../../store/slices/tagSlice';
-
-const buildPaginationItems = (current, total) => {
-  if (total <= 1) return [];
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, index) => index + 1);
-  }
-
-  const items = [1];
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-
-  if (start > 2) items.push('ellipsis-start');
-  for (let page = start; page <= end; page += 1) {
-    items.push(page);
-  }
-  if (end < total - 1) items.push('ellipsis-end');
-  items.push(total);
-
-  return items;
-};
 
 export default function AdminTagsTab() {
   const [colWidths, setColWidths] = useState({
@@ -103,7 +84,6 @@ export default function AdminTagsTab() {
   const [tagName, setTagName] = useState('');
   const [tagDesc, setTagDesc] = useState('');
 
-  const paginationItems = buildPaginationItems(currentPage, pagination.totalPages || 1);
 
   // Fetch tags on change
   useEffect(() => {
@@ -486,65 +466,18 @@ export default function AdminTagsTab() {
             </div>
 
             {/* Pagination footer */}
-            {!loading && pagination && (pagination.totalPages > 1 || pagination.total > 8) && (
-              <div className="border-t border-slate-100 bg-slate-50/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {paginationItems.map((item, idx) => {
-                    if (typeof item !== 'number') {
-                      return (
-                        <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 font-bold">...</span>
-                      );
-                    }
-
-                    const isActive = item === currentPage;
-                    return (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => setCurrentPage(item)}
-                        className={`min-w-[32px] h-8 px-2 rounded-lg border text-xs font-bold transition-all ${
-                          isActive
-                            ? 'bg-primary text-white border-primary shadow-sm'
-                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    );
-                  })}
-                  {pagination.totalPages > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
-                      disabled={currentPage >= pagination.totalPages}
-                      className="min-w-[32px] h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-all"
-                    >
-                      Sau
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
-                  <span>mỗi trang</span>
-                  <div className="flex items-center gap-1.5">
-                    {[8, 15, 30].map((size) => {
-                      const isActive = size === limit;
-                      return (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => handleLimitChange(size)}
-                          className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition-all ${
-                            isActive
-                              ? 'bg-primary text-white border-primary shadow-sm'
-                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      );
-                    })}
-                  </div>
+            {!loading && pagination && pagination.total > 0 && (
+              <div className="border-t border-slate-100 bg-slate-50/50 px-6 py-4">
+                <AppPagination
+                  page={currentPage}
+                  totalPages={pagination.totalPages || 1}
+                  onPageChange={setCurrentPage}
+                  limit={limit}
+                  limitOptions={[8, 15, 30]}
+                  onLimitChange={handleLimitChange}
+                />
+                <div className="mt-2 text-center sm:text-left text-xs font-semibold text-slate-500">
+                  Tổng <span className="text-slate-900">{pagination.total || 0}</span> thẻ tag
                 </div>
               </div>
             )}

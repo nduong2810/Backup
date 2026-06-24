@@ -54,7 +54,7 @@ const PostDetailRightSidebar = () => {
               <Link
                 key={`hot-${itemId}-${index}`}
                 to={`/posts/${item?._id || item?.id || itemId}`}
-                className="font-body-sm text-body-sm text-primary hover:underline leading-5"
+                className="font-body-sm text-body-sm text-primary hover:underline leading-5 break-words"
               >
                 {item?.title || 'Không có tiêu đề'}
               </Link>
@@ -79,7 +79,7 @@ const PostDetailRightSidebar = () => {
               <div key={`tag-${tag}-${index}`} className="flex items-center justify-between">
                 <Link
                   to={`/home?tags=${encodeURIComponent(tag)}`}
-                  className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80"
+                  className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 max-w-[180px] truncate"
                   title={`Lọc bài viết theo tag: ${tag}`}
                 >
                   {tag}

@@ -2,6 +2,7 @@ import postRepository from '../repository/post.repository.js';
 import commentRepository from '../repository/comment.repository.js';
 import Comment from '../model/comment.model.js';
 import User from '../model/user.model.js';
+import Tag from '../model/tag.model.js';
 import mongoose from 'mongoose';
 import reputationService, { getThisWeekStart } from './reputation.service.js';
 import { uploadToCloudinary } from '../util/cloudinary.js';
@@ -308,6 +309,15 @@ class PostService {
         const content = sanitizeHtml(String(payload.content || '').trim());
         const postType = payload.postType || 'question';
         const tags = normalizeTags(payload.tags);
+
+        if (tags && tags.length > 0) {
+            const existingTags = await Tag.find({ slug: { $in: tags } }).select('slug');
+            const existingSlugs = existingTags.map(t => t.slug);
+            const invalidTags = tags.filter(t => !existingSlugs.includes(t));
+            if (invalidTags.length > 0) {
+                throw { status: 400, message: `Thẻ tag không hợp lệ hoặc không tồn tại: ${invalidTags.join(', ')}` };
+            }
+        }
 
         moderation.validatePost(title, content);
         if (!['question', 'advice'].includes(postType)) throw { status: 400, message: 'Loại bài viết không hợp lệ' };
@@ -622,6 +632,15 @@ class PostService {
         const content = sanitizeHtml(String(payload.content || '').trim());
         const tags = normalizeTags(payload.tags);
 
+        if (tags && tags.length > 0) {
+            const existingTags = await Tag.find({ slug: { $in: tags } }).select('slug');
+            const existingSlugs = existingTags.map(t => t.slug);
+            const invalidTags = tags.filter(t => !existingSlugs.includes(t));
+            if (invalidTags.length > 0) {
+                throw { status: 400, message: `Thẻ tag không hợp lệ hoặc không tồn tại: ${invalidTags.join(', ')}` };
+            }
+        }
+
         moderation.validatePost(title, content);
 
         // Xử lý media cũ và mới
@@ -653,6 +672,17 @@ class PostService {
                 const body = vid.split(',')[1] || vid;
                 totalMediaSize += (body.length * 0.75) / (1024 * 1024);
             }
+        }
+
+        const totalImagesCount = oldImages.length + (files.images ? files.images.length : 0) + newBase64Images.length;
+        const totalVideosCount = oldVideos.length + (files.videos ? files.videos.length : 0) + newBase64Videos.length;
+
+        if (totalImagesCount > 10) {
+            throw { status: 400, message: 'Số lượng hình ảnh đính kèm vượt quá giới hạn cho phép (Tối đa: 10 hình ảnh).' };
+        }
+
+        if (totalVideosCount > 5) {
+            throw { status: 400, message: 'Số lượng video đính kèm vượt quá giới hạn cho phép (Tối đa: 5 video).' };
         }
 
         if (totalMediaSize > 50) {

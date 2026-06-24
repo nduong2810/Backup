@@ -172,7 +172,7 @@ class AuthService {
         // Kiểm tra tài khoản đã kích hoạt chưa hoặc đang ở các trạng thái đặc biệt
         if (!user.isActive) {
             if (user.status === 'banned') {
-                throw { status: 403, message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên.' };
+                throw { status: 403, message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ admin để mở khóa tài khoản!' };
             } else if (user.status === 'deactivated') {
                 throw {
                     status: 403,

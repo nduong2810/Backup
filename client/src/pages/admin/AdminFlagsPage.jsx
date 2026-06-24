@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAdminFlagsThunk, adminUpdateFlagStatusThunk } from '../../store/slices/reportSlice';
+import AppPagination from '../../components/common/AppPagination';
 
 const statusOptions = [
   { value: '', label: 'Tất cả trạng thái' },
@@ -80,18 +81,6 @@ const flagTypeOptions = [
 
 const PAGE_SIZE_OPTIONS = [10, 20, 30];
 
-const buildPagination = (current, total) => {
-  if (total <= 6) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages = [1];
-  if (current > 3) pages.push('ellipsis-left');
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-  for (let p = start; p <= end; p += 1) pages.push(p);
-  if (current < total - 2) pages.push('ellipsis-right');
-  pages.push(total);
-  return pages;
-};
-
 export default function AdminFlagsPage({ embedded = false }) {
   const dispatch = useDispatch();
   const {
@@ -146,7 +135,6 @@ export default function AdminFlagsPage({ embedded = false }) {
   const safePage = Math.min(currentPage, totalPages);
   const start = (safePage - 1) * pageSize;
   const paginatedGroups = groupedByPost.slice(start, start + pageSize);
-  const paginationItems = buildPagination(safePage, totalPages);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -228,8 +216,8 @@ export default function AdminFlagsPage({ embedded = false }) {
       <div className="space-y-4">
         {paginatedGroups.map((group) => (
           <article key={group.postId} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-semibold text-slate-900">{group.postTitle}</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 w-full min-w-0">
+              <h2 className="font-semibold text-slate-900 break-words flex-1 min-w-0">{group.postTitle}</h2>
               <div className="flex items-center gap-2">
                 {group.postId && !group.postId.startsWith('unknown-') && (
                   <a
@@ -259,7 +247,7 @@ export default function AdminFlagsPage({ embedded = false }) {
                 return (
                   <div key={ticket._id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm text-slate-700">
+                      <p className="text-sm text-slate-700 break-all">
                         <strong>Người báo cáo:</strong> {ticket.reporter?.fullName || 'Ẩn danh'} ({ticket.reporter?.email || 'N/A'})
                       </p>
                       <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClassMap[ticket.status] || 'border-slate-200 bg-white text-slate-700'}`}>
@@ -283,7 +271,7 @@ export default function AdminFlagsPage({ embedded = false }) {
                       </p>
                     </div>
 
-                    {ticket.details && <p className="mt-2 text-sm text-slate-700"><strong>Mô tả:</strong> {ticket.details}</p>}
+                    {ticket.details && <p className="mt-2 text-sm text-slate-700 break-words whitespace-pre-wrap"><strong>Mô tả:</strong> {ticket.details}</p>}
 
                     {ticket.comment && (
                       <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3 text-sm text-slate-700">
@@ -291,7 +279,7 @@ export default function AdminFlagsPage({ embedded = false }) {
                           <span className="material-symbols-outlined text-base">chat_bubble</span>
                           Báo cáo bình luận của {ticket.comment.author?.fullName || 'N/A'}
                         </p>
-                        <p className="mt-1 italic text-slate-600 bg-white border border-slate-100 rounded px-2 py-1.5 font-body-sm">
+                        <p className="mt-1 italic text-slate-600 bg-white border border-slate-100 rounded px-2 py-1.5 font-body-sm break-words whitespace-pre-wrap">
                           "{ticket.commentContentSnapshot || ticket.comment.content}"
                         </p>
                       </div>
@@ -340,63 +328,20 @@ export default function AdminFlagsPage({ embedded = false }) {
       </div>
 
       {!loadingAdminFlags && groupedByPost.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
-          <p className="text-sm text-slate-600">
-            Trang {safePage}/{totalPages} • {groupedByPost.length} {activeTab === 'post' ? 'bài viết có cờ' : 'bài viết có bình luận bị báo cáo'}
-          </p>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              {paginationItems.map((item) => {
-                if (typeof item !== 'number') return <span key={item} className="px-2 text-slate-500">...</span>;
-                const active = item === safePage;
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setCurrentPage(item)}
-                    className={`min-w-10 rounded-sm border px-3 py-2 text-sm ${
-                      active
-                        ? 'border-blue-700 bg-blue-700 text-white'
-                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {item}
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safePage === totalPages}
-                className="rounded-sm border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Tiếp
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-600">mỗi trang</span>
-              {PAGE_SIZE_OPTIONS.map((size) => {
-                const active = size === pageSize;
-                return (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => {
-                      setPageSize(size);
-                      setCurrentPage(1);
-                    }}
-                    className={`min-w-10 rounded-sm border px-3 py-2 text-sm ${
-                      active
-                        ? 'border-blue-700 bg-blue-700 text-white'
-                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                );
-              })}
-            </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <AppPagination
+            page={safePage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            limit={pageSize}
+            limitOptions={PAGE_SIZE_OPTIONS}
+            onLimitChange={(newSize) => {
+              setPageSize(newSize);
+              setCurrentPage(1);
+            }}
+          />
+          <div className="mt-2 text-center sm:text-left text-xs font-semibold text-slate-500">
+            Tổng <span className="text-slate-900">{groupedByPost.length || 0}</span> {activeTab === 'post' ? 'bài viết có cờ' : 'bài viết có bình luận bị báo cáo'}
           </div>
         </div>
       )}

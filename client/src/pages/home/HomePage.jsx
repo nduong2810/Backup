@@ -43,10 +43,10 @@ function PostCard({ post }) {
 
       {/* Nội dung */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-base text-sky-700 hover:text-sky-900 cursor-pointer mb-1 leading-snug">
+        <h3 className="font-semibold text-base text-sky-700 hover:text-sky-900 cursor-pointer mb-1 leading-snug break-words">
           {post.title}
         </h3>
-        <p className="text-sm text-slate-500 line-clamp-2 mb-2">
+        <p className="text-sm text-slate-500 line-clamp-2 mb-2 break-words">
           {post.content}
         </p>
 

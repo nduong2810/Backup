@@ -277,7 +277,7 @@ export default function PostDetailPage() {
         Quay lại
       </button>
 
-      <div className="flex gap-4 sm:gap-6">
+      <div className="flex gap-4 sm:gap-6 w-full min-w-0">
         {post.postType === 'question' && (
           <div className="hidden sm:block">
             <VoteSidebar 

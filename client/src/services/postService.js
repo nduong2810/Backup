@@ -7,7 +7,7 @@ export const fetchPostsApi = (filters = {}) => {
   return apiClient.get('/posts', { params: cleanFilters });
 };
 
-export const getPostDetail = (postId) => apiClient.get(`/posts/${postId}`);
+export const getPostDetail = (postId) => apiClient.get(`/posts/${postId}`, { params: { _t: Date.now() } });
 export const votePost = (postId, voteType) => apiClient.post(`/posts/${postId}/vote`, { voteType });
 export const reactPost = (postId, reactionType) => apiClient.post(`/posts/${postId}/react`, { reactionType });
 export const createPostComment = (postId, payload) => apiClient.post(`/posts/${postId}/comments`, payload);

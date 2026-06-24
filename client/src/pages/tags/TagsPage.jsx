@@ -26,27 +26,9 @@ const TAG_DESCRIPTIONS = {
   docker: 'Công cụ đóng gói và chạy ứng dụng bằng container.',
 };
 
+import AppPagination from '../../components/common/AppPagination';
+
 const PER_PAGE_OPTIONS = [15, 30, 50];
-
-const buildPaginationItems = (current, total) => {
-  if (total <= 1) return [];
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, index) => index + 1);
-  }
-
-  const items = [1];
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-
-  if (start > 2) items.push('ellipsis-start');
-  for (let page = start; page <= end; page += 1) {
-    items.push(page);
-  }
-  if (end < total - 1) items.push('ellipsis-end');
-  items.push(total);
-
-  return items;
-};
 
 const TagsPage = () => {
   const dispatch = useDispatch();
@@ -77,10 +59,6 @@ const TagsPage = () => {
     };
   }, [search, page, limit]);
 
-  const paginationItems = useMemo(
-    () => buildPaginationItems(page, pagination.totalPages || 1),
-    [page, pagination.totalPages]
-  );
 
   return (
     <main className="flex-1 flex flex-col min-w-0 pt-3 pb-12">
@@ -147,67 +125,18 @@ const TagsPage = () => {
         </div>
       )}
 
-      {!loading && !error && pagination.totalPages > 1 && (
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-t border-outline-variant pt-4 mt-6">
-          <div className="flex items-center gap-1 flex-wrap">
-            {paginationItems.map((item) => {
-              if (typeof item !== 'number') {
-                return (
-                  <span key={item} className="px-2 text-secondary">...</span>
-                );
-              }
-
-              const isActive = item === page;
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setPage(item)}
-                  className={`min-w-[36px] px-3 py-1.5 rounded-DEFAULT font-body-sm text-body-sm border transition-colors ${
-                    isActive
-                      ? 'bg-primary-container text-on-primary border-primary-container'
-                      : 'border-outline-variant text-secondary hover:bg-surface-container-low'
-                  }`}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  {item}
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={() => setPage((current) => Math.min(current + 1, pagination.totalPages))}
-              className="px-3 py-1.5 rounded-DEFAULT font-body-sm text-body-sm border border-outline-variant text-secondary hover:bg-surface-container-low"
-              disabled={page >= pagination.totalPages}
-            >
-              Tiếp
-            </button>
-          </div>
-          <div className="flex items-center gap-2 text-secondary font-body-sm text-body-sm">
-            <span>mỗi trang</span>
-            <div className="flex items-center gap-1">
-              {PER_PAGE_OPTIONS.map((size) => {
-                const isActive = size === limit;
-                return (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => {
-                      setLimit(size);
-                      setPage(1);
-                    }}
-                    className={`min-w-[36px] px-3 py-1.5 rounded-DEFAULT border transition-colors ${
-                      isActive
-                        ? 'bg-primary-container text-on-primary border-primary-container'
-                        : 'border-outline-variant text-secondary hover:bg-surface-container-low'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      {!loading && !error && tags && tags.length > 0 && (
+        <div className="mt-6">
+          <AppPagination
+            page={page}
+            totalPages={pagination.totalPages || 1}
+            onPageChange={setPage}
+            limit={limit}
+            onLimitChange={(newLimit) => {
+              setLimit(newLimit);
+              setPage(1);
+            }}
+          />
         </div>
       )}
     </main>

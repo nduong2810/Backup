@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import AppPagination from '../../components/common/AppPagination';
 import { getAdminPosts, updateAdminPostStatus } from '../../services/userService';
 
 const STATUS_OPTIONS = [
@@ -469,7 +470,7 @@ export default function AdminPostsTab({ embedded = false }) {
                       <div>
                         <Link
                           to={`/posts/${post._id}`}
-                          className="line-clamp-2 text-sm font-bold leading-6 text-slate-900 transition hover:text-primary"
+                          className="line-clamp-2 text-sm font-bold leading-6 text-slate-900 transition hover:text-primary break-words"
                           title={post.title}
                         >
                           {post.title}
@@ -524,7 +525,7 @@ export default function AdminPostsTab({ embedded = false }) {
                           {STATUS_LABELS[post.status] || post.status}
                         </span>
                         {post.statusReason && (
-                          <p className="mx-auto mt-2 line-clamp-2 text-[11px] leading-4 text-slate-500" title={post.statusReason}>
+                          <p className="mx-auto mt-2 line-clamp-2 text-[11px] leading-4 text-slate-500 break-words" title={post.statusReason}>
                             Lý do: {post.statusReason}
                           </p>
                         )}
@@ -564,33 +565,17 @@ export default function AdminPostsTab({ embedded = false }) {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-semibold text-slate-500">
+        <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+          <AppPagination
+            page={pagination.page}
+            totalPages={pagination.totalPages || 1}
+            onPageChange={goToPage}
+            limit={pagination.limit}
+            limitOptions={[10, 20, 50]}
+            onLimitChange={(newLimit) => setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }))}
+          />
+          <div className="mt-2 text-center sm:text-left text-xs font-semibold text-slate-500">
             Tổng <span className="text-slate-900">{pagination.total || 0}</span> bài đăng
-          </p>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={pagination.page <= 1 || loading}
-              onClick={() => goToPage(pagination.page - 1)}
-              className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Trước
-            </button>
-
-            <span className="text-sm font-bold text-slate-700">
-              {pagination.page || 1} / {pagination.totalPages || 1}
-            </span>
-
-            <button
-              type="button"
-              disabled={pagination.page >= pagination.totalPages || loading}
-              onClick={() => goToPage(pagination.page + 1)}
-              className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Sau
-            </button>
           </div>
         </div>
       </div>

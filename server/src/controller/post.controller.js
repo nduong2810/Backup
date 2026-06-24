@@ -432,7 +432,8 @@ class PostController {
         try {
             const { id } = req.params;
             const userId = req.user.userId;
-            await postService.softDeletePost(id, userId);
+            const updatedPost = await postService.softDeletePost(id, userId);
+            emitToPostRoom(id, 'post:updated', { postId: id, post: updatedPost });
             return res.status(200).json({ success: true, message: 'Đã di chuyển bài viết vào thùng rác thành công' });
         } catch (error) {
             const status = error.status || 500;
@@ -444,7 +445,8 @@ class PostController {
         try {
             const { id } = req.params;
             const userId = req.user.userId;
-            await postService.restorePost(id, userId);
+            const updatedPost = await postService.restorePost(id, userId);
+            emitToPostRoom(id, 'post:updated', { postId: id, post: updatedPost });
             return res.status(200).json({ success: true, message: 'Khôi phục bài viết thành công' });
         } catch (error) {
             const status = error.status || 500;

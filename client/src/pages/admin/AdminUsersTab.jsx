@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
+import AppPagination from '../../components/common/AppPagination';
 import { getAdminUsers, getAdminUserDetail, toggleAdminUserStatus } from '../../services/userService';
 
 const STATUS_OPTIONS = [
@@ -637,31 +638,17 @@ export default function AdminUsersTab({ embedded = false }) {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-semibold text-slate-500">
+        <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+          <AppPagination
+            page={pagination.page}
+            totalPages={pagination.totalPages || 1}
+            onPageChange={goToPage}
+            limit={pagination.limit}
+            limitOptions={[10, 20, 50]}
+            onLimitChange={(newLimit) => setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }))}
+          />
+          <div className="mt-2 text-center sm:text-left text-xs font-semibold text-slate-500">
             Tổng <span className="text-slate-900">{pagination.total || 0}</span> thành viên
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={pagination.page <= 1 || loading}
-              onClick={() => goToPage(pagination.page - 1)}
-              className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Trước
-            </button>
-            <span className="text-sm font-bold text-slate-700">
-              {pagination.page || 1} / {pagination.totalPages || 1}
-            </span>
-            <button
-              type="button"
-              disabled={pagination.page >= pagination.totalPages || loading}
-              onClick={() => goToPage(pagination.page + 1)}
-              className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Sau
-            </button>
           </div>
         </div>
       </div>
@@ -766,8 +753,8 @@ export default function AdminUsersTab({ embedded = false }) {
                     <span className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white ${detailUser.isActive ? 'bg-emerald-400' : 'bg-slate-300'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-lg font-bold text-slate-900">{detailUser.fullName}</h4>
-                    <p className="text-sm text-slate-500">{detailUser.email}</p>
+                    <h4 className="text-lg font-bold text-slate-900 break-words">{detailUser.fullName}</h4>
+                    <p className="text-sm text-slate-500 break-all">{detailUser.email}</p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold ${
                         detailUser.isActive
@@ -797,7 +784,7 @@ export default function AdminUsersTab({ embedded = false }) {
                   </div>
                   <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Chuyên ngành</p>
-                    <p className="text-sm font-semibold text-slate-700">{detailUser.major || 'Chưa cập nhật'}</p>
+                    <p className="text-sm font-semibold text-slate-700 break-words">{detailUser.major || 'Chưa cập nhật'}</p>
                   </div>
                   <div className="col-span-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Giới thiệu bản thân</p>

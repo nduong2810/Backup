@@ -249,7 +249,7 @@ export default function AdminProfile() {
                 Giới thiệu
               </h3>
               {form.bio ? (
-                <p className="text-[15px] text-slate-600 whitespace-pre-wrap break-words leading-relaxed">
+                <p className="text-[15px] text-slate-600 whitespace-pre-wrap leading-relaxed text-justify break-words">
                   {form.bio}
                 </p>
               ) : (

@@ -87,7 +87,7 @@ class AdminPostStatusController {
         updateQuery,
         { new: true },
       )
-        .populate('author', '_id fullName email avatar')
+        .populate('author', '_id fullName email avatar role')
         .lean();
 
       await Promise.all([

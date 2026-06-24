@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { updatePostApi } from '../../services/postService';
 import { useToast } from '../../context/ToastContext';
+import TagSelector from '../common/TagSelector';
 
 export default function EditPostModal({ isOpen, onClose, post, onUpdateSuccess }) {
   const { toast } = useToast();
   const [postType, setPostType] = useState('question');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [tagsInput, setTagsInput] = useState('');
+  const [selectedTags, setSelectedTags] = useState([]);
   const [images, setImages] = useState([]);
   const [videos, setVideos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -19,7 +20,7 @@ export default function EditPostModal({ isOpen, onClose, post, onUpdateSuccess }
       setPostType(post.postType || 'question');
       setTitle(post.title || '');
       setContent(post.content || '');
-      setTagsInput(post.tags ? post.tags.join(', ') : '');
+      setSelectedTags(post.tags || []);
       
       // Initialize media state
       const initialImages = (post.images || []).map((url, idx) => ({
@@ -53,6 +54,11 @@ export default function EditPostModal({ isOpen, onClose, post, onUpdateSuccess }
     setMediaError('');
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    if (images.length + files.length > 10) {
+      setMediaError('Số lượng hình ảnh đính kèm vượt quá giới hạn cho phép (Tối đa: 10 hình ảnh).');
+      return;
+    }
 
     // Check size limit
     const currentNewFilesSize = getNewFilesSize(images, videos);
@@ -91,6 +97,11 @@ export default function EditPostModal({ isOpen, onClose, post, onUpdateSuccess }
     setMediaError('');
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    if (videos.length + files.length > 5) {
+      setMediaError('Số lượng video đính kèm vượt quá giới hạn cho phép (Tối đa: 5 video).');
+      return;
+    }
 
     // Check size limit
     const currentNewFilesSize = getNewFilesSize(images, videos);
@@ -139,27 +150,26 @@ export default function EditPostModal({ isOpen, onClose, post, onUpdateSuccess }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (title.trim().length < 10) {
+    const cleanTitle = title.trim();
+    const cleanContent = content.trim();
+
+    if (cleanTitle.length < 10 || cleanTitle.length > 200) {
       toast.error('Tiêu đề bài viết phải có độ dài từ 10 đến 200 ký tự.');
       return;
     }
-    if (content.trim().length < 20) {
+    if (cleanContent.length < 20 || cleanContent.length > 10000) {
       toast.error('Nội dung chi tiết bài viết phải có độ dài từ 20 đến 10000 ký tự.');
       return;
     }
 
     setSubmitting(true);
-    const tags = tagsInput
-      .split(',')
-      .map((t) => t.trim().toLowerCase())
-      .filter(Boolean);
 
     try {
       const formData = new FormData();
-      formData.append('title', title);
-      formData.append('content', content);
+      formData.append('title', cleanTitle);
+      formData.append('content', cleanContent);
       formData.append('postType', postType);
-      formData.append('tags', JSON.stringify(tags));
+      formData.append('tags', JSON.stringify(selectedTags));
 
       // Append images
       images.forEach((img) => {
@@ -302,13 +312,10 @@ export default function EditPostModal({ isOpen, onClose, post, onUpdateSuccess }
             <label className="block text-sm font-semibold text-on-surface dark:text-slate-350 mb-1.5">
               Từ khóa (Tags)
             </label>
-            <input
-              type="text"
-              placeholder="Ví dụ: javascript, reactjs, nodejs (phân cách bằng dấu phẩy)"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
+            <TagSelector
+              selectedTags={selectedTags}
+              onChange={setSelectedTags}
               disabled={submitting}
-              className="w-full rounded-xl border border-outline-variant bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed"
             />
           </div>
 

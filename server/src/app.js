@@ -18,6 +18,9 @@ app.set('trust proxy', 1)
 // --- Global Middlewares ---
 app.use((req, res, next) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   next();
 });
 app.use(cors(corsOptions))         // CORS

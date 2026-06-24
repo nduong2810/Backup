@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import AppPagination from '../../components/common/AppPagination';
 import { getAdminAllDonations } from '../../services/userService';
 
 const PAYMENT_METHOD_OPTIONS = [
@@ -528,15 +529,15 @@ export default function AdminAllDonationsTab({ embedded = false }) {
                     </div>
                   </td>
                   <td className="px-5 py-5 align-top overflow-hidden" data-col="donor">
-                    <div className="w-max">
+                    <div className="w-full min-w-0 break-words">
                       <div className="text-sm font-semibold leading-6 text-slate-800" title={getUserName(donation, 'donor')}>{getUserName(donation, 'donor')}</div>
-                      <div className="text-xs leading-5 text-slate-400" title={getUserEmail(donation, 'donor')}>{getUserEmail(donation, 'donor')}</div>
+                      <div className="text-xs leading-5 text-slate-400 truncate" title={getUserEmail(donation, 'donor')}>{getUserEmail(donation, 'donor')}</div>
                     </div>
                   </td>
                   <td className="px-5 py-5 align-top overflow-hidden" data-col="recipient">
-                    <div className="w-max">
+                    <div className="w-full min-w-0 break-words">
                       <div className="text-sm font-semibold leading-6 text-slate-800" title={getUserName(donation, 'author')}>{getUserName(donation, 'author')}</div>
-                      <div className="text-xs leading-5 text-slate-400" title={getUserEmail(donation, 'author')}>{getUserEmail(donation, 'author')}</div>
+                      <div className="text-xs leading-5 text-slate-400 truncate" title={getUserEmail(donation, 'author')}>{getUserEmail(donation, 'author')}</div>
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-5 py-5 text-right align-top text-sm font-extrabold leading-6 text-slate-900 overflow-hidden" data-col="amount">
@@ -560,7 +561,7 @@ export default function AdminAllDonationsTab({ embedded = false }) {
                     <div className="w-max">{formatDateTime(donation.createdAt)}</div>
                   </td>
                   <td className="px-5 py-5 align-top overflow-hidden" data-col="post">
-                    <div className="w-max">
+                    <div className="w-full min-w-0 break-words">
                       {donation.post?._id ? (
                         <Link to={`/posts/${donation.post._id}`} className="line-clamp-2 text-sm font-semibold leading-6 text-primary hover:underline">
                           {donation.post?.title || donation.postSnapshot?.title || 'Bài viết'}
@@ -576,28 +577,17 @@ export default function AdminAllDonationsTab({ embedded = false }) {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-semibold text-slate-500">
+        <div className="border-t border-slate-100 bg-slate-50/50 px-5 py-4">
+          <AppPagination
+            page={pagination.page}
+            totalPages={pagination.totalPages || 1}
+            onPageChange={goToPage}
+            limit={pagination.limit}
+            limitOptions={[10, 20, 50]}
+            onLimitChange={(newLimit) => setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }))}
+          />
+          <div className="mt-2 text-center sm:text-left text-xs font-semibold text-slate-500">
             Tổng <span className="text-slate-900">{pagination.total || 0}</span> giao dịch
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={pagination.page <= 1 || loading}
-              onClick={() => goToPage(pagination.page - 1)}
-              className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Trước
-            </button>
-            <span className="text-sm font-bold text-slate-700">{pagination.page || 1} / {pagination.totalPages || 1}</span>
-            <button
-              type="button"
-              disabled={pagination.page >= pagination.totalPages || loading}
-              onClick={() => goToPage(pagination.page + 1)}
-              className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Sau
-            </button>
           </div>
         </div>
       </div>

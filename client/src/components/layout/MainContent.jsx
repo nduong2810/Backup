@@ -8,24 +8,9 @@ import { updatePostVoteInList, updatePostReactionInList } from '../../store/slic
 import { useToast } from '../../context/ToastContext';
 import { updateUser } from '../../store/slices/loginSlice';
 import FreeVotesIntroModal from '../post/FreeVotesIntroModal';
+import AppPagination from '../common/AppPagination';
 
 const PER_PAGE_OPTIONS = [15, 30, 50];
-
-const buildPaginationItems = (current, total) => {
-    if (total <= 1) return [];
-    if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
-
-    const items = [1];
-    const start = Math.max(2, current - 1);
-    const end = Math.min(total - 1, current + 1);
-
-    if (start > 2) items.push('ellipsis-start');
-    for (let page = start; page <= end; page += 1) items.push(page);
-    if (end < total - 1) items.push('ellipsis-end');
-
-    items.push(total);
-    return items;
-};
 
 const getPlainText = (value) => {
     if (!value) return '';
@@ -73,11 +58,22 @@ const QuestionCard = ({
         <article className="flex flex-col sm:flex-row gap-stack-md sm:gap-6 py-stack-md border-b border-outline-variant hover:bg-surface-container-low transition-colors px-3">
             <div className="flex sm:flex-col items-center justify-center gap-2 sm:w-28 flex-shrink-0 text-center">
                 {isAdvice ? (
-                    <div className={`w-full text-center py-1 px-2 rounded-lg font-body-sm text-body-sm transition-colors duration-200 ${answerCount > 0 ? 'text-[#2e7d32] border border-[#2e7d32] bg-[#e8f5e9]' : 'text-secondary border border-outline-variant bg-surface-container-lowest'}`}>
+                    <span className="inline-flex items-center justify-center gap-1 text-[11px] uppercase font-bold tracking-wider w-[108px] sm:w-full py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                        <span className="material-symbols-outlined text-[13px] leading-none">tips_and_updates</span>
+                        Lời khuyên
+                    </span>
+                ) : (
+                    <span className="inline-flex items-center justify-center gap-1 text-[11px] uppercase font-bold tracking-wider w-[108px] sm:w-full py-1 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0">
+                        <span className="material-symbols-outlined text-[13px] leading-none">help_center</span>
+                        Câu hỏi
+                    </span>
+                )}
+                {isAdvice ? (
+                    <div className={`w-[108px] sm:w-full text-center py-1 px-2 rounded-lg font-body-sm text-body-sm transition-colors duration-200 ${answerCount > 0 ? 'text-[#2e7d32] border border-[#2e7d32] bg-[#e8f5e9]' : 'text-secondary border border-outline-variant bg-surface-container-lowest'}`}>
                         <span className="font-semibold">{answerCount}</span> bình luận
                     </div>
                 ) : (
-                    <div className={`w-full text-center py-1 px-2 rounded-lg font-body-sm text-body-sm transition-colors duration-200 ${answerCount > 0 ? 'text-[#0066cc] border border-[#0066cc] bg-[#e3f2fd]' : 'text-secondary border border-outline-variant bg-surface-container-lowest'}`}>
+                    <div className={`w-[108px] sm:w-full text-center py-1 px-2 rounded-lg font-body-sm text-body-sm transition-colors duration-200 ${answerCount > 0 ? 'text-[#0066cc] border border-[#0066cc] bg-[#e3f2fd]' : 'text-secondary border border-outline-variant bg-surface-container-lowest'}`}>
                         <span className="font-semibold">{answerCount}</span> câu trả lời
                     </div>
                 )}
@@ -88,19 +84,8 @@ const QuestionCard = ({
 
             <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-5 pr-1">
-                    <h3 className="font-headline-md text-headline-md mb-1 flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                        {isAdvice ? (
-                            <span className="inline-flex items-center gap-0.5 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                <span className="material-symbols-outlined text-[11px] leading-none">tips_and_updates</span>
-                                Lời khuyên
-                            </span>
-                        ) : (
-                            <span className="inline-flex items-center gap-0.5 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                                <span className="material-symbols-outlined text-[11px] leading-none">help_center</span>
-                                Câu hỏi
-                            </span>
-                        )}
-                        <Link className="text-primary-container hover:text-primary-container/80 transition-colors break-words" to={`/posts/${question._id}`}>
+                    <h3 className="font-headline-md text-headline-md mb-1 flex-1 min-w-0">
+                        <Link className="block w-full max-w-full text-primary-container hover:text-primary-container/80 transition-colors break-words align-middle" to={`/posts/${question._id}`}>
                             {question.title}
                         </Link>
                     </h3>
@@ -196,6 +181,12 @@ const QuestionCard = ({
                                 {question.author?.fullName || question.author?.username || 'Ẩn danh'}
                             </span>
                         </Link>
+                        {question.author?.role === 'admin' && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-900 select-none">
+                                <span className="material-symbols-outlined text-[10px] leading-none">shield</span>
+                                Quản trị viên
+                            </span>
+                        )}
                         <span className="font-body-sm text-body-sm text-secondary">
                             đăng {new Date(question.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
                         </span>
@@ -224,7 +215,7 @@ const TrendingCard = ({ post, rank, onTagClick }) => {
             </div>
             <div className="flex flex-col gap-2 flex-1">
                 <h3 className="font-headline-md text-headline-md leading-snug line-clamp-2 min-h-[3.25rem]">
-                    <Link className="text-primary-container hover:text-primary-container/80 transition-colors" to={`/posts/${post._id}`}>
+                    <Link className="block w-full max-w-full break-words text-primary-container hover:text-primary-container/80 transition-colors" to={`/posts/${post._id}`}>
                         {post.title}
                     </Link>
                 </h3>
@@ -267,7 +258,7 @@ const TopUpvotedCard = ({ post, rank, onTagClick }) => {
             </div>
             <div className="flex flex-col gap-2 flex-1">
                 <h3 className="font-headline-md text-headline-md leading-snug line-clamp-2 min-h-[3.25rem]">
-                    <Link className="text-primary-container hover:text-primary-container/80 transition-colors" to={`/posts/${post._id}`}>{post.title}</Link>
+                    <Link className="block w-full max-w-full break-words text-primary-container hover:text-primary-container/80 transition-colors" to={`/posts/${post._id}`}>{post.title}</Link>
                 </h3>
                 <div className="flex flex-wrap gap-1 min-h-[1.75rem]">
                     {tags.map((tag) => (
@@ -512,7 +503,6 @@ const MainContent = () => {
 
     const currentPage = pagination.page || 1;
     const totalPages = pagination.totalPages || 1;
-    const paginationItems = buildPaginationItems(currentPage, totalPages);
     const hasAppliedSearchOrFilters = useMemo(() => {
         const keyword = searchParams.get('keyword') || searchParams.get('q');
         if (keyword && keyword.trim().length > 0) return true;
@@ -676,42 +666,15 @@ const MainContent = () => {
                 )}
             </div>
 
-            {!loading && !error && totalPages > 1 && (
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-t border-outline-variant pt-4">
-                    <div className="flex items-center gap-1 flex-wrap">
-                        {paginationItems.map((item) => {
-                            if (typeof item !== 'number') return <span key={item} className="px-2 text-secondary">...</span>;
-                            const isActive = item === currentPage;
-                            return (
-                                <button
-                                    key={item}
-                                    type="button"
-                                    onClick={() => handleApplyFilters?.({ page: item })}
-                                    className={`min-w-[36px] px-3 py-1.5 rounded-DEFAULT font-body-sm text-body-sm border transition-colors ${isActive ? 'bg-primary-container text-on-primary border-primary-container' : 'border-outline-variant text-secondary hover:bg-surface-container-low'}`}
-                                    aria-current={isActive ? 'page' : undefined}
-                                >
-                                    {item}
-                                </button>
-                            );
-                        })}
-                        <button type="button" onClick={() => handleApplyFilters?.({ page: Math.min(currentPage + 1, totalPages) })} className="px-3 py-1.5 rounded-DEFAULT font-body-sm text-body-sm border border-outline-variant text-secondary hover:bg-surface-container-low" disabled={currentPage >= totalPages}>
-                            Next
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-secondary font-body-sm text-body-sm">
-                        <span>per page</span>
-                        <div className="flex items-center gap-1">
-                            {PER_PAGE_OPTIONS.map((size) => {
-                                const isActive = Number(filters?.limit) === size;
-                                return (
-                                    <button key={size} type="button" onClick={() => handleApplyFilters?.({ limit: size, page: 1 })} className={`min-w-[36px] px-3 py-1.5 rounded-DEFAULT border transition-colors ${isActive ? 'bg-primary-container text-on-primary border-primary-container' : 'border-outline-variant text-secondary hover:bg-surface-container-low'}`}>
-                                        {size}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
+            {!loading && !error && questionsList && questionsList.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-outline-variant">
+                    <AppPagination
+                        page={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={(newPage) => handleApplyFilters?.({ page: newPage })}
+                        limit={Number(filters?.limit || 15)}
+                        onLimitChange={(newLimit) => handleApplyFilters?.({ limit: newLimit, page: 1 })}
+                    />
                 </div>
             )}
 

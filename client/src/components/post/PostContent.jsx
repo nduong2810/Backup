@@ -159,8 +159,8 @@ export default function PostContent({
 
   return (
     <article className="flex-1 min-w-0 flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="-mt-1 font-headline-xl text-headline-xl text-on-surface leading-tight break-words flex-1">
+      <div className="flex items-start justify-between gap-3 w-full min-w-0">
+        <h1 className="-mt-1 font-headline-xl text-headline-xl text-on-surface leading-tight break-words flex-1 min-w-0 w-full max-w-full">
           {post.title}
         </h1>
         <div className="flex items-center gap-2 mt-1 shrink-0">
@@ -270,6 +270,12 @@ export default function PostContent({
             />
             <span className="font-medium text-primary-container hover:underline">{post.author?.fullName}</span>
           </Link>
+          {post.author?.role === 'admin' && (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-900 select-none">
+              <span className="material-symbols-outlined text-[10px] leading-none">shield</span>
+              Quản trị viên
+            </span>
+          )}
           {post.author?.reputation !== undefined && (
             <ReputationBadge reputation={post.author.reputation} size="sm" />
           )}
@@ -363,7 +369,7 @@ export default function PostContent({
         </div>
       )}
 
-      <div className="text-on-surface font-body-md text-body-md leading-relaxed whitespace-pre-wrap">
+      <div className="text-on-surface font-body-md text-body-md leading-relaxed whitespace-pre-wrap break-words w-full max-w-full">
         {post.content}
       </div>
 

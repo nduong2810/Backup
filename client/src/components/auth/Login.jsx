@@ -36,6 +36,13 @@ export default function Login() {
   }, [dispatch]);
 
   useEffect(() => {
+    const logoutMsg = sessionStorage.getItem('logout_success_message');
+    if (logoutMsg) {
+      toast.success(logoutMsg);
+      sessionStorage.removeItem('logout_success_message');
+    }
+    sessionStorage.removeItem('is_logging_out');
+
     const lockedMsg = sessionStorage.getItem('locked_message');
     if (lockedMsg) {
       toast.error(lockedMsg, 5000);

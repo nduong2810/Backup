@@ -270,7 +270,7 @@ export default function Profile() {
                 Giới thiệu
               </h3>
               {form.bio ? (
-                <p className="text-sm text-slate-600 whitespace-pre-wrap break-words leading-relaxed">{form.bio}</p>
+                <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed text-justify break-words">{form.bio}</p>
               ) : (
                 <div className="text-xs text-slate-450 leading-relaxed py-3 text-center italic">
                   Chưa có giới thiệu. <button onClick={() => setActiveTab('edit')} className="text-primary font-bold hover:underline">Thêm</button>
@@ -287,11 +287,11 @@ export default function Profile() {
                 <div className="space-y-3 text-sm">
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
                     <p className="text-xs font-bold uppercase text-slate-400">Ngân hàng</p>
-                    <p className="mt-1 font-bold text-slate-900">{form.bankName}</p>
+                    <p className="mt-1 font-bold text-slate-900 break-words">{form.bankName}</p>
                   </div>
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
                     <p className="text-xs font-bold uppercase text-slate-400">Số tài khoản</p>
-                    <p className="mt-1 font-mono text-lg font-black text-slate-900">{form.bankAccountNumber}</p>
+                    <p className="mt-1 font-mono text-lg font-black text-slate-900 break-all">{form.bankAccountNumber}</p>
                   </div>
                   <p className="text-xs leading-5 text-slate-500">Thông tin này sẽ hiển thị cho người muốn ủng hộ bạn bằng chuyển khoản thủ công.</p>
                 </div>
@@ -333,8 +333,8 @@ export default function Profile() {
                     <div key={post._id} className="flex items-start gap-2 text-sm">
                       <span className="material-symbols-outlined text-[16px] text-slate-450 mt-0.5 shrink-0">{post.postType === 'question' ? 'help' : 'rate_review'}</span>
                       <div className="flex-1 min-w-0 leading-snug">
-                        <span className="text-slate-450 text-xs mr-2 font-mono">[{new Date(post.createdAt).toLocaleDateString('vi-VN')}]</span>
-                        <Link to={`/posts/${post._id}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline break-words break-all">{post.title}</Link>
+                        <span className="text-slate-400 text-xs mr-2 font-mono">[{new Date(post.createdAt).toLocaleDateString('vi-VN')}]</span>
+                        <Link to={`/posts/${post._id}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline break-words block w-full max-w-full mt-0.5">{post.title}</Link>
                       </div>
                     </div>
                   ))}

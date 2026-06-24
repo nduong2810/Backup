@@ -39,16 +39,23 @@ apiClient.interceptors.response.use(
     const isUnauthorized = error.response && error.response.status === 401;
 
     if (isUnauthorized || isLocked) {
+      if (window.location.pathname.startsWith('/auth/')) {
+        return Promise.reject(error);
+      }
       const url = error.config?.url || '';
-      // Tránh tự động logout trên các API thuộc luồng xác thực/đăng nhập/quên mật khẩu
+      // Tránh tự động logout trên các API thuộc luồng xác thực/đăng nhập/quên mật khẩu/đăng xuất
       if (
         !url.includes('/auth/login') &&
         !url.includes('/auth/register') &&
         !url.includes('/auth/verify-otp') &&
         !url.includes('/auth/verify-reset-otp') &&
         !url.includes('/auth/reset-password') &&
-        !url.includes('/auth/forgot-password')
+        !url.includes('/auth/forgot-password') &&
+        !url.includes('/auth/logout')
       ) {
+        if (sessionStorage.getItem('is_logging_out') === 'true') {
+          return Promise.reject(error);
+        }
         try {
           // Sử dụng dynamic import để tránh lỗi import vòng tròn (Circular Dependency)
           const { default: store } = await import('../store');
