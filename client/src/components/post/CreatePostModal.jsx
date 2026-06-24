@@ -526,12 +526,12 @@ export default function CreatePostModal({ isOpen, onClose }) {
           <p className="text-xs text-secondary">
             Nháp tự lưu khi bạn nhập tiêu đề, nội dung hoặc tag.
           </p>
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 shrink-0">
             <button
               type="button"
               onClick={() => saveDraft({ showToast: true })}
               disabled={submitting}
-              className="px-4 py-2 text-sm font-semibold rounded-xl border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors disabled:cursor-not-allowed"
+              className="whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-xl border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 transition-colors disabled:cursor-not-allowed"
             >
               Lưu nháp
             </button>
@@ -539,7 +539,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
               type="button"
               onClick={handleRequestClose}
               disabled={submitting}
-              className="px-4 py-2 text-sm font-semibold rounded-xl border border-outline-variant hover:bg-surface-container-low transition-colors disabled:cursor-not-allowed"
+              className="whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-xl border border-outline-variant hover:bg-surface-container-low transition-colors disabled:cursor-not-allowed"
             >
               Hủy bỏ
             </button>
@@ -547,7 +547,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              className="px-5 py-2 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-primary/95 disabled:cursor-not-allowed disabled:opacity-60 flex items-center gap-1.5"
+              className="whitespace-nowrap px-5 py-2 text-sm font-semibold rounded-xl bg-primary text-white hover:bg-primary/95 disabled:cursor-not-allowed disabled:opacity-60 flex items-center gap-1.5"
             >
               {submitting ? (
                 <>
