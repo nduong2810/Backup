@@ -17,7 +17,7 @@ class CommentRepository {
     async findById(commentId) {
         return await Comment.findById(commentId)
             .populate('author', 'fullName avatar major email reputation')
-            .populate('post', 'title author status');
+            .populate('post', 'title author status postType');
     }
 
     async create(data) {

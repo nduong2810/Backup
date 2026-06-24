@@ -1,4 +1,4 @@
-﻿import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import AppCard from '../ui/AppCard';
 import AppButton from '../ui/AppButton';
@@ -48,9 +48,23 @@ export default function ForgotPassword() {
           required
           disabled={loading}
         />
-        <AppButton type="submit" fullWidth disabled={loading}>
-          {loading ? 'Đang gửi OTP...' : 'Gửi OTP'}
-        </AppButton>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex-1">
+            <AppButton
+              variant="secondary"
+              onClick={() => navigate('/auth/login')}
+              disabled={loading}
+              fullWidth
+            >
+              Quay lại đăng nhập
+            </AppButton>
+          </div>
+          <div className="flex-1">
+            <AppButton type="submit" fullWidth disabled={loading}>
+              {loading ? 'Đang gửi OTP...' : 'Gửi OTP'}
+            </AppButton>
+          </div>
+        </div>
       </form>
     </AppCard>
   );

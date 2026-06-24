@@ -85,13 +85,16 @@ export default function StatsReputation() {
             <span className="material-symbols-outlined text-[15px] text-slate-400 hover:text-slate-600 transition-colors">info</span>
             
             {/* Tooltip Card */}
-            <div className="invisible group-hover:visible absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xl z-50 text-xs font-normal text-slate-600 flex flex-col gap-2 transition-all opacity-0 group-hover:opacity-100 duration-200 pointer-events-none">
+            <div className="invisible group-hover:visible absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-80 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xl z-50 text-xs font-normal text-slate-600 flex flex-col gap-2 transition-all opacity-0 group-hover:opacity-100 duration-200 pointer-events-none">
               <p className="font-bold text-slate-800 mb-1 border-b border-slate-100 pb-1">
                 Quy tắc điểm uy tín (Reputation)
               </p>
               
               <div className="grid grid-cols-2 gap-y-1 text-[11px]">
-                <span className="font-medium text-emerald-600">Upvote nhận:</span>
+                <span className="font-medium text-emerald-600">Upvote câu hỏi:</span>
+                <span className="text-right font-bold text-emerald-600">+10</span>
+
+                <span className="font-medium text-emerald-600">Upvote câu trả lời:</span>
                 <span className="text-right font-bold text-emerald-600">+10</span>
                 
                 <span className="font-medium text-emerald-600">Ủng hộ (Donate):</span>
@@ -99,17 +102,29 @@ export default function StatsReputation() {
                 
                 <span className="font-medium text-emerald-600">Báo cáo đúng:</span>
                 <span className="text-right font-bold text-emerald-600">+2</span>
+
+                <span className="font-medium text-emerald-600">Đạt câu TL tốt nhất:</span>
+                <span className="text-right font-bold text-emerald-600">+15</span>
+
+                <span className="font-medium text-emerald-600">Chấp nhận câu TL:</span>
+                <span className="text-right font-bold text-emerald-600">+2</span>
                 
-                <span className="font-medium text-rose-600">Bị downvote:</span>
+                <span className="font-medium text-rose-600">Câu hỏi bị downvote:</span>
+                <span className="text-right font-bold text-rose-600">-2</span>
+
+                <span className="font-medium text-rose-600">Câu TL bị downvote:</span>
                 <span className="text-right font-bold text-rose-600">-2</span>
                 
-                <span className="font-medium text-rose-600">Gửi downvote:</span>
+                <span className="font-medium text-rose-600">Gửi downvote câu hỏi:</span>
+                <span className="text-right font-bold text-rose-600">-1</span>
+
+                <span className="font-medium text-rose-600">Gửi downvote câu TL:</span>
                 <span className="text-right font-bold text-rose-600">-1</span>
                 
-                <span className="font-medium text-rose-600">Bài bị xóa:</span>
+                <span className="font-medium text-rose-600">Bài viết bị xóa (vi phạm):</span>
                 <span className="text-right font-bold text-rose-600">-10</span>
                 
-                <span className="font-medium text-rose-600">Bình luận bị xóa:</span>
+                <span className="font-medium text-rose-600">Bình luận bị xóa (vi phạm):</span>
                 <span className="text-right font-bold text-rose-600">-5</span>
               </div>
               
@@ -117,6 +132,7 @@ export default function StatsReputation() {
                 <p>• Dưới 15 rep: Chỉ được dùng 5 lượt Free Vote/tuần.</p>
                 <p>• Từ 15 rep: Mở khóa Upvote & Báo cáo cờ vi phạm.</p>
                 <p>• Từ 100 rep: Mở khóa Downvote.</p>
+                <p className="text-slate-500 font-medium mt-1 border-t border-slate-100 pt-1">• Uy tín chỉ áp dụng cho bài viết Hỏi đáp (Câu hỏi/Câu trả lời). Bày tỏ cảm xúc (Like/Dislike) bài viết hoặc bình luận ở mục Lời khuyên/Chia sẻ không ảnh hưởng uy tín.</p>
               </div>
             </div>
           </div>
@@ -145,7 +161,7 @@ export default function StatsReputation() {
               const rep = change.reputationEarned ?? 0;
               const isPositive = rep > 0;
               const isNeutral = rep === 0;
-              const isPostEvent = change.type?.startsWith('post_');
+              const isPostEvent = change.type?.startsWith('post_') || change.type?.startsWith('comment_') || change.type?.startsWith('best_answer_');
               const isLast = index === reputationChanges.length - 1;
 
               let displayMsg = '';
@@ -161,6 +177,26 @@ export default function StatsReputation() {
                 displayMsg = 'Bị trừ điểm gửi downvote:';
               } else if (change.type === 'downvote_given_removed') {
                 displayMsg = 'Hoàn điểm gửi downvote:';
+              } else if (change.type === 'comment_upvoted') {
+                displayMsg = 'Nhận upvote cho câu trả lời:';
+              } else if (change.type === 'comment_upvote_removed') {
+                displayMsg = 'Huỷ upvote cho câu trả lời:';
+              } else if (change.type === 'comment_downvoted') {
+                displayMsg = 'Nhận downvote cho câu trả lời:';
+              } else if (change.type === 'comment_downvote_removed') {
+                displayMsg = 'Huỷ downvote cho câu trả lời:';
+              } else if (change.type === 'comment_downvote_given') {
+                displayMsg = 'Bị trừ điểm gửi downvote câu trả lời:';
+              } else if (change.type === 'comment_downvote_given_removed') {
+                displayMsg = 'Hoàn điểm gửi downvote câu trả lời:';
+              } else if (change.type === 'best_answer_accepted') {
+                displayMsg = 'Câu trả lời được chọn tốt nhất:';
+              } else if (change.type === 'best_answer_accepted_removed') {
+                displayMsg = 'Huỷ câu trả lời tốt nhất:';
+              } else if (change.type === 'best_answer_bonus') {
+                displayMsg = 'Thưởng chọn câu trả lời tốt nhất:';
+              } else if (change.type === 'best_answer_bonus_removed') {
+                displayMsg = 'Huỷ thưởng câu trả lời tốt nhất:';
               } else if (change.type === 'donate_received') {
                 displayMsg = 'Giao dịch:';
               } else {
@@ -195,11 +231,15 @@ export default function StatsReputation() {
                       <Link
                         to={`/posts/${postId}`}
                         className="font-semibold text-slate-700 hover:text-blue-600 hover:underline transition-colors block truncate mt-0.5"
+                        title={change.title}
                       >
                         {change.title}
                       </Link>
                     ) : (
-                      <span className="font-semibold text-slate-700 block truncate mt-0.5">
+                      <span 
+                        className="font-semibold text-slate-700 block truncate mt-0.5"
+                        title={change.title}
+                      >
                         {change.title}
                       </span>
                     )}

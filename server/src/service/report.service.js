@@ -6,6 +6,8 @@ import Comment from '../model/comment.model.js';
 import ReportTicket from '../model/reportTicket.model.js';
 import reputationService from './reputation.service.js';
 import SystemSetting from '../model/systemSetting.model.js';
+import notificationService from './notification.service.js';
+import User from '../model/user.model.js';
 
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 const MIN_REPUTATION_TO_REPORT = 15;
@@ -248,7 +250,25 @@ class ReportService {
           // Trừ reputation tác giả khi bài bị xóa do report
           const deletedPost = await postRepository.findById(postId);
           const authorId = deletedPost?.author?._id?.toString() || deletedPost?.author?.toString();
-          if (authorId) await reputationService.award(authorId, 'post_deleted_by_report', postId);
+          if (authorId) {
+            await reputationService.award(authorId, 'post_deleted_by_report', postId);
+            
+            // Gửi thông báo tự động cho chủ bài viết
+            try {
+              const systemAdmin = await User.findOne({ role: 'admin' });
+              if (systemAdmin && String(systemAdmin._id) !== String(authorId)) {
+                await notificationService.createAdminPostActionNotification({
+                  recipientId: authorId,
+                  adminId: systemAdmin._id,
+                  post: deletedPost,
+                  status: 'deleted',
+                  reason: `Bài viết tự động bị xóa do nhận đủ ${autoDeleteThreshold} báo cáo vi phạm liên quan đến "${FLAG_LABELS[flagType] || flagType}".`,
+                });
+              }
+            } catch (notifyErr) {
+              console.error('[ReportService] Auto-delete notification failed:', notifyErr.message || notifyErr);
+            }
+          }
         }
       }
 
@@ -389,7 +409,8 @@ class ReportService {
 
         await reportRepository.bulkMarkActionTakenByComment(
           commentId,
-          note || `Admin xử lý vi phạm bình luận.`
+          note || `Đã xử lý vi phạm (Đồng bộ theo admin).`,
+          ticketId
         );
       } else {
         const postId = ticket.post?._id || ticket.post;
@@ -406,6 +427,21 @@ class ReportService {
               'post_deleted_by_report',
               postId
             );
+
+            // Gửi thông báo cho chủ bài viết khi admin duyệt báo cáo xóa bài viết
+            try {
+              if (String(adminUserId) !== String(authorId)) {
+                await notificationService.createAdminPostActionNotification({
+                  recipientId: authorId,
+                  adminId: adminUserId,
+                  post: postObj,
+                  status: 'deleted',
+                  reason: note || 'Nội dung vi phạm quy định cộng đồng.',
+                });
+              }
+            } catch (notifyErr) {
+              console.error('[ReportService] Admin report delete notify failed:', notifyErr.message || notifyErr);
+            }
           }
 
           // Tự động giải quyết các cờ active khác của bài viết này
@@ -423,7 +459,8 @@ class ReportService {
 
           await reportRepository.bulkMarkActionTakenByPost(
             postId,
-            note || `Admin xử lý vi phạm bài viết.`
+            note || `Đã xử lý vi phạm (Đồng bộ theo admin).`,
+            ticketId
           );
         }
       }
@@ -445,7 +482,7 @@ class ReportService {
       $push: {
         history: {
           status: nextStatus,
-          note: note || `Admin cập nhật trạng thái: ${STATUS_LABELS[nextStatus]}.`,
+          note: note || STATUS_LABELS[nextStatus] || nextStatus,
           actorRole: 'admin',
           actor: adminUserId,
         },

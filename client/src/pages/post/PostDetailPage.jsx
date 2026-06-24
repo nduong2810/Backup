@@ -10,6 +10,7 @@ import RelatedPosts from '../../components/post/RelatedPosts';
 import ReportCommentModal from '../../components/post/ReportCommentModal';
 import ReportPostModal from '../../components/post/ReportPostModal';
 import FreeVotesIntroModal from '../../components/post/FreeVotesIntroModal';
+import PostFlagSummaryModal from '../../components/post/PostFlagSummaryModal';
 import {
   clearReportCreateMessages,
   createReportTicketThunk,
@@ -23,36 +24,7 @@ import {
 import { fetchProfileThunk } from '../../store/slices/profileSlice';
 import { useToast } from '../../context/ToastContext';
 
-const flagOptions = [
-  { value: 'spam', label: 'Xóa vì spam quảng cáo hàng loạt' },
-  { value: 'rude_abusive', label: 'Xóa vì công kích/xúc phạm' },
-  { value: 'off_topic', label: 'Không đúng chủ đề cộng đồng' },
-  { value: 'needs_detail', label: 'Cần thêm chi tiết hoặc làm rõ' },
-  { value: 'needs_focus', label: 'Cần tập trung vào một vấn đề cụ thể' },
-  { value: 'opinion_based', label: 'Dựa trên quan điểm cá nhân' },
-  { value: 'duplicate', label: 'Trùng bài viết/câu hỏi đã có' },
-  { value: 'very_low_quality', label: 'Chất lượng rất thấp, khó cứu vãn' },
-  { value: 'moderator_attention', label: 'Cần moderator xem thủ công' },
-];
 
-const flagTypeLabelMap = {
-  spam: 'Spam quảng cáo hàng loạt',
-  rude_abusive: 'Công kích/Xúc phạm',
-  off_topic: 'Lạc chủ đề cộng đồng',
-  needs_detail: 'Cần thêm chi tiết/làm rõ',
-  needs_focus: 'Cần tập trung vào một vấn đề cụ thể',
-  opinion_based: 'Dựa trên quan điểm cá nhân',
-  duplicate: 'Trùng bài viết/câu hỏi đã có',
-  very_low_quality: 'Chất lượng rất thấp, khó cứu vãn',
-  moderator_attention: 'Cần moderator xem thủ công',
-};
-
-const postStatusLabelMap = {
-  active: 'Đang hiển thị',
-  closed: 'Đã khóa',
-  hidden: 'Đang bị ẩn',
-  deleted: 'Đã xóa',
-};
 
 const normalizeId = (value) => {
   if (!value) return '';
@@ -86,7 +58,7 @@ export default function PostDetailPage() {
     loadingOwnerSummary,
     ownerSummaryErrorMessage,
   } = useSelector((state) => state.reports);
-  const [showOwnerSummary, setShowOwnerSummary] = useState(false);
+  const [flagSummaryModalOpen, setFlagSummaryModalOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState('');
   const [reportCommentModalOpen, setReportCommentModalOpen] = useState(false);
@@ -315,7 +287,7 @@ export default function PostDetailPage() {
               onVote={handleVote} 
               loading={voteLoading} 
               disabled={isPostLocked}
-              userReputation={userReputation}
+              userReputation={isAuthenticated ? userReputation : undefined}
               weeklyFreeVotesUsed={user?.reputationInfo?.weeklyFreeVotesUsed || 0}
               weeklyFreeVotesLimit={user?.reputationInfo?.weeklyFreeVotesLimit || 5}
             />
@@ -333,10 +305,15 @@ export default function PostDetailPage() {
           reactionLoading={reactionLoading}
           onPostReaction={requireLoginOrReact}
           currentUserId={user?._id || user?.id || ''}
+          currentUserRole={user?.role || ''}
           onPostUpdated={refreshPost}
           isAuthenticated={isAuthenticated}
           userReputation={userReputation}
           onReportPost={() => setReportPostModalOpen(true)}
+          onShowFlagSummary={() => {
+            setFlagSummaryModalOpen(true);
+            dispatch(fetchPostFlagSummaryThunk(id));
+          }}
           isAdmin={user?.role === 'admin'}
         />
       </div>
@@ -354,9 +331,9 @@ export default function PostDetailPage() {
           <span className="text-lg font-bold text-on-surface">{upvoteCount - downvoteCount}</span>
           <button
             onClick={() => handleVote('downvote')}
-            disabled={voteLoading || isPostLocked || (userReputation !== undefined && userReputation >= 15 && userReputation < 100)}
-            title={isPostLocked ? 'Bài viết đã bị khóa, không thể vote' : (userReputation !== undefined && userReputation >= 15 && userReputation < 100) ? 'Bạn cần tối thiểu 100 điểm uy tín để Downvote' : 'Bình chọn xuống'}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'downvote' ? 'border border-error/30 bg-error-container text-error' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'} ${(isPostLocked || (userReputation !== undefined && userReputation >= 15 && userReputation < 100)) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={voteLoading || isPostLocked || (isAuthenticated && userReputation < 100)}
+            title={isPostLocked ? 'Bài viết đã bị khóa, không thể vote' : (isAuthenticated && userReputation < 100) ? 'Bạn cần tối thiểu 100 điểm uy tín để Downvote' : 'Bình chọn xuống'}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'downvote' ? 'border border-error/30 bg-error-container text-error' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'} ${(isPostLocked || (isAuthenticated && userReputation < 100)) ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 20l8-8h-5V4H9v8H4z" /></svg>
             {downvoteCount}
@@ -422,50 +399,21 @@ export default function PostDetailPage() {
         onReportComment={handleReportComment}
         bestAnswerId={post.bestAnswer}
         onAcceptComment={handleAcceptComment}
+        userReputation={isAuthenticated ? userReputation : undefined}
       />
 
       <RelatedPosts posts={relatedPosts} />
 
 
 
-      {isPostOwner && (
-        <section className="mt-6 rounded-2xl border border-blue-200 bg-blue-50/70 p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-semibold text-blue-900">Tình trạng cờ trên bài viết của bạn</h3>
-              <p className="mt-1 text-sm text-blue-800">Dành cho chủ bài: xem tổng hợp số lượng cờ và loại cờ đang tác động lên bài viết.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (showOwnerSummary) {
-                  setShowOwnerSummary(false);
-                  return;
-                }
-                setShowOwnerSummary(true);
-                if (!ownerSummary) dispatch(fetchPostFlagSummaryThunk(id));
-              }}
-              className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-medium text-blue-800 hover:bg-blue-100"
-            >
-              {loadingOwnerSummary ? 'Đang tải...' : showOwnerSummary ? 'Đóng tổng hợp cờ' : 'Xem tổng hợp cờ'}
-            </button>
-          </div>
-
-          {showOwnerSummary && ownerSummaryErrorMessage && <p className="mt-3 text-sm text-red-700">{ownerSummaryErrorMessage}</p>}
-          {showOwnerSummary && ownerSummary && (
-            <div className="mt-3 space-y-2 text-sm text-slate-700">
-              <p><strong>Tổng số cờ:</strong> {ownerSummary.totalFlags}</p>
-              <p><strong>Trạng thái bài:</strong> {postStatusLabelMap[ownerSummary.postStatus] || ownerSummary.postStatus}</p>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(ownerSummary.summaryByType || {}).map(([key, value]) => (
-                  <span key={key} className="rounded-full border border-blue-200 bg-white px-2.5 py-1 text-xs text-blue-800">
-                    {flagTypeLabelMap[key] || key}: {value} cờ
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
+      {flagSummaryModalOpen && (
+        <PostFlagSummaryModal
+          isOpen={flagSummaryModalOpen}
+          onClose={() => setFlagSummaryModalOpen(false)}
+          ownerSummary={ownerSummary}
+          loading={loadingOwnerSummary}
+          error={ownerSummaryErrorMessage}
+        />
       )}
 
       {saveModalOpen && (

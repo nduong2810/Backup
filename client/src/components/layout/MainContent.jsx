@@ -141,14 +141,14 @@ const QuestionCard = ({
                                     />
                                     <SmallPostActionButton
                                         active={userVote === 'downvote'}
-                                        disabled={isVoting || (currentUser && currentUser.reputationInfo && currentUser.reputationInfo.reputation >= 15 && currentUser.reputationInfo.reputation < 100)}
+                                        disabled={isVoting || (currentUser && (currentUser.reputationInfo?.reputation ?? currentUser.reputation ?? 1) < 100)}
                                         onClick={() => onVotePost?.(question._id, 'downvote')}
                                         icon="arrow_downward"
                                         label="Downvote"
                                         count={downvoteCount}
                                         activeClass="border-error/30 bg-error-container text-error"
                                         hoverClass="hover:bg-error-container/30 hover:text-error"
-                                        title={currentUser && currentUser.reputationInfo && currentUser.reputationInfo.reputation >= 15 && currentUser.reputationInfo.reputation < 100 ? "Bạn cần tối thiểu 100 điểm uy tín để Downvote" : "Bình chọn xuống"}
+                                        title={currentUser && (currentUser.reputationInfo?.reputation ?? currentUser.reputation ?? 1) < 100 ? "Bạn cần tối thiểu 100 điểm uy tín để Downvote" : "Bình chọn xuống"}
                                     />
                                     {currentUser && currentUser.reputationInfo && currentUser.reputationInfo.reputation < 15 && (
                                         <span className="text-[10px] text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-full font-bold select-none tabular-nums" title="Lượt bình chọn miễn phí hàng tuần còn lại">
@@ -528,6 +528,21 @@ const MainContent = () => {
 
         const minUpvotes = searchParams.get('minUpvotes');
         if (minUpvotes && minUpvotes !== '0' && minUpvotes !== '') return true;
+
+        const author = searchParams.get('author');
+        if (author && author.trim().length > 0) return true;
+
+        const authorId = searchParams.get('authorId');
+        if (authorId && authorId.trim().length > 0) return true;
+
+        const postType = searchParams.get('postType');
+        if (postType && postType !== 'All') return true;
+
+        const startDate = searchParams.get('startDate');
+        if (startDate && startDate.trim().length > 0) return true;
+
+        const endDate = searchParams.get('endDate');
+        if (endDate && endDate.trim().length > 0) return true;
 
         return false;
     }, [searchParams]);

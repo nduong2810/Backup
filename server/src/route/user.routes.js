@@ -39,8 +39,11 @@ router.put('/profile',
         body('fullName').optional().notEmpty().withMessage('Tên không được để trống'), // Lớp 1 
         body('phone').optional({ checkFalsy: true }).isMobilePhone('vi-VN').withMessage('SĐT không hợp lệ'),
         body('bio').optional().isLength({ max: 500 }).withMessage('Bio tối đa 500 ký tự'),
-        body('avatar').optional({ checkFalsy: true }).isString().withMessage('Avatar phải là chuỗi base64')
+        body('avatar').optional({ checkFalsy: true }).isString().withMessage('Avatar phải là chuỗi base64 hoặc URL')
             .custom((value) => {
+                if (value === 'default-avatar.png' || value.startsWith('http://') || value.startsWith('https://')) {
+                    return true;
+                }
                 if (!value.startsWith('data:image/')) {
                     throw new Error('Avatar phải là hình ảnh (JPEG, PNG, GIF, WEBP,...)');
                 }
@@ -66,7 +69,11 @@ router.put('/change-password',
     profileUpdateLimiter,
     [
         body('oldPassword').notEmpty().withMessage('Vui lòng nhập mật khẩu cũ'),
-        body('newPassword').isLength({ min: 6 }).withMessage('Mật khẩu mới tối thiểu 6 ký tự')
+        body('newPassword')
+            .isLength({ min: 6 }).withMessage('Mật khẩu mới tối thiểu 6 ký tự')
+            .matches(/[A-Z]/).withMessage('Mật khẩu phải chứa ít nhất 1 chữ hoa')
+            .matches(/[a-z]/).withMessage('Mật khẩu phải chứa ít nhất 1 chữ thường')
+            .matches(/[0-9]/).withMessage('Mật khẩu phải chứa ít nhất 1 số')
     ],
     userController.changeMyPassword
 );

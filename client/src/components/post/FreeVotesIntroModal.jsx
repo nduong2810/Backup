@@ -57,7 +57,7 @@ export default function FreeVotesIntroModal({ isOpen, onClose }) {
           Cảm ơn bình chọn của bạn!
         </h3>
         <p className="text-sm font-medium text-primary mb-5">
-          Bạn hiện có 5 lượt bình chọn miễn phí mỗi tuần.
+          Bạn có 5 lượt bình chọn miễn phí mỗi tuần (dùng chung cho bài viết và câu trả lời).
         </p>
 
         {/* Bullet Points */}
@@ -68,22 +68,22 @@ export default function FreeVotesIntroModal({ isOpen, onClose }) {
           <ul className="flex flex-col gap-2.5 text-sm text-on-surface-variant">
             <li className="flex items-start gap-2.5">
               <span className="material-symbols-outlined text-[16px] text-primary mt-0.5 leading-none font-bold">check_circle</span>
-              <span>Điểm vote vẫn tính vào tổng điểm bài viết để xếp hạng nội dung hay.</span>
+              <span>Điểm vote vẫn tính vào tổng điểm bài viết & câu trả lời để xếp hạng nội dung tốt.</span>
             </li>
             <li className="flex items-start gap-2.5">
               <span className="material-symbols-outlined text-[16px] text-primary mt-0.5 leading-none font-bold">check_circle</span>
-              <span>KHÔNG tăng hay giảm điểm danh tiếng (reputation) của tác giả (tránh spam buff chéo).</span>
+              <span>KHÔNG tăng hay giảm điểm uy tín (reputation) của tác giả (tránh spam buff chéo).</span>
             </li>
             <li className="flex items-start gap-2.5">
               <span className="material-symbols-outlined text-[16px] text-primary mt-0.5 leading-none font-bold">check_circle</span>
-              <span>Bản thân bạn cũng không bị trừ điểm uy tín khi downvote.</span>
+              <span>Chỉ áp dụng để Upvote (bình chọn lên), không sử dụng được Downvote.</span>
             </li>
           </ul>
         </div>
 
         {/* Call to action message */}
         <p className="text-xs text-secondary leading-relaxed mb-6 px-1">
-          Hãy tiếp tục giúp đỡ cộng đồng tìm kiếm các nội dung bổ ích, chất lượng cao! Đóng góp bài đăng/câu trả lời hay để nhận upvote, nâng điểm danh tiếng cá nhân và mở khóa toàn bộ quyền bình chọn chính thức.
+          Hãy tiếp tục giúp đỡ cộng đồng tìm kiếm các nội dung bổ ích! Hãy đóng góp bài đăng/câu trả lời chất lượng để nhận upvote từ người khác, nâng cấp điểm uy tín cá nhân để mở khóa toàn bộ quyền bình chọn chính thức.
         </p>
 
         {/* Action Button */}

@@ -1,4 +1,4 @@
-﻿import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import AppCard from '../ui/AppCard';
 import AppButton from '../ui/AppButton';
@@ -57,7 +57,7 @@ export default function ResetPassword() {
           type="password"
           value={newPassword}
           onChange={(event) => dispatch(setField({ field: 'newPassword', value: event.target.value }))}
-          placeholder="Tối thiểu 6 ký tự, có số"
+          placeholder="Tối thiểu 6 ký tự (1 chữ hoa, 1 chữ thường, 1 số)"
           required
           disabled={loading}
           allowPasswordToggle

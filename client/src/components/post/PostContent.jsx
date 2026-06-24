@@ -62,6 +62,7 @@ export default function PostContent({
   isAuthenticated = false,
   userReputation = 1,
   onReportPost,
+  onShowFlagSummary,
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -215,6 +216,17 @@ export default function PostContent({
                         Sửa bài viết
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMenu(false);
+                        onShowFlagSummary?.();
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 border-t border-slate-100 first:border-t-0 whitespace-nowrap"
+                    >
+                      <span className="material-symbols-outlined text-base text-slate-550">flag</span>
+                      Tình trạng cờ báo cáo
+                    </button>
                     <button
                       type="button"
                       onClick={handleDeleteClick}

@@ -444,6 +444,11 @@ class PostService {
                     showFreeVotesModal = true;
                     voter.hasSeenFreeVotesModal = true;
                 }
+            } else {
+                // Rút lại vote cũ -> hoàn lại lượt vote miễn phí
+                if (voteType === 'upvote' && hasUpvoted) {
+                    voter.weeklyFreeVotesUsed = Math.max(0, (voter.weeklyFreeVotesUsed || 0) - 1);
+                }
             }
             await voter.save();
         }
@@ -934,13 +939,39 @@ class PostService {
         let message = '';
         let bestAnswer = null;
 
+        const commentAuthorId = comment.author?._id?.toString() || comment.author?.toString();
+        const isSelfAccept = commentAuthorId === userId;
+
         if (post.bestAnswer && String(post.bestAnswer) === String(commentId)) {
             post.bestAnswer = null;
             message = 'Đã hủy đánh dấu câu trả lời tốt nhất';
+
+            if (!isSelfAccept) {
+                await reputationService.award(commentAuthorId, 'best_answer_accepted_removed', post._id.toString(), userId);
+                await reputationService.award(userId, 'best_answer_bonus_removed', post._id.toString(), userId);
+            }
         } else {
+            // Hủy điểm của câu trả lời tốt nhất cũ nếu có
+            if (post.bestAnswer) {
+                const oldComment = await commentRepository.findById(post.bestAnswer);
+                if (oldComment) {
+                    const oldCommentAuthorId = oldComment.author?._id?.toString() || oldComment.author?.toString();
+                    const wasSelfAccept = oldCommentAuthorId === userId;
+                    if (!wasSelfAccept) {
+                        await reputationService.award(oldCommentAuthorId, 'best_answer_accepted_removed', post._id.toString(), userId);
+                        await reputationService.award(userId, 'best_answer_bonus_removed', post._id.toString(), userId);
+                    }
+                }
+            }
+
             post.bestAnswer = commentId;
             message = 'Đã đánh dấu câu trả lời tốt nhất thành công';
             bestAnswer = commentId;
+
+            if (!isSelfAccept) {
+                await reputationService.award(commentAuthorId, 'best_answer_accepted', post._id.toString(), userId);
+                await reputationService.award(userId, 'best_answer_bonus', post._id.toString(), userId);
+            }
         }
 
         await post.save();

@@ -16,6 +16,7 @@ import UserStatistics from './statistics/UserStatistics';
 import UserActivity from './statistics/UserActivity';
 import { fetchStatisticsThunk } from '../../store/slices/statisticsSlice';
 import { fetchPostsApi } from '../../services/postService';
+import { changeMyPassword } from '../../services/userService';
 
 export default function Profile() {
   const dispatch = useDispatch();
@@ -38,6 +39,66 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('profile');
   const [userPosts, setUserPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  const handleProfileSubmit = async (event) => {
+    event.preventDefault();
+
+    const hasPasswordInput = Boolean(oldPassword || newPassword || confirmPassword);
+    if (hasPasswordInput) {
+      if (!oldPassword || !newPassword || !confirmPassword) {
+        toast.error('Vui lòng điền đầy đủ cả 3 trường để đổi mật khẩu.');
+        return;
+      }
+      if (newPassword.length < 6) {
+        toast.error('Mật khẩu mới tối thiểu 6 ký tự.');
+        return;
+      }
+      if (!/[A-Z]/.test(newPassword)) {
+        toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ hoa.');
+        return;
+      }
+      if (!/[a-z]/.test(newPassword)) {
+        toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ thường.');
+        return;
+      }
+      if (!/[0-9]/.test(newPassword)) {
+        toast.error('Mật khẩu mới phải chứa ít nhất 1 số.');
+        return;
+      }
+      if (newPassword === oldPassword) {
+        toast.error('Mật khẩu mới không được trùng với mật khẩu cũ.');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        toast.error('Mật khẩu xác nhận không khớp.');
+        return;
+      }
+    }
+
+    try {
+      setChangingPassword(true);
+      if (hasPasswordInput) {
+        await changeMyPassword(oldPassword, newPassword);
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+
+      const resultAction = await dispatch(updateProfileThunk());
+      if (updateProfileThunk.fulfilled.match(resultAction)) {
+        toast.success(hasPasswordInput ? 'Cập nhật và đổi mật khẩu thành công!' : 'Cập nhật thành công!');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật.');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   const bioCount = useMemo(() => `${form.bio.length}/500`, [form.bio]);
   const hasBankInfo = Boolean(form.bankName?.trim() && form.bankAccountNumber?.trim());
@@ -66,11 +127,10 @@ export default function Profile() {
 
   useEffect(() => {
     if (successMessage) {
-      toast.success(successMessage);
       dispatch(clearProfileMessages());
       setActiveTab('profile');
     }
-  }, [successMessage, toast, dispatch]);
+  }, [successMessage, dispatch]);
 
   useEffect(() => {
     if (errorMessage) {
@@ -210,7 +270,7 @@ export default function Profile() {
                 Giới thiệu
               </h3>
               {form.bio ? (
-                <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{form.bio}</p>
+                <p className="text-sm text-slate-600 whitespace-pre-wrap break-words leading-relaxed">{form.bio}</p>
               ) : (
                 <div className="text-xs text-slate-450 leading-relaxed py-3 text-center italic">
                   Chưa có giới thiệu. <button onClick={() => setActiveTab('edit')} className="text-primary font-bold hover:underline">Thêm</button>
@@ -272,9 +332,9 @@ export default function Profile() {
                   {userPosts.map((post) => (
                     <div key={post._id} className="flex items-start gap-2 text-sm">
                       <span className="material-symbols-outlined text-[16px] text-slate-450 mt-0.5 shrink-0">{post.postType === 'question' ? 'help' : 'rate_review'}</span>
-                      <div className="flex-1 leading-snug">
-                        <span className="text-slate-400 text-xs mr-2 font-mono">[{new Date(post.createdAt).toLocaleDateString('vi-VN')}]</span>
-                        <Link to={`/posts/${post._id}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline break-words">{post.title}</Link>
+                      <div className="flex-1 min-w-0 leading-snug">
+                        <span className="text-slate-450 text-xs mr-2 font-mono">[{new Date(post.createdAt).toLocaleDateString('vi-VN')}]</span>
+                        <Link to={`/posts/${post._id}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline break-words break-all">{post.title}</Link>
                       </div>
                     </div>
                   ))}
@@ -293,54 +353,105 @@ export default function Profile() {
           <AppCard title="Chỉnh sửa hồ sơ" subtitle="Cập nhật thông tin để cộng đồng dễ kết nối và chuyển khoản ủng hộ">
             <form
               className="mt-4 space-y-5"
-              onSubmit={(event) => {
-                event.preventDefault();
-                dispatch(updateProfileThunk());
-              }}
+              onSubmit={handleProfileSubmit}
             >
               <div className="flex flex-col items-center gap-3 pb-5 border-b border-slate-100 dark:border-outline-variant">
                 <div className="relative group cursor-pointer w-24 h-24">
                   <img src={avatarUrl} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-2 border-slate-200 group-hover:opacity-75 transition-opacity" />
                   <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                     <span className="material-symbols-outlined text-2xl">photo_camera</span>
-                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" disabled={saving} />
+                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" disabled={saving || changingPassword} />
                   </label>
                 </div>
                 <div className="text-center">
                   <div className="text-sm font-semibold text-slate-800 dark:text-inverse-on-surface">Ảnh đại diện</div>
                   <div className="text-xs text-slate-400 mt-0.5">Nhấp vào ảnh để thay đổi</div>
                   {form.avatar && form.avatar !== 'default-avatar.png' && (
-                    <button type="button" onClick={handleDeleteAvatar} className="mt-2 text-xs font-semibold text-rose-500 hover:text-rose-600 hover:underline transition-colors block mx-auto animate-fadeIn">Xóa ảnh đại diện</button>
+                    <button type="button" onClick={handleDeleteAvatar} className="mt-2 text-xs font-semibold text-rose-500 hover:text-rose-600 hover:underline transition-colors block mx-auto animate-fadeIn" disabled={saving || changingPassword}>Xóa ảnh đại diện</button>
                   )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <InputField label="Họ và tên" name="fullName" value={form.fullName} onChange={(event) => dispatch(setProfileField({ field: 'fullName', value: event.target.value }))} required disabled={saving} />
+                <InputField label="Họ và tên" name="fullName" value={form.fullName} onChange={(event) => dispatch(setProfileField({ field: 'fullName', value: event.target.value }))} required disabled={saving || changingPassword} />
                 <InputField label="Email" name="email" value={form.email} onChange={() => {}} disabled />
-                <InputField label="Số điện thoại" name="phone" value={form.phone} onChange={(event) => dispatch(setProfileField({ field: 'phone', value: event.target.value }))} placeholder="VD: 09xxxxxxxx" disabled={saving} />
-                <InputField label="Chuyên ngành / Công việc" name="major" value={form.major} onChange={(event) => dispatch(setProfileField({ field: 'major', value: event.target.value }))} placeholder="Kỹ thuật phần mềm" disabled={saving} />
+                <InputField label="Số điện thoại" name="phone" value={form.phone} onChange={(event) => dispatch(setProfileField({ field: 'phone', value: event.target.value }))} placeholder="VD: 09xxxxxxxx" disabled={saving || changingPassword} />
+                <InputField label="Chuyên ngành / Công việc" name="major" value={form.major} onChange={(event) => dispatch(setProfileField({ field: 'major', value: event.target.value }))} placeholder="Kỹ thuật phần mềm" disabled={saving || changingPassword} />
               </div>
 
               <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
                 <h3 className="mb-1 text-sm font-black text-slate-900">Thông tin nhận chuyển khoản</h3>
                 <p className="mb-4 text-xs leading-5 text-slate-500">Thông tin này sẽ hiển thị ở hồ sơ công khai và màn hình donate để người khác chuyển khoản thủ công cho bạn.</p>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <InputField label="Tên ngân hàng" name="bankName" value={form.bankName} onChange={(event) => dispatch(setProfileField({ field: 'bankName', value: event.target.value }))} placeholder="VD: Vietcombank, MB Bank..." disabled={saving} />
-                  <InputField label="Số tài khoản" name="bankAccountNumber" value={form.bankAccountNumber} onChange={(event) => dispatch(setProfileField({ field: 'bankAccountNumber', value: event.target.value }))} placeholder="VD: 0123456789" disabled={saving} />
+                  <InputField label="Tên ngân hàng" name="bankName" value={form.bankName} onChange={(event) => dispatch(setProfileField({ field: 'bankName', value: event.target.value }))} placeholder="VD: Vietcombank, MB Bank..." disabled={saving || changingPassword} />
+                  <InputField label="Số tài khoản" name="bankAccountNumber" value={form.bankAccountNumber} onChange={(event) => dispatch(setProfileField({ field: 'bankAccountNumber', value: event.target.value }))} placeholder="VD: 0123456789" disabled={saving || changingPassword} />
                 </div>
                 <p className="mt-3 text-xs text-slate-500">Chủ tài khoản sẽ mặc định hiển thị theo họ tên hồ sơ của bạn.</p>
               </div>
 
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-slate-700">Bio</span>
-                <textarea name="bio" value={form.bio} onChange={(event) => dispatch(setProfileField({ field: 'bio', value: event.target.value }))} maxLength={500} rows={4} disabled={saving} className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200" placeholder="Giới thiệu ngắn về bạn, kỹ năng, mảng quan tâm..." />
+                <textarea name="bio" value={form.bio} onChange={(event) => dispatch(setProfileField({ field: 'bio', value: event.target.value }))} maxLength={500} rows={4} disabled={saving || changingPassword} className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200" placeholder="Giới thiệu ngắn về bạn, kỹ năng, mảng quan tâm..." />
                 <p className="mt-1 text-right text-xs text-slate-500">{bioCount}</p>
               </label>
 
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                <h3 className="mb-1 text-sm font-black text-slate-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base text-slate-500">lock</span>
+                  Thay đổi mật khẩu
+                </h3>
+                <p className="mb-4 text-xs leading-5 text-slate-500">Để trống nếu không muốn thay đổi mật khẩu của bạn.</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <InputField
+                    label="Mật khẩu hiện tại"
+                    name="oldPassword"
+                    type="password"
+                    value={oldPassword}
+                    onChange={(event) => setOldPassword(event.target.value)}
+                    placeholder="Nhập mật khẩu hiện tại"
+                    disabled={saving || changingPassword}
+                    allowPasswordToggle
+                  />
+                  <InputField
+                    label="Mật khẩu mới"
+                    name="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    placeholder="Tối thiểu 6 ký tự (chữ hoa, thường, số)"
+                    disabled={saving || changingPassword}
+                    allowPasswordToggle
+                  />
+                  <InputField
+                    label="Xác nhận mật khẩu mới"
+                    name="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    placeholder="Nhập lại mật khẩu mới"
+                    disabled={saving || changingPassword}
+                    allowPasswordToggle
+                  />
+                </div>
+              </div>
+
               <div className="flex items-center gap-3 pt-2">
-                <AppButton type="submit" disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu thay đổi'}</AppButton>
-                <button type="button" onClick={() => setActiveTab('profile')} className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-800">Hủy bỏ</button>
+                <AppButton type="submit" disabled={saving || changingPassword}>
+                  {(saving || changingPassword) ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </AppButton>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOldPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                    setActiveTab('profile');
+                  }}
+                  className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-800"
+                  disabled={saving || changingPassword}
+                >
+                  Hủy bỏ
+                </button>
               </div>
             </form>
           </AppCard>

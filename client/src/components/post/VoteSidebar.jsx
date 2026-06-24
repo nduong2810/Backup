@@ -51,18 +51,18 @@ export default function VoteSidebar({
       {/* Nút Downvote */}
       <button
         onClick={() => {
-          const isDownvoteLockedByRep = userReputation !== undefined && userReputation >= 15 && userReputation < 100;
+          const isDownvoteLockedByRep = userReputation !== undefined && userReputation < 100;
           const isDownvoteDisabled = isDisabled || isDownvoteLockedByRep;
           if (!isDownvoteDisabled) onVote('downvote');
         }}
-        disabled={isDisabled || (userReputation !== undefined && userReputation >= 15 && userReputation < 100)}
-        title={disabled ? 'Bài viết đã bị khóa, không thể vote' : (userReputation !== undefined && userReputation >= 15 && userReputation < 100) ? 'Bạn cần tối thiểu 100 điểm uy tín để Downvote' : 'Bình chọn xuống'}
+        disabled={isDisabled || (userReputation !== undefined && userReputation < 100)}
+        title={disabled ? 'Bài viết đã bị khóa, không thể vote' : (userReputation !== undefined && userReputation < 100) ? 'Bạn cần tối thiểu 100 điểm uy tín để Downvote' : 'Bình chọn xuống'}
         className={`p-2 rounded-full border transition-all duration-200 flex items-center justify-center
           ${userVote === 'downvote'
             ? 'border-error bg-error-container text-error shadow-sm'
             : 'border-outline-variant text-outline hover:border-error hover:bg-error-container/30 hover:text-error'
           }
-          ${(isDisabled || (userReputation !== undefined && userReputation >= 15 && userReputation < 100)) ? 'opacity-50 cursor-not-allowed hover:border-outline-variant hover:bg-transparent hover:text-outline' : 'cursor-pointer active:scale-95'}
+          ${(isDisabled || (userReputation !== undefined && userReputation < 100)) ? 'opacity-50 cursor-not-allowed hover:border-outline-variant hover:bg-transparent hover:text-outline' : 'cursor-pointer active:scale-95'}
         `}
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">

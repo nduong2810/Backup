@@ -103,6 +103,12 @@ class UserService {
         const isMatch = await bcrypt.compare(oldPassword, user.password);
         if (!isMatch) throw new Error("Mật khẩu hiện tại không đúng");
 
+        // Kiểm tra mật khẩu mới có trùng mật khẩu cũ không
+        const isSamePassword = await bcrypt.compare(newPassword, user.password);
+        if (isSamePassword) {
+            throw new Error("Mật khẩu mới không được trùng với mật khẩu cũ");
+        }
+
         // Hash mật khẩu mới và lưu
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(newPassword, salt);

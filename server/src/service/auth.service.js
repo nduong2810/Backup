@@ -288,6 +288,12 @@ class AuthService {
             throw new Error("Phiên đặt lại mật khẩu đã hết hạn");
         }
 
+        // Kiểm tra mật khẩu mới có trùng mật khẩu cũ không
+        const isSamePassword = await bcrypt.compare(newPassword, user.password);
+        if (isSamePassword) {
+            throw new Error("Mật khẩu mới không được trùng với mật khẩu cũ");
+        }
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 

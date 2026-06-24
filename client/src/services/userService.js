@@ -83,3 +83,6 @@ export const deactivateMyAccount = () =>
 
 export const deleteMyAccount = () =>
   apiClient.post('/user/delete-account');
+
+export const changeMyPassword = (oldPassword, newPassword) =>
+  apiClient.put('/user/change-password', { oldPassword, newPassword });

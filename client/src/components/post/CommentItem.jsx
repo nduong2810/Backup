@@ -45,6 +45,7 @@ export default function CommentItem({
   onReportComment,
   bestAnswerId = null,
   onAcceptComment,
+  userReputation = undefined,
 }) {
   const { toast } = useToast();
   const [showMenu, setShowMenu] = useState(false);
@@ -554,12 +555,13 @@ export default function CommentItem({
                 <button
                   type="button"
                   onClick={() => handleReact('dislike')}
-                  disabled={isReacting}
+                  disabled={isReacting || (isAuthenticated && userReputation !== undefined && userReputation < 100)}
+                  title={isAuthenticated && userReputation !== undefined && userReputation < 100 ? "Bạn cần tối thiểu 100 điểm uy tín để Downvote" : "Bình chọn xuống"}
                   className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                     hasDisliked
                       ? 'border-error/30 bg-error-container text-error'
                       : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30 hover:text-error'
-                  }`}
+                  } ${(isAuthenticated && userReputation !== undefined && userReputation < 100) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
                   Downvote {dislikeCount}

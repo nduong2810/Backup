@@ -35,7 +35,10 @@ apiClient.interceptors.response.use(
       const message = error.response.data?.message || 'Bạn đang thao tác quá nhanh. Vui lòng thử lại sau.';
       window.dispatchEvent(new CustomEvent('api-rate-limit', { detail: { message } }));
     }
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    const isLocked = error.response && error.response.status === 403 && error.response.data?.code === 'USER_LOCKED';
+    const isUnauthorized = error.response && error.response.status === 401;
+
+    if (isUnauthorized || isLocked) {
       const url = error.config?.url || '';
       // Tránh tự động logout trên các API thuộc luồng xác thực/đăng nhập/quên mật khẩu
       if (

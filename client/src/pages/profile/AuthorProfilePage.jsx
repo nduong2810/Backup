@@ -91,7 +91,7 @@ function AuthorPostCard({ post }) {
             <PostTypeBadge type={post.postType} />
             <span className="text-xs font-medium text-slate-500">Đăng ngày {formatDate(post.createdAt)}</span>
           </div>
-          <Link to={`/posts/${post._id}`} className="text-lg font-extrabold leading-snug text-slate-900 hover:text-primary">
+          <Link to={`/posts/${post._id}`} className="text-lg font-extrabold leading-snug text-slate-900 hover:text-primary break-words break-all">
             {post.title}
           </Link>
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">{getExcerpt(post.content)}</p>
@@ -235,7 +235,7 @@ export default function AuthorProfilePage() {
         <div className="grid gap-0 md:grid-cols-[1fr_320px]">
           <div className="border-b border-slate-100 p-6 md:border-b-0 md:border-r sm:p-8">
             <h2 className="text-lg font-extrabold text-slate-900">Giới thiệu công khai</h2>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-600">
+            <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">
               {user.bio || 'Người dùng này chưa cập nhật phần giới thiệu công khai.'}
             </p>
           </div>

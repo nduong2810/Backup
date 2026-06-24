@@ -98,12 +98,16 @@ class ReportRepository {
     });
   }
 
-  async bulkMarkActionTakenByPost(postId, note) {
+  async bulkMarkActionTakenByPost(postId, note, excludeId = null) {
+    const query = {
+      post: postId,
+      status: { $in: ['submitted', 'received'] },
+    };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
     return ReportTicket.updateMany(
-      {
-        post: postId,
-        status: { $in: ['submitted', 'received'] },
-      },
+      query,
       {
         $set: { status: 'action_taken', outcome: 'helpful' },
         $push: {
@@ -118,12 +122,16 @@ class ReportRepository {
     );
   }
 
-  async bulkMarkActionTakenByComment(commentId, note) {
+  async bulkMarkActionTakenByComment(commentId, note, excludeId = null) {
+    const query = {
+      comment: commentId,
+      status: { $in: ['submitted', 'received'] },
+    };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
     return ReportTicket.updateMany(
-      {
-        comment: commentId,
-        status: { $in: ['submitted', 'received'] },
-      },
+      query,
       {
         $set: { status: 'action_taken', outcome: 'helpful' },
         $push: {

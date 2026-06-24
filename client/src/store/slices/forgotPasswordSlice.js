@@ -1,4 +1,4 @@
-﻿import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { requestResetOtp, resetPassword, verifyResetOtp } from '../../services/authService';
 
 const initialState = {
@@ -50,6 +50,18 @@ export const resetPasswordThunk = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     const { email, resetToken, newPassword, confirmPassword } = getState().forgotPassword;
 
+    if (newPassword.length < 6) {
+      return rejectWithValue('Mật khẩu tối thiểu 6 ký tự.');
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      return rejectWithValue('Mật khẩu phải chứa ít nhất 1 chữ hoa.');
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      return rejectWithValue('Mật khẩu phải chứa ít nhất 1 chữ thường.');
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      return rejectWithValue('Mật khẩu phải chứa ít nhất 1 số.');
+    }
     if (newPassword !== confirmPassword) {
       return rejectWithValue('Mật khẩu xác nhận không khớp.');
     }

@@ -25,6 +25,7 @@ export default function CommentSection({
   onReportComment,
   bestAnswerId = null,
   onAcceptComment,
+  userReputation = undefined,
 }) {
   const [content, setContent] = useState('');
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -311,6 +312,7 @@ export default function CommentSection({
               onReportComment={onReportComment}
               bestAnswerId={bestAnswerId}
               onAcceptComment={onAcceptComment}
+              userReputation={userReputation}
             />
           ))}
         </div>

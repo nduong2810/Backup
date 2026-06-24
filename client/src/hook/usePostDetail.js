@@ -249,21 +249,40 @@ export default function usePostDetail(postId) {
     setReactingCommentId(commentId);
 
     try {
-      await reactPostComment(commentId, reactionType);
+      const response = await reactPostComment(commentId, reactionType);
+      const data = response.data?.data || {};
+
+      // Đồng bộ thông tin Free vote cho comment
+      if (data.weeklyFreeVotesUsed !== undefined) {
+        dispatch(updateUser({
+          reputationInfo: {
+            ...(currentUser?.reputationInfo || {}),
+            weeklyFreeVotesUsed: data.weeklyFreeVotesUsed,
+            weeklyFreeVotesLimit: data.weeklyFreeVotesLimit || 5,
+            reputation: data.userReputation
+          },
+          reputation: data.userReputation
+        }));
+      }
+
+      if (data.showFreeVotesModal) {
+        setShowFreeVotesModal(true);
+      }
+
       await fetchPostDetail(false);
       return true;
     } catch (err) {
       if (err.response?.status === 401) {
-        toast.warning('Bạn cần đăng nhập để like/dislike bình luận.');
+        toast.warning('Bạn cần đăng nhập để tương tác bình luận.');
       } else {
-        toast.error(getErrorMessage(err, 'Không thể cập nhật like/dislike bình luận.'));
+        toast.error(getErrorMessage(err, 'Không thể tương tác bình luận.'));
       }
 
       return false;
     } finally {
       setReactingCommentId('');
     }
-  }, [reactingCommentId, fetchPostDetail, isPostLocked, isAdmin, toast]);
+  }, [reactingCommentId, fetchPostDetail, isPostLocked, isAdmin, toast, dispatch, currentUser]);
 
   const deleteComment = useCallback(async (commentId) => {
     try {

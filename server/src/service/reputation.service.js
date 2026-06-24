@@ -70,6 +70,16 @@ const DELTA_MAP = {
     report_submitted: -1,
     report_helpful: +2,
     report_retracted: +1,
+    comment_upvoted: +10,
+    comment_downvoted: -2,
+    comment_downvote_given: -1,
+    comment_upvote_removed: -10,
+    comment_downvote_removed: +2,
+    comment_downvote_given_removed: +1,
+    best_answer_accepted: +15,
+    best_answer_accepted_removed: -15,
+    best_answer_bonus: +2,
+    best_answer_bonus_removed: -2,
 };
 
 const DAILY_CAP_REASONS = new Set([
@@ -79,6 +89,12 @@ const DAILY_CAP_REASONS = new Set([
     'post_upvote_removed',
     'post_downvote_removed',
     'downvote_given_removed',
+    'comment_upvoted',
+    'comment_downvoted',
+    'comment_downvote_given',
+    'comment_upvote_removed',
+    'comment_downvote_removed',
+    'comment_downvote_given_removed',
 ]);
 
 const safeCreateEngagementNotification = async ({ userId, reason, targetId, voterId }) => {
@@ -161,6 +177,9 @@ class ReputationService {
             post_upvote_removed: 'post_upvoted',
             post_downvote_removed: 'post_downvoted',
             downvote_given_removed: 'downvote_given',
+            comment_upvote_removed: 'comment_upvoted',
+            comment_downvote_removed: 'comment_downvoted',
+            comment_downvote_given_removed: 'comment_downvote_given',
         };
 
         const matchingType = retractionMap[reason];
@@ -199,7 +218,7 @@ class ReputationService {
                 new Date(user.reputationDailyDate).getTime() === todayStart.getTime();
             const earned = sameDay ? (user.reputationDailyEarned || 0) : 0;
 
-            if (reason === 'post_upvoted') {
+            if (reason === 'post_upvoted' || reason === 'comment_upvoted') {
                 const remaining = dailyCap - earned;
                 if (remaining <= 0) {
                     effectiveDelta = 0;
@@ -209,9 +228,9 @@ class ReputationService {
             }
 
             let dailyEarnedDiff = 0;
-            if (reason === 'post_upvoted') {
+            if (reason === 'post_upvoted' || reason === 'comment_upvoted') {
                 dailyEarnedDiff = effectiveDelta;
-            } else if (reason === 'post_upvote_removed' && originalLog) {
+            } else if ((reason === 'post_upvote_removed' || reason === 'comment_upvote_removed') && originalLog) {
                 const originalLogDate = new Date(originalLog.createdAt);
                 const isOriginalToday = originalLogDate.getTime() >= todayStart.getTime();
                 if (isOriginalToday) {
@@ -234,7 +253,7 @@ class ReputationService {
             await User.findByIdAndUpdate(userId, { $set: { reputation: newReputation } });
         }
 
-        if (effectiveDelta !== 0 || reason === 'post_upvoted' || (reason === 'post_upvote_removed' && originalLog && originalLog.reputationEarned === 0)) {
+        if (effectiveDelta !== 0 || reason === 'post_upvoted' || reason === 'comment_upvoted' || ((reason === 'post_upvote_removed' || reason === 'comment_upvote_removed') && originalLog && originalLog.reputationEarned === 0)) {
             try {
                 let title = 'Biến động uy tín';
 
@@ -252,6 +271,8 @@ class ReputationService {
                     title = `Bài viết bị xóa do vi phạm: ${title}`;
                 } else if (reason === 'post_upvoted' && effectiveDelta === 0) {
                     title = `[Đạt giới hạn ngày] ${title}`;
+                } else if (reason === 'comment_upvoted' && effectiveDelta === 0) {
+                    title = `[Đạt giới hạn ngày] Bình luận: ${title}`;
                 } else if (reason === 'post_upvote_removed') {
                     title = `Huỷ upvote: ${title}`;
                 } else if (reason === 'post_downvote_removed') {
@@ -260,6 +281,26 @@ class ReputationService {
                     title = 'Hoàn điểm downvote đã gửi';
                 } else if (reason === 'downvote_given') {
                     title = 'Đã gửi downvote cho bài viết';
+                } else if (reason === 'comment_upvoted') {
+                    title = `Bình luận được upvote: ${title}`;
+                } else if (reason === 'comment_downvoted') {
+                    title = `Bình luận bị downvote: ${title}`;
+                } else if (reason === 'comment_upvote_removed') {
+                    title = `Hủy upvote bình luận: ${title}`;
+                } else if (reason === 'comment_downvote_removed') {
+                    title = `Hủy downvote bình luận: ${title}`;
+                } else if (reason === 'comment_downvote_given') {
+                    title = 'Đã gửi downvote cho bình luận';
+                } else if (reason === 'comment_downvote_given_removed') {
+                    title = 'Hoàn điểm downvote bình luận đã gửi';
+                } else if (reason === 'best_answer_accepted') {
+                    title = `Câu trả lời được chọn tốt nhất: ${title}`;
+                } else if (reason === 'best_answer_accepted_removed') {
+                    title = `Hủy chọn câu trả lời tốt nhất: ${title}`;
+                } else if (reason === 'best_answer_bonus') {
+                    title = `Thưởng chấp nhận câu trả lời tốt nhất: ${title}`;
+                } else if (reason === 'best_answer_bonus_removed') {
+                    title = `Hủy điểm thưởng chấp nhận câu trả lời tốt nhất: ${title}`;
                 } else if (reason === 'report_submitted') {
                     title = `Gửi báo cáo vi phạm: ${title}`;
                 } else if (reason === 'report_helpful') {

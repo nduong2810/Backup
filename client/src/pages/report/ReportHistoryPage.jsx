@@ -196,11 +196,11 @@ export default function ReportHistoryPage() {
                       {(ticket.history || []).map((step, idx) => {
                         let rolePrefix = '';
                         if (step.actorRole === 'admin') {
-                          rolePrefix = '[Quản trị viên] ';
+                          rolePrefix = '[Admin] ';
                         } else if (step.actorRole === 'system') {
                           rolePrefix = '[Hệ thống] ';
                         } else if (step.actorRole === 'user') {
-                          rolePrefix = '[Người báo cáo] ';
+                          rolePrefix = '[Báo cáo] ';
                         }
 
                         return (

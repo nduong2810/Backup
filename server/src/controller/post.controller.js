@@ -4,6 +4,8 @@ import commentRepository from '../repository/comment.repository.js';
 import notificationService from '../service/notification.service.js';
 import { emitToPostRoom } from '../socket/socket.js';
 import { validationResult } from 'express-validator';
+import reputationService, { getThisWeekStart } from '../service/reputation.service.js';
+import User from '../model/user.model.js';
 
 const recentViewMap = new Map();
 const VIEW_DEDUP_WINDOW_MS = 10 * 1000;
@@ -192,6 +194,63 @@ class PostController {
             let update = {};
             let userReaction = null;
 
+            const isQuestion = comment.post?.postType === 'question';
+            let voter = null;
+            let showFreeVotesModal = false;
+
+            if (isQuestion) {
+                voter = await User.findById(userId);
+                if (!voter) return res.status(404).json({ success: false, message: 'Người dùng không tồn tại' });
+
+                const voterRep = voter.reputation || 1;
+                const isFreeVote = voterRep < 15;
+
+                // 1. Chặn Downvote đối với nhóm Free Vote (dưới 15 uy tín) khi chưa từng downvote
+                if (reactionType === 'dislike' && isFreeVote && !hasDisliked) {
+                    return res.status(403).json({ success: false, message: 'Thành viên mới chỉ có thể sử dụng lượt bình chọn miễn phí để Upvote câu trả lời.' });
+                }
+
+                // 2. Chặn Downvote đối với thành viên chưa đủ uy tín thực tế (dưới 100 uy tín) khi chưa từng downvote
+                if (reactionType === 'dislike' && !isFreeVote && voterRep < 100 && !hasDisliked) {
+                    return res.status(403).json({ success: false, message: 'Bạn cần tối thiểu 100 điểm uy tín để Downvote câu trả lời.' });
+                }
+
+                if (isFreeVote) {
+                    // Kiểm tra reset tuần
+                    const weekStart = getThisWeekStart();
+                    const sameWeek = voter.weeklyFreeVotesDate &&
+                        new Date(voter.weeklyFreeVotesDate).getTime() === weekStart.getTime();
+
+                    if (!sameWeek) {
+                        voter.weeklyFreeVotesUsed = 0;
+                        voter.weeklyFreeVotesDate = weekStart;
+                    }
+
+                    // Kiểm tra xem đây có phải vote mới hoàn toàn (chưa liked và chưa disliked)
+                    const isNewVote = !hasLiked && !hasDisliked;
+                    if (isNewVote) {
+                        if (reactionType === 'like') {
+                            if ((voter.weeklyFreeVotesUsed || 0) >= 5) {
+                                return res.status(403).json({ success: false, message: 'Bạn đã sử dụng hết 5 lượt bình chọn miễn phí của tuần này. Hãy đóng góp tích cực để nhận upvote và mở khóa toàn bộ quyền bình chọn!' });
+                            }
+                            voter.weeklyFreeVotesUsed = (voter.weeklyFreeVotesUsed || 0) + 1;
+
+                            // Nếu chưa từng xem popup giới thiệu, bật cờ và lưu lại
+                            if (!voter.hasSeenFreeVotesModal) {
+                                showFreeVotesModal = true;
+                                voter.hasSeenFreeVotesModal = true;
+                            }
+                        }
+                    } else {
+                        // Rút lại vote cũ (like/upvote) -> hoàn lại lượt vote miễn phí
+                        if (reactionType === 'like' && hasLiked) {
+                            voter.weeklyFreeVotesUsed = Math.max(0, (voter.weeklyFreeVotesUsed || 0) - 1);
+                        }
+                    }
+                    await voter.save();
+                }
+            }
+
             if (reactionType === 'like') {
                 if (hasLiked) update = { $pull: { likes: userId } };
                 else {
@@ -210,19 +269,70 @@ class PostController {
 
             const updatedComment = await commentRepository.updateReaction(commentId, update);
             const postId = normalizeObjectId(comment.post);
+            
+            // Tích hợp điểm uy tín cho Upvote/Downvote bình luận trong bài viết dạng "câu hỏi" (postType = 'question')
+            if (isQuestion) {
+                const voterRep = voter?.reputation ?? 1;
+                const isFreeVote = voterRep < 15;
+
+                const awardCommentRep = async (targetUserId, reason, targetPostId, currentVoterId) => {
+                    if (isFreeVote) return;
+                    await reputationService.award(targetUserId, reason, targetPostId, currentVoterId);
+                };
+
+                const postIdStr = postId ? postId.toString() : null;
+                if (reactionType === 'like') {
+                    if (hasLiked) {
+                        // Hủy Upvote bình luận
+                        await awardCommentRep(commentAuthorId, 'comment_upvote_removed', postIdStr, userId);
+                    } else {
+                        // Thực hiện Upvote bình luận
+                        if (hasDisliked) {
+                            // Hủy Downvote trước đó
+                            await awardCommentRep(commentAuthorId, 'comment_downvote_removed', postIdStr, userId);
+                            await awardCommentRep(userId, 'comment_downvote_given_removed', postIdStr, userId);
+                        }
+                        await awardCommentRep(commentAuthorId, 'comment_upvoted', postIdStr, userId);
+                    }
+                } else if (reactionType === 'dislike') {
+                    if (hasDisliked) {
+                        // Hủy Downvote bình luận
+                        await awardCommentRep(commentAuthorId, 'comment_downvote_removed', postIdStr, userId);
+                        await awardCommentRep(userId, 'comment_downvote_given_removed', postIdStr, userId);
+                    } else {
+                        // Thực hiện Downvote bình luận
+                        if (hasLiked) {
+                            // Hủy Upvote trước đó
+                            await awardCommentRep(commentAuthorId, 'comment_upvote_removed', postIdStr, userId);
+                        }
+                        await awardCommentRep(commentAuthorId, 'comment_downvoted', postIdStr, userId);
+                        await awardCommentRep(userId, 'comment_downvote_given', postIdStr, userId);
+                    }
+                }
+            }
+
             if (postId) {
                 emitToPostRoom(postId, 'comment:updated', { postId, comment: updatedComment });
+            }
+
+            const resData = {
+                commentId: updatedComment._id,
+                likeCount: Array.isArray(updatedComment.likes) ? updatedComment.likes.length : 0,
+                dislikeCount: Array.isArray(updatedComment.dislikes) ? updatedComment.dislikes.length : 0,
+                userReaction,
+            };
+
+            if (isQuestion && voter) {
+                resData.showFreeVotesModal = showFreeVotesModal;
+                resData.weeklyFreeVotesUsed = voter.weeklyFreeVotesUsed;
+                resData.weeklyFreeVotesLimit = 5;
+                resData.userReputation = voter.reputation;
             }
 
             return res.status(200).json({
                 success: true,
                 message: 'Cập nhật phản ứng bình luận thành công',
-                data: {
-                    commentId: updatedComment._id,
-                    likeCount: Array.isArray(updatedComment.likes) ? updatedComment.likes.length : 0,
-                    dislikeCount: Array.isArray(updatedComment.dislikes) ? updatedComment.dislikes.length : 0,
-                    userReaction,
-                },
+                data: resData,
             });
         } catch (error) {
             const status = error.status || 500;

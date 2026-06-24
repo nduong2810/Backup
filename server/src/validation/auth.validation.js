@@ -19,7 +19,9 @@ export const loginValidation = [
 export const resetPasswordValidation = [
     body('newPassword')
         .isLength({ min: 6 }).withMessage('Mật khẩu tối thiểu 6 ký tự')
-        .matches(/\d/).withMessage('Mật khẩu phải chứa ít nhất 1 số'),
+        .matches(/[A-Z]/).withMessage('Mật khẩu phải chứa ít nhất 1 chữ hoa')
+        .matches(/[a-z]/).withMessage('Mật khẩu phải chứa ít nhất 1 chữ thường')
+        .matches(/[0-9]/).withMessage('Mật khẩu phải chứa ít nhất 1 số'),
     body('confirmPassword').custom((value, { req }) => {
         if (value !== req.body.newPassword) throw new Error('Mật khẩu xác nhận không khớp');
         return true;

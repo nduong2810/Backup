@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import AppCard from '../ui/AppCard';
 import AppButton from '../ui/AppButton';
 import InputField from '../ui/InputField';
-import { getAdminProfile } from '../../services/userService';
+import { getAdminProfile, changeMyPassword } from '../../services/userService';
 import {
   fetchProfileThunk,
   setProfileField,
@@ -20,6 +20,66 @@ export default function AdminProfile() {
   const { form, loading, saving, successMessage, errorMessage } = useSelector((state) => state.profile);
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'edit'
+
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  const handleProfileSubmit = async (event) => {
+    event.preventDefault();
+
+    const hasPasswordInput = Boolean(oldPassword || newPassword || confirmPassword);
+    if (hasPasswordInput) {
+      if (!oldPassword || !newPassword || !confirmPassword) {
+        toast.error('Vui lòng điền đầy đủ cả 3 trường để đổi mật khẩu.');
+        return;
+      }
+      if (newPassword.length < 6) {
+        toast.error('Mật khẩu mới tối thiểu 6 ký tự.');
+        return;
+      }
+      if (!/[A-Z]/.test(newPassword)) {
+        toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ hoa.');
+        return;
+      }
+      if (!/[a-z]/.test(newPassword)) {
+        toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ thường.');
+        return;
+      }
+      if (!/[0-9]/.test(newPassword)) {
+        toast.error('Mật khẩu mới phải chứa ít nhất 1 số.');
+        return;
+      }
+      if (newPassword === oldPassword) {
+        toast.error('Mật khẩu mới không được trùng với mật khẩu cũ.');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        toast.error('Mật khẩu xác nhận không khớp.');
+        return;
+      }
+    }
+
+    try {
+      setChangingPassword(true);
+      if (hasPasswordInput) {
+        await changeMyPassword(oldPassword, newPassword);
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+
+      const resultAction = await dispatch(updateProfileThunk());
+      if (updateProfileThunk.fulfilled.match(resultAction)) {
+        toast.success(hasPasswordInput ? 'Cập nhật và đổi mật khẩu thành công!' : 'Cập nhật thành công!');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật.');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   const bioCount = useMemo(() => `${form.bio.length}/500`, [form.bio]);
 
@@ -50,11 +110,10 @@ export default function AdminProfile() {
 
   useEffect(() => {
     if (successMessage) {
-      toast.success(successMessage);
       dispatch(clearProfileMessages());
       setActiveTab('overview');
     }
-  }, [successMessage, toast, dispatch]);
+  }, [successMessage, dispatch]);
 
   useEffect(() => {
     if (errorMessage) {
@@ -190,7 +249,7 @@ export default function AdminProfile() {
                 Giới thiệu
               </h3>
               {form.bio ? (
-                <p className="text-[15px] text-slate-600 whitespace-pre-wrap leading-relaxed">
+                <p className="text-[15px] text-slate-600 whitespace-pre-wrap break-words leading-relaxed">
                   {form.bio}
                 </p>
               ) : (
@@ -291,10 +350,7 @@ export default function AdminProfile() {
           <AppCard title="Chỉnh sửa hồ sơ" subtitle="Cập nhật thông tin tài khoản quản trị viên">
           <form
             className="mt-4 space-y-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              dispatch(updateProfileThunk());
-            }}
+            onSubmit={handleProfileSubmit}
           >
             {/* Avatar Change Area */}
             <div className="flex flex-col items-center gap-3 pb-5 border-b border-slate-100">
@@ -311,7 +367,7 @@ export default function AdminProfile() {
                     accept="image/*"
                     onChange={handleAvatarChange}
                     className="hidden"
-                    disabled={saving}
+                    disabled={saving || changingPassword}
                   />
                 </label>
               </div>
@@ -325,7 +381,7 @@ export default function AdminProfile() {
                     type="button"
                     onClick={handleDeleteAvatar}
                     className="mt-2 text-xs font-semibold text-rose-500 hover:text-rose-600 hover:underline transition-colors block mx-auto"
-                    disabled={saving}
+                    disabled={saving || changingPassword}
                   >
                     Xóa ảnh đại diện
                   </button>
@@ -340,7 +396,7 @@ export default function AdminProfile() {
                 value={form.fullName}
                 onChange={(event) => dispatch(setProfileField({ field: 'fullName', value: event.target.value }))}
                 required
-                disabled={saving}
+                disabled={saving || changingPassword}
               />
               <InputField label="Email" name="email" value={form.email} onChange={() => {}} disabled />
               <InputField
@@ -349,7 +405,7 @@ export default function AdminProfile() {
                 value={form.phone}
                 onChange={(event) => dispatch(setProfileField({ field: 'phone', value: event.target.value }))}
                 placeholder="VD: 09xxxxxxxx"
-                disabled={saving}
+                disabled={saving || changingPassword}
               />
               <InputField
                 label="Chuyên ngành / Chức vụ"
@@ -357,7 +413,7 @@ export default function AdminProfile() {
                 value={form.major}
                 onChange={(event) => dispatch(setProfileField({ field: 'major', value: event.target.value }))}
                 placeholder="Quản trị hệ thống"
-                disabled={saving}
+                disabled={saving || changingPassword}
               />
             </div>
 
@@ -369,21 +425,67 @@ export default function AdminProfile() {
                 onChange={(event) => dispatch(setProfileField({ field: 'bio', value: event.target.value }))}
                 maxLength={500}
                 rows={4}
-                disabled={saving}
+                disabled={saving || changingPassword}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200"
                 placeholder="Giới thiệu ngắn về vai trò quản trị, mảng phụ trách..."
               />
               <p className="mt-1 text-right text-xs text-slate-500">{bioCount}</p>
             </label>
 
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+              <h3 className="mb-1 text-sm font-black text-slate-900 flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-slate-500">lock</span>
+                Thay đổi mật khẩu
+              </h3>
+              <p className="mb-4 text-xs leading-5 text-slate-500">Để trống nếu không muốn thay đổi mật khẩu của bạn.</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <InputField
+                  label="Mật khẩu hiện tại"
+                  name="oldPassword"
+                  type="password"
+                  value={oldPassword}
+                  onChange={(event) => setOldPassword(event.target.value)}
+                  placeholder="Nhập mật khẩu hiện tại"
+                  disabled={saving || changingPassword}
+                  allowPasswordToggle
+                />
+                <InputField
+                  label="Mật khẩu mới"
+                  name="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  placeholder="Tối thiểu 6 ký tự (chữ hoa, thường, số)"
+                  disabled={saving || changingPassword}
+                  allowPasswordToggle
+                />
+                <InputField
+                  label="Xác nhận mật khẩu mới"
+                  name="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Nhập lại mật khẩu mới"
+                  disabled={saving || changingPassword}
+                  allowPasswordToggle
+                />
+              </div>
+            </div>
+
             <div className="flex items-center gap-3 pt-2">
-              <AppButton type="submit" disabled={saving}>
-                {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+              <AppButton type="submit" disabled={saving || changingPassword}>
+                {(saving || changingPassword) ? 'Đang lưu...' : 'Lưu thay đổi'}
               </AppButton>
               <button
                 type="button"
-                onClick={() => setActiveTab('overview')}
+                onClick={() => {
+                  setOldPassword('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                  setActiveTab('overview');
+                }}
                 className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-800"
+                disabled={saving || changingPassword}
               >
                 Hủy bỏ
               </button>

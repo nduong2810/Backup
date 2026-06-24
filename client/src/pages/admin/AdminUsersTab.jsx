@@ -801,7 +801,7 @@ export default function AdminUsersTab({ embedded = false }) {
                   </div>
                   <div className="col-span-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Giới thiệu bản thân</p>
-                    <p className="text-sm text-slate-600 leading-relaxed">{detailUser.bio || 'Chưa cập nhật.'}</p>
+                    <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap break-words">{detailUser.bio || 'Chưa cập nhật.'}</p>
                   </div>
                   <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Ngày tham gia</p>

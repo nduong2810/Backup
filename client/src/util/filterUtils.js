@@ -14,21 +14,37 @@ export const DEFAULT_FILTERS = {
   limit: 15,
 };
 
-export const parseFiltersFromSearchParams = (searchParams) => ({
-  keyword: searchParams.get('keyword') ?? '',
-  status: searchParams.get('status') ?? 'All',
-  tags: searchParams.get('tags') ?? '',
-  sortBy: searchParams.get('sortBy') ?? 'Newest',
-  minViews: searchParams.get('minViews') ?? '',
-  minUpvotes: searchParams.get('minUpvotes') ?? '',
-  author: searchParams.get('author') ?? '',
-  authorId: searchParams.get('authorId') ?? '',
-  postType: searchParams.get('postType') ?? 'All',
-  startDate: searchParams.get('startDate') ?? '',
-  endDate: searchParams.get('endDate') ?? '',
-  page: Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1),
-  limit: Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '15', 10) || 15)),
-});
+export const parseFiltersFromSearchParams = (searchParams) => {
+  let tags = searchParams.get('tags') ?? '';
+  if (tags) {
+    tags = tags.split(',')
+      .map((t) => {
+        let cleaned = t.trim();
+        if (cleaned.toLowerCase().startsWith('tag:')) {
+          cleaned = cleaned.substring(4).trim();
+        }
+        return cleaned;
+      })
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  return {
+    keyword: searchParams.get('keyword') ?? '',
+    status: searchParams.get('status') ?? 'All',
+    tags,
+    sortBy: searchParams.get('sortBy') ?? 'Newest',
+    minViews: searchParams.get('minViews') ?? '',
+    minUpvotes: searchParams.get('minUpvotes') ?? '',
+    author: searchParams.get('author') ?? '',
+    authorId: searchParams.get('authorId') ?? '',
+    postType: searchParams.get('postType') ?? 'All',
+    startDate: searchParams.get('startDate') ?? '',
+    endDate: searchParams.get('endDate') ?? '',
+    page: Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1),
+    limit: Math.min(50, Math.max(1, parseInt(searchParams.get('limit') ?? '15', 10) || 15)),
+  };
+};
 
 export const parseSearchQuery = (query) => {
   const value = query || '';
@@ -44,10 +60,16 @@ export const parseSearchQuery = (query) => {
     return ' ';
   });
 
-  // 2. Parse regular [tag]
+  // 2. Parse regular [tag] and [tag:...]
   const tagRegex = /\[([^\]]+)\]/g;
   remaining = remaining.replace(tagRegex, (_, tagName) => {
-    if (tagName?.trim()) tags.push(tagName.trim());
+    if (tagName?.trim()) {
+      let cleaned = tagName.trim();
+      if (cleaned.toLowerCase().startsWith('tag:')) {
+        cleaned = cleaned.substring(4).trim();
+      }
+      if (cleaned) tags.push(cleaned);
+    }
     return ' ';
   });
 
@@ -61,7 +83,20 @@ export const parseSearchQuery = (query) => {
 export const buildSearchParams = (filters) => {
   const params = {};
   const keyword = filters.keyword?.trim();
-  const tags = filters.tags?.trim();
+  let tags = filters.tags?.trim();
+
+  if (tags) {
+    tags = tags.split(',')
+      .map((t) => {
+        let cleaned = t.trim();
+        if (cleaned.toLowerCase().startsWith('tag:')) {
+          cleaned = cleaned.substring(4).trim();
+        }
+        return cleaned;
+      })
+      .filter(Boolean)
+      .join(', ');
+  }
 
   if (keyword) params.keyword = keyword;
   if (tags) params.tags = tags;
@@ -90,7 +125,7 @@ export const getSearchStringFromFilters = (filters) => {
   if (filters.tags) {
     filters.tags.split(',').forEach((t) => {
       const cleaned = t.trim();
-      if (cleaned) parts.push(`[${cleaned}]`);
+      if (cleaned) parts.push(`[tag:${cleaned}]`);
     });
   }
   if (filters.author) {
