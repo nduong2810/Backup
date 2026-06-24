@@ -410,7 +410,12 @@ class PostService {
         const isFreeVote = voterRep < 15;
         let showFreeVotesModal = false;
 
-        // Chặn Downvote thật đối với nhóm trung gian từ 15 đến 99 reputation (chỉ chặn vote mới)
+        // 1. Chặn Downvote đối với nhóm Free Vote (dưới 15 uy tín) khi chưa từng downvote
+        if (voteType === 'downvote' && isFreeVote && !hasDownvoted) {
+            throw { status: 403, message: 'Thành viên mới chỉ có thể sử dụng lượt bình chọn miễn phí để Upvote bài viết.' };
+        }
+
+        // 2. Chặn Downvote đối với thành viên chưa đủ uy tín thực tế (dưới 100 uy tín) khi chưa từng downvote
         if (voteType === 'downvote' && !isFreeVote && voterRep < 100 && !hasDownvoted) {
             throw { status: 403, message: 'Bạn cần tối thiểu 100 điểm uy tín để Downvote bài viết.' };
         }
