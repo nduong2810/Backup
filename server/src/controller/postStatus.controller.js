@@ -45,7 +45,9 @@ class PostStatusController {
     try {
       const postObjectId = getObjectId(req.params.id);
       const nextStatus = String(req.body?.status || '').trim().toLowerCase();
-      const reason = String(req.body?.reason || '').trim();
+      const rawReason = String(req.body?.reason || '').trim();
+      const isReopening = nextStatus === 'unresolved';
+      const reason = isReopening ? '' : rawReason;
 
       if (!postObjectId) {
         return res.status(400).json({ success: false, message: 'ID bài viết không hợp lệ' });
@@ -55,8 +57,8 @@ class PostStatusController {
         return res.status(400).json({ success: false, message: 'Chỉ hỗ trợ đóng hoặc mở bài viết' });
       }
 
-      if (!reason) {
-        return res.status(400).json({ success: false, message: 'Vui lòng nhập lý do đóng/mở bài viết' });
+      if (!isReopening && !reason) {
+        return res.status(400).json({ success: false, message: 'Vui lòng nhập lý do đóng bài viết' });
       }
 
       if (reason.length > 500) {
@@ -73,7 +75,7 @@ class PostStatusController {
         return res.status(403).json({ success: false, message: 'Bạn không có quyền đóng/mở bài viết này' });
       }
 
-      if ((post.status === 'hidden' || post.status === 'deleted') && !(changedByRole === 'admin' && nextStatus === 'unresolved')) {
+      if ((post.status === 'hidden' || post.status === 'deleted') && !(changedByRole === 'admin' && isReopening)) {
         return res.status(400).json({ success: false, message: 'Chỉ admin mới có thể mở lại bài viết đang bị ẩn hoặc đã xóa' });
       }
 
@@ -94,7 +96,6 @@ class PostStatusController {
       const updateQuery = {
         $set: {
           status: nextStatus,
-          statusReason: reason,
           statusChangedBy: req.user.userId,
           statusChangedByRole: changedByRole,
           statusChangedAt: changedAt,
@@ -110,8 +111,10 @@ class PostStatusController {
         },
       };
 
-      if (nextStatus === 'unresolved') {
-        updateQuery.$unset = { deletedAt: '', deletedBy: '' };
+      if (isReopening) {
+        updateQuery.$unset = { statusReason: '', deletedAt: '', deletedBy: '' };
+      } else {
+        updateQuery.$set.statusReason = reason;
       }
 
       const updatedPost = await Post.findByIdAndUpdate(

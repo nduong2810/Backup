@@ -68,11 +68,12 @@ export const initSocket = (httpServer) => {
         };
         return next();
       } catch (error) {
-        // Cả 2 đều thất bại
+        // Nếu token không hợp lệ thì vẫn cho socket ẩn danh để nhận realtime bài viết công khai.
       }
     }
 
-    return next(new Error('UNAUTHORIZED'));
+    socket.user = null;
+    return next();
   });
 
   ioInstance.on('connection', (socket) => {

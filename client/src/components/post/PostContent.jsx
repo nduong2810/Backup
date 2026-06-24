@@ -99,6 +99,9 @@ export default function PostContent({
   const nextVisibilityStatus = isClosed ? 'unresolved' : 'resolved';
   const nextVisibilityLabel = isClosed ? 'Mở lại bài viết' : 'Đóng bài viết';
   const isLocked = isClosed || post.status === 'hidden' || post.status === 'deleted';
+  const isReopeningVisibility = visibilityTargetStatus === 'unresolved';
+  const shouldShowStatusReason = Boolean(post.statusReason) && post.status !== 'unresolved';
+  const shouldShowStatusBanner = isClosed || shouldShowStatusReason;
 
   const handleDeleteClick = () => {
     setShowMenu(false);
@@ -114,8 +117,10 @@ export default function PostContent({
 
   const handleConfirmVisibility = async () => {
     const reason = visibilityReason.trim();
-    if (!reason) {
-      toast.warning('Vui lòng nhập lý do đóng/mở bài viết.');
+    const isReopening = visibilityTargetStatus === 'unresolved';
+
+    if (!isReopening && !reason) {
+      toast.warning('Vui lòng nhập lý do đóng bài viết.');
       return;
     }
 
@@ -128,7 +133,7 @@ export default function PostContent({
     try {
       const response = await updatePostVisibilityApi(post._id, {
         status: visibilityTargetStatus,
-        reason,
+        reason: isReopening ? '' : reason,
       });
       toast.success(response?.data?.message || 'Đã cập nhật trạng thái bài viết.');
       setVisibilityModalOpen(false);
@@ -352,13 +357,13 @@ export default function PostContent({
         </div>
       </div>
 
-      {(isClosed || post.statusReason) && (
+      {shouldShowStatusBanner && (
         <div className={`rounded-xl border px-4 py-3 text-sm ${isClosed ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
           <div className="flex items-start gap-2">
             <span className="material-symbols-outlined text-[18px]">{isClosed ? 'lock' : 'info'}</span>
             <div className="min-w-0">
               <p className="font-bold">{isClosed ? 'Bài viết đang được đóng' : 'Lịch sử trạng thái bài viết'}</p>
-              {post.statusReason && <p className="mt-1 leading-6">Lý do: {post.statusReason}</p>}
+              {shouldShowStatusReason && <p className="mt-1 leading-6">Lý do: {post.statusReason}</p>}
               {post.statusChangedAt && (
                 <p className="mt-1 text-xs opacity-75">
                   {statusActorLabel[post.statusChangedByRole] || 'Người dùng'} cập nhật lúc {new Date(post.statusChangedAt).toLocaleString('vi-VN')}
@@ -389,23 +394,27 @@ export default function PostContent({
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-bold text-slate-800">{visibilityTargetStatus === 'resolved' ? 'Đóng bài viết' : 'Mở lại bài viết'}</h3>
                 <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-                  Lý do sẽ được lưu lại và hiển thị trên bài viết để người xem hiểu vì sao trạng thái bài bị thay đổi.
+                  {isReopeningVisibility
+                    ? 'Bài viết sẽ được mở lại để người dùng tiếp tục thảo luận. Hệ thống sẽ không lưu hoặc hiển thị lý do mở lại.'
+                    : 'Lý do đóng bài sẽ được lưu lại và hiển thị trên bài viết để người xem hiểu vì sao bài bị đóng.'}
                 </p>
               </div>
             </div>
 
-            <label className="mt-5 block">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700">Lý do</span>
-              <textarea
-                value={visibilityReason}
-                onChange={(event) => setVisibilityReason(event.target.value)}
-                maxLength={500}
-                rows={4}
-                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
-                placeholder={visibilityTargetStatus === 'resolved' ? 'Ví dụ: Câu hỏi đã được giải quyết, tạm đóng để tránh bình luận thêm...' : 'Ví dụ: Chủ bài/admin mở lại vì cần tiếp tục thảo luận...'}
-              />
-              <p className="mt-1 text-right text-xs text-slate-400">{visibilityReason.length}/500</p>
-            </label>
+            {!isReopeningVisibility && (
+              <label className="mt-5 block">
+                <span className="mb-1.5 block text-sm font-semibold text-slate-700">Lý do</span>
+                <textarea
+                  value={visibilityReason}
+                  onChange={(event) => setVisibilityReason(event.target.value)}
+                  maxLength={500}
+                  rows={4}
+                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  placeholder="Ví dụ: Câu hỏi đã được giải quyết, tạm đóng để tránh bình luận thêm..."
+                />
+                <p className="mt-1 text-right text-xs text-slate-400">{visibilityReason.length}/500</p>
+              </label>
+            )}
             
             <div className="mt-6 flex justify-end gap-2.5">
               <button

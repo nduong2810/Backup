@@ -3,6 +3,7 @@ import AdminAuditLog from '../model/adminAuditLog.model.js';
 
 const ACTION_VALUES = ['user_status_update', 'post_status_update', 'donation_approved', 'donation_rejected'];
 const TARGET_TYPE_VALUES = ['user', 'post', 'donation'];
+const AUDIT_LOG_PAGE_SIZE = 5;
 
 const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -78,7 +79,7 @@ class AdminAuditLogService {
 
   async list(query = {}) {
     const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
-    const limit = Math.min(100, Math.max(5, Number.parseInt(query.limit, 10) || 20));
+    const limit = AUDIT_LOG_PAGE_SIZE;
     const skip = (page - 1) * limit;
     const action = ACTION_VALUES.includes(String(query.action || '').trim()) ? String(query.action).trim() : '';
     const targetType = TARGET_TYPE_VALUES.includes(String(query.targetType || '').trim()) ? String(query.targetType).trim() : '';
@@ -152,8 +153,6 @@ class AdminAuditLogService {
                 newState: 1,
                 reason: 1,
                 metadata: 1,
-                ipAddress: 1,
-                userAgent: 1,
                 createdAt: 1,
                 updatedAt: 1,
                 actor: {

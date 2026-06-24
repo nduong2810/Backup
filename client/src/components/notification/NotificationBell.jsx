@@ -8,7 +8,7 @@ import {
   pushRealtimeNotification,
   setUnreadCount,
 } from '../../store/slices/notificationSlice';
-import { connectSocket, disconnectSocket } from '../../lib/socketClient';
+import { connectSocket } from '../../lib/socketClient';
 import { logout } from '../../store/slices/loginSlice';
 
 const TOAST_DURATION_MS = 4200;
@@ -145,7 +145,6 @@ export default function NotificationBell() {
       window.clearInterval(fallbackIntervalId);
       Object.values(toastTimersRef.current).forEach((timerId) => window.clearTimeout(timerId));
       toastTimersRef.current = {};
-      disconnectSocket();
     };
   }, [user, dispatch]);
 

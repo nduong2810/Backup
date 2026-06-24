@@ -39,7 +39,8 @@ class AdminPostStatusController {
     try {
       const postObjectId = getObjectId(req.params.postId);
       const status = String(req.body.status || '').trim().toLowerCase();
-      const reason = String(req.body.reason || '').trim() || 'Admin cập nhật trạng thái bài viết';
+      const isReopening = status === 'unresolved';
+      const reason = isReopening ? '' : (String(req.body.reason || '').trim() || 'Admin cập nhật trạng thái bài viết');
 
       if (!postObjectId) {
         return res.status(400).json({ success: false, message: 'ID bài viết không hợp lệ' });
@@ -56,11 +57,14 @@ class AdminPostStatusController {
       const changedAt = new Date();
       const updateFields = {
         status,
-        statusReason: reason,
         statusChangedBy: req.user.userId,
         statusChangedByRole: 'admin',
         statusChangedAt: changedAt,
       };
+
+      if (!isReopening) {
+        updateFields.statusReason = reason;
+      }
 
       const updateQuery = {
         $set: updateFields,
@@ -79,7 +83,9 @@ class AdminPostStatusController {
         updateQuery.$set.deletedAt = changedAt;
         updateQuery.$set.deletedBy = 'admin';
       } else {
-        updateQuery.$unset = { deletedAt: '', deletedBy: '' };
+        updateQuery.$unset = isReopening
+          ? { statusReason: '', deletedAt: '', deletedBy: '' }
+          : { deletedAt: '', deletedBy: '' };
       }
 
       const post = await Post.findByIdAndUpdate(
