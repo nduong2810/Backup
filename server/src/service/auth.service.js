@@ -228,7 +228,8 @@ class AuthService {
         await userRepository.updateUserByEmail(email, {
             resetOTP: otp,
             resetOTPExpiry: otpExpiry,
-            resetToken: null
+            resetToken: null,
+            resetTokenExpiry: null
         });
 
         const message = `Mã OTP đặt lại mật khẩu của bạn là: ${otp}. Mã có hiệu lực trong 5 phút.`;
@@ -254,12 +255,14 @@ class AuthService {
             throw new Error("OTP đã hết hạn");
         }
 
-        // Nếu vượt qua các lớp check trên thì tạo resetToken mới
+        // Nếu vượt qua các lớp check trên thì tạo resetToken mới có hiệu lực trong 10 phút
         const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 phút
 
-        // Vô hiệu hóa OTP
+        // Vô hiệu hóa OTP và thiết lập resetToken
         await userRepository.updateUserByEmail(email, { 
             resetToken,
+            resetTokenExpiry,
             resetOTP: null,         
             resetOTPExpiry: null    
         });
@@ -276,6 +279,15 @@ class AuthService {
             throw new Error("Phiên không hợp lệ hoặc đã hết hạn");
         }
 
+        // Kiểm tra thời gian hết hạn của resetToken (10 phút)
+        if (!user.resetTokenExpiry || Date.now() > user.resetTokenExpiry) {
+            await userRepository.updateUserByEmail(email, {
+                resetToken: null,
+                resetTokenExpiry: null
+            });
+            throw new Error("Phiên đặt lại mật khẩu đã hết hạn");
+        }
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
@@ -283,7 +295,8 @@ class AuthService {
             password: hashedPassword,
             resetOTP: null,
             resetOTPExpiry: null,
-            resetToken: null
+            resetToken: null,
+            resetTokenExpiry: null
         });
     }
 

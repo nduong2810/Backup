@@ -37,7 +37,8 @@ const userSchema = new mongoose.Schema({
     // Dành cho chức năng Quên mật khẩu
     resetOTP: { type: String, default: null },
     resetOTPExpiry: { type: Date, default: null },
-    resetToken: { type: String, default: null } 
+    resetToken: { type: String, default: null },
+    resetTokenExpiry: { type: Date, default: null }
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
