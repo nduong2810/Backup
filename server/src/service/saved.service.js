@@ -66,13 +66,13 @@ class SavedService {
     async savePost(userId, postId, collectionId = null) {
         const post = await postRepository.findById(postId);
         if (!post) {
-            throw new Error('Bai viet khong ton tai');
+            throw new Error('Bài viết không tồn tại');
         }
         if (post.status === 'hidden') {
-            throw new Error('Bai viet dang bi an');
+            throw new Error('Bài viết đang bị ẩn');
         }
         if (post.status === 'deleted') {
-            throw new Error('Bai viet da bi xoa');
+            throw new Error('Bài viết đã bị xóa');
         }
 
         const targetCollection = collectionId

@@ -22,10 +22,31 @@ class AuthService {
     async registerUser(fullName, email, password) {
         const existingUser = await userRepository.findByEmail(email);
         if (existingUser) {
-            if (!existingUser.isActive) {
-                throw new Error("Tài khoản của bạn đã bị vô hiệu hóa, vui lòng liên hệ với quản trị viên để mở lại!");
+            if (existingUser.status === 'banned') {
+                throw new Error("Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ admin để mở khóa tài khoản!");
             }
-            throw new Error("Email đã được sử dụng");
+            if (existingUser.status === 'deactivated') {
+                throw new Error("Tài khoản của bạn hiện đang bị vô hiệu hóa. Vui lòng đăng nhập để thực hiện kích hoạt lại tài khoản!");
+            }
+            if (existingUser.status === 'pending_delete') {
+                throw new Error("Tài khoản của bạn đang trong trạng thái chờ xóa. Vui lòng đăng nhập để hủy yêu cầu xóa tài khoản!");
+            }
+            if (existingUser.isActive) {
+                throw new Error("Email đã được sử dụng");
+            }
+            // Trường hợp: đã đăng ký nhưng chưa kích hoạt tài khoản (isActive là false và không bị ban / vô hiệu hóa / chờ xóa)
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            const { otp, otpExpiry } = generateOtpPayload();
+            await userRepository.updateUserByEmail(email, {
+                fullName,
+                password: hashedPassword,
+                otp,
+                otpExpiry
+            });
+            const message = `Mã OTP kích hoạt tài khoản của bạn là: ${otp}\nMã có hiệu lực trong 5 phút.`;
+            await sendEmail(email, "Kích hoạt tài khoản Forum", message);
+            return;
         }
 
         // Hash mật khẩu
