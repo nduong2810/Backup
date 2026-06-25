@@ -6,6 +6,7 @@ import { softDeletePost, updatePostVisibilityApi } from '../../services/postServ
 import { useToast } from '../../context/ToastContext';
 import EditPostModal from './EditPostModal';
 import EditHistoryModal from '../common/EditHistoryModal';
+import SafeMarkdown from '../common/SafeMarkdown';
 
 function timeAgo(dateString) {
   const now = new Date();
@@ -374,9 +375,7 @@ export default function PostContent({
         </div>
       )}
 
-      <div className="text-on-surface font-body-md text-body-md leading-relaxed whitespace-pre-wrap break-words w-full max-w-full">
-        {post.content}
-      </div>
+      <SafeMarkdown content={post.content} className="text-on-surface font-body-md text-body-md" />
 
       {visibilityModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

@@ -4,6 +4,7 @@ import ReputationBadge from '../ui/ReputationBadge';
 import { updateCommentApi } from '../../services/postService';
 import { useToast } from '../../context/ToastContext';
 import EditHistoryModal from '../common/EditHistoryModal';
+import SafeMarkdown from '../common/SafeMarkdown';
 
 function timeAgo(dateString) {
   const now = new Date();
@@ -506,10 +507,12 @@ export default function CommentItem({
               </div>
             </div>
           </form>
-        ) : (
-          <p className={isDeleted ? "text-outline font-body-sm text-body-sm leading-relaxed italic break-words w-full max-w-full" : "text-on-surface font-body-sm text-body-sm leading-relaxed whitespace-pre-wrap break-words w-full max-w-full"}>
+        ) : isDeleted ? (
+          <p className="text-outline font-body-sm text-body-sm leading-relaxed italic break-words w-full max-w-full">
             {comment.content}
           </p>
+        ) : (
+          <SafeMarkdown content={comment.content} className="text-on-surface font-body-sm text-body-sm" />
         )}
 
         {!isEditing && comment.images && comment.images.length > 0 && (

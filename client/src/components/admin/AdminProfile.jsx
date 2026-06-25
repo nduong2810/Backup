@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import AppCard from '../ui/AppCard';
 import AppButton from '../ui/AppButton';
 import InputField from '../ui/InputField';
 import { getAdminProfile, changeMyPassword } from '../../services/userService';
+import { fetchPostsApi } from '../../services/postService';
+import AppPagination from '../common/AppPagination';
 import {
   fetchProfileThunk,
   setProfileField,
@@ -18,8 +20,25 @@ export default function AdminProfile() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { form, loading, saving, successMessage, errorMessage } = useSelector((state) => state.profile);
+  const { user } = useSelector((state) => state.login);
   const [checkingAccess, setCheckingAccess] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'edit'
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const activeTab = ['overview', 'posts', 'edit'].includes(tabFromUrl) ? tabFromUrl : 'overview';
+
+  const setActiveTab = (tabKey) => {
+    const nextTab = ['overview', 'posts', 'edit'].includes(tabKey) ? tabKey : 'overview';
+    setSearchParams({ tab: nextTab }, { replace: false });
+  };
+
+  const [adminPosts, setAdminPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+
+  // Pagination states for posts tab
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPosts, setTotalPosts] = useState(0);
 
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -109,9 +128,39 @@ export default function AdminProfile() {
   }, [dispatch, navigate]);
 
   useEffect(() => {
+    let active = true;
+    if (user?._id || user?.id) {
+      const authorId = user._id || user.id;
+      const timer = setTimeout(() => {
+        if (!active) return;
+        setLoadingPosts(true);
+        fetchPostsApi({ authorId, page, limit })
+          .then((response) => {
+            if (active) {
+              setAdminPosts(response.data?.data || []);
+              setTotalPages(response.data?.pagination?.totalPages || 1);
+              setTotalPosts(response.data?.pagination?.total || 0);
+            }
+          })
+          .catch((err) => console.error('[AdminProfile] Error loading posts:', err))
+          .finally(() => {
+            if (active) setLoadingPosts(false);
+          });
+      }, 0);
+      return () => {
+        active = false;
+        clearTimeout(timer);
+      };
+    }
+  }, [user?._id, user?.id, page, limit]);
+
+  useEffect(() => {
     if (successMessage) {
       dispatch(clearProfileMessages());
-      setActiveTab('overview');
+      const timer = setTimeout(() => {
+        setActiveTab('overview');
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [successMessage, dispatch]);
 
@@ -224,16 +273,22 @@ export default function AdminProfile() {
       {/* Tab navigation */}
       {activeTab !== 'edit' && (
         <div className="flex items-center gap-2 border-b border-slate-100 pb-2 mt-4">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`rounded-full px-5 py-2 text-xs font-bold transition-all ${
-              activeTab === 'overview'
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Tổng quan
-          </button>
+          {[
+            ['overview', 'Tổng quan'],
+            ['posts', 'Bài viết'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`rounded-full px-5 py-2 text-xs font-bold transition-all ${
+                activeTab === key
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       )}
 
@@ -341,6 +396,75 @@ export default function AdminProfile() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Posts Tab Content */}
+      {activeTab === 'posts' && (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm animate-fadeIn">
+          <h3 className="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3 mb-5 flex items-center gap-2">
+            <span className="material-symbols-outlined text-xl text-slate-500">history_edu</span>
+            Danh sách bài viết của bạn
+          </h3>
+          {loadingPosts ? (
+            <div className="space-y-4 py-8">
+              <div className="h-4 w-1/3 bg-slate-100 animate-pulse rounded" />
+              <div className="h-12 w-full bg-slate-50 animate-pulse rounded-xl" />
+              <div className="h-12 w-full bg-slate-50 animate-pulse rounded-xl" />
+            </div>
+          ) : !adminPosts.length ? (
+            <div className="text-center py-16 text-slate-400 animate-fadeIn">
+              <span className="material-symbols-outlined text-5xl text-slate-350">edit_note</span>
+              <p className="mt-3 text-sm font-semibold">Chưa có bài viết nào</p>
+              <p className="mt-1 text-xs text-slate-400">Các bài viết bạn đã đăng tải sẽ hiển thị tại đây.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-4">
+                {adminPosts.map((post) => (
+                  <div key={post._id} className="flex items-start gap-3 p-4 rounded-xl border border-slate-100 hover:bg-slate-50/50 transition-colors">
+                    <span className="material-symbols-outlined text-xl text-primary mt-0.5 shrink-0">
+                      {post.postType === 'question' ? 'help_center' : 'tips_and_updates'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-slate-400 text-xs font-semibold font-mono">
+                          {new Date(post.createdAt).toLocaleDateString('vi-VN')}
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${post.postType === 'question' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+                          {post.postType === 'question' ? 'Câu hỏi' : 'Lời khuyên'}
+                        </span>
+                      </div>
+                      <Link
+                        to={`/posts/${post._id}`}
+                        className="font-bold text-primary-container hover:text-primary-container/80 transition-colors break-words block text-base mt-1"
+                      >
+                        {post.title}
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pagination */}
+              <div className="mt-6 flex flex-col gap-2 w-full pt-4 border-t border-slate-100">
+                <AppPagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  limit={limit}
+                  limitOptions={[10, 20, 50]}
+                  onLimitChange={(newLimit) => {
+                    setLimit(newLimit);
+                    setPage(1);
+                  }}
+                />
+                <div className="text-center sm:text-left text-xs font-semibold text-slate-500 sm:pl-2">
+                  Tổng <span className="text-slate-900">{totalPosts}</span> bài viết đã đăng
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

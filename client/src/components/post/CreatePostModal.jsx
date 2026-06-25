@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPostApi } from '../../services/postService';
 import { useToast } from '../../context/ToastContext';
 import TagSelector from '../common/TagSelector';
+import SafeMarkdown from '../common/SafeMarkdown';
 
 const CREATE_POST_DRAFT_KEY = 'itforum:create-post-draft:v1';
 
@@ -45,6 +46,71 @@ export default function CreatePostModal({ isOpen, onClose }) {
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [draftNotice, setDraftNotice] = useState('');
   const [manualDraftSavedAt, setManualDraftSavedAt] = useState('');
+  const [editorMode, setEditorMode] = useState('write'); // 'write' | 'preview'
+
+  const textareaRef = useRef(null);
+
+  const insertMarkdown = (syntaxBefore, syntaxAfter = '', defaultText = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    const placeholder = selectedText || defaultText;
+    const replacement = syntaxBefore + placeholder + syntaxAfter;
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    setContent(newContent);
+
+    // Focus and select the text
+    setTimeout(() => {
+      textarea.focus();
+      const selectionStart = start + syntaxBefore.length;
+      const selectionEnd = selectionStart + placeholder.length;
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    }, 0);
+  };
+
+  const insertList = (isNumbered) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    let replacement = '';
+
+    if (selectedText.trim()) {
+      const lines = selectedText.split('\n');
+      const formattedLines = lines.map((line, index) => {
+        if (!line.trim()) return line;
+        const prefix = isNumbered ? `${index + 1}. ` : '- ';
+        if (isNumbered) {
+          if (/^\d+\.\s/.test(line)) return line;
+          return prefix + line;
+        } else {
+          if (line.startsWith('- ')) return line;
+          return prefix + line;
+        }
+      });
+      replacement = formattedLines.join('\n');
+    } else {
+      replacement = isNumbered ? '1. mục danh sách' : '- mục danh sách';
+    }
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    setContent(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start, start + replacement.length);
+    }, 0);
+  };
 
   const resetForm = () => {
     setPostType('question');
@@ -58,6 +124,7 @@ export default function CreatePostModal({ isOpen, onClose }) {
     setMediaError('');
     setDraftNotice('');
     setManualDraftSavedAt('');
+    setEditorMode('write');
   };
 
   const hasAnyInput = () => Boolean(
@@ -414,18 +481,133 @@ export default function CreatePostModal({ isOpen, onClose }) {
 
           {/* Content */}
           <div>
-            <label className="block text-sm font-semibold text-on-surface dark:text-slate-350 mb-1.5">
-              Nội dung chi tiết <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              required
-              rows={6}
-              placeholder="Miêu tả chi tiết vấn đề của bạn..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              disabled={submitting}
-              className="w-full rounded-xl border border-outline-variant bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed font-body-sm"
-            />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-semibold text-on-surface dark:text-slate-350">
+                Nội dung chi tiết <span className="text-red-500">*</span>
+              </label>
+              <div className="flex rounded-lg bg-slate-100 dark:bg-slate-900 p-0.5 border border-slate-200/50 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditorMode('write')}
+                  className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                    editorMode === 'write'
+                      ? 'bg-white dark:bg-slate-850 text-slate-800 dark:text-slate-200 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Viết
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditorMode('preview')}
+                  className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                    editorMode === 'preview'
+                      ? 'bg-white dark:bg-slate-850 text-slate-800 dark:text-slate-200 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Xem trước
+                </button>
+              </div>
+            </div>
+
+            {editorMode === 'write' ? (
+              <>
+                {/* Formatting Toolbar */}
+                <div className="flex items-center gap-1 mb-2 p-1 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800/80 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdown('**', '**', 'chữ in đậm')}
+                    className="p-1.5 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition-all flex items-center justify-center"
+                    title="In đậm (Bold)"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">format_bold</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdown('*', '*', 'chữ in nghiêng')}
+                    className="p-1.5 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition-all flex items-center justify-center"
+                    title="In nghiêng (Italic)"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">format_italic</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdown('`', '`', 'code inline')}
+                    className="p-1.5 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition-all flex items-center justify-center"
+                    title="Code dòng (Inline Code)"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">code</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdown('```yaml\n', '\n```', '// viết code tại đây')}
+                    className="p-1.5 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition-all flex items-center justify-center"
+                    title="Khối Code (Code Block)"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">terminal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdown('[', '](url)', 'Tên liên kết')}
+                    className="p-1.5 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition-all flex items-center justify-center"
+                    title="Thêm liên kết (Link)"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">link</span>
+                  </button>
+                  <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => insertList(false)}
+                    className="p-1.5 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition-all flex items-center justify-center"
+                    title="Danh sách không thứ tự"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">format_list_bulleted</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertList(true)}
+                    className="p-1.5 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg transition-all flex items-center justify-center"
+                    title="Danh sách có thứ tự"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">format_list_numbered</span>
+                  </button>
+                </div>
+
+                <textarea
+                  ref={textareaRef}
+                  required
+                  rows={6}
+                  placeholder="Miêu tả chi tiết vấn đề của bạn..."
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  disabled={submitting}
+                  className="w-full rounded-xl border border-outline-variant bg-white dark:bg-slate-950 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed font-body-sm animate-fadeIn"
+                />
+              </>
+            ) : (
+              <div className="w-full rounded-xl border border-outline-variant bg-slate-50/50 dark:bg-slate-950/30 px-4 py-3 text-sm text-slate-800 dark:text-slate-200 font-body-sm min-h-[162px] max-h-[300px] overflow-y-auto break-words prose dark:prose-invert max-w-none animate-fadeIn">
+                {content.trim() ? (
+                  <SafeMarkdown content={content} />
+                ) : (
+                  <span className="text-slate-400 italic">Nội dung xem trước trống...</span>
+                )}
+              </div>
+            )}
+            {/* Formatting Tips */}
+            <div className="mt-2 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200/50 dark:border-slate-800/80 p-3 text-xs text-slate-500 space-y-1">
+              <p className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[15px] text-primary font-bold">info</span>
+                Hỗ trợ định dạng bài viết:
+              </p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-slate-500 font-medium mt-1">
+                <div>• In đậm: <code className="bg-slate-200/60 dark:bg-slate-800/85 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600 dark:text-rose-400">**chữ**</code></div>
+                <div>• In nghiêng: <code className="bg-slate-200/60 dark:bg-slate-800/85 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600 dark:text-rose-400">*chữ*</code></div>
+                <div>• Code inline: <code className="bg-slate-200/60 dark:bg-slate-800/85 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600 dark:text-rose-400">`code`</code></div>
+                <div>• Link: <code className="bg-slate-200/60 dark:bg-slate-800/85 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600 dark:text-rose-400">[Tên](URL)</code></div>
+                <div className="col-span-2 mt-1.5 border-t border-slate-200/40 dark:border-slate-800/50 pt-1.5">• <strong>Khối Code:</strong> Xuống dòng rồi dùng 3 dấu nháy ngược <code className="bg-slate-200/60 dark:bg-slate-800/85 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600 dark:text-rose-400">```yaml</code> (tên ngôn ngữ), viết code, rồi kết thúc bằng <code className="bg-slate-200/60 dark:bg-slate-800/85 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600 dark:text-rose-400">```</code> ở dòng mới.</div>
+              </div>
+            </div>
           </div>
 
           {/* Tags */}

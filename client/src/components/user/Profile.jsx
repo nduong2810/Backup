@@ -334,7 +334,7 @@ export default function Profile() {
                       <span className="material-symbols-outlined text-[16px] text-slate-450 mt-0.5 shrink-0">{post.postType === 'question' ? 'help' : 'rate_review'}</span>
                       <div className="flex-1 min-w-0 leading-snug">
                         <span className="text-slate-400 text-xs mr-2 font-mono">[{new Date(post.createdAt).toLocaleDateString('vi-VN')}]</span>
-                        <Link to={`/posts/${post._id}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline break-words block w-full max-w-full mt-0.5">{post.title}</Link>
+                        <Link to={`/posts/${post._id}`} className="font-bold text-primary-container hover:text-primary-container/80 transition-colors break-words block w-full max-w-full mt-0.5">{post.title}</Link>
                       </div>
                     </div>
                   ))}
