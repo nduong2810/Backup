@@ -420,8 +420,14 @@ class PostController {
     async getTrashPosts(req, res) {
         try {
             const userId = req.user.userId;
-            const posts = await postService.getTrashPosts(userId);
-            return res.status(200).json({ success: true, message: 'Lấy danh sách bài viết đã xóa thành công', data: posts });
+            const { page = 1, limit = 10 } = req.query;
+            const result = await postService.getTrashPosts(userId, page, limit);
+            return res.status(200).json({
+                success: true,
+                message: 'Lấy danh sách bài viết đã xóa thành công',
+                data: result.data,
+                pagination: result.pagination
+            });
         } catch (error) {
             const status = error.status || 500;
             return res.status(status).json({ success: false, message: error.message || 'Lỗi server khi lấy bài viết đã xóa' });

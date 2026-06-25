@@ -363,21 +363,23 @@ export default function PostDetailPage() {
         )}
       </div>
 
-      {/* <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-amber-950">Ủng hộ tác giả khi thấy câu trả lời hữu ích</h3>
-            <p className="mt-1 text-sm text-amber-900/80">Chọn mức 20K, 50K hoặc 100K để gửi một tách cafe cho người trả lời.</p>
+      {/* {post.author?.role !== 'admin' && (
+        <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-amber-950">Ủng hộ tác giả khi thấy câu trả lời hữu ích</h3>
+              <p className="mt-1 text-sm text-amber-900/80">Chọn mức 20K, 50K hoặc 100K để gửi một tách cafe cho người trả lời.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleStartDonate({ author: post.author, _id: post.author?._id, isPostDonation: true })}
+              className="rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+            >
+              Ủng hộ tác giả của bài viết
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => handleStartDonate({ author: post.author, _id: post.author?._id, isPostDonation: true })}
-            className="rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
-          >
-            Ủng hộ tác giả của bài viết
-          </button>
-        </div>
-      </section> */}
+        </section>
+      )} */}
 
       <CommentSection
         comments={comments}

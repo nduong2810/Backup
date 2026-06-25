@@ -909,8 +909,25 @@ class PostService {
         return { success: true, message: 'Xóa vĩnh viễn bài viết thành công' };
     }
 
-    async getTrashPosts(userId) {
-        return await postRepository.findDeletedPostsByAuthor(userId);
+    async getTrashPosts(userId, page = 1, limit = 10) {
+        const pageNum = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
+        const skip = (pageNum - 1) * limitNum;
+
+        const [posts, total] = await Promise.all([
+            postRepository.findDeletedPostsByAuthor(userId, skip, limitNum),
+            postRepository.countPosts({ author: userId, status: 'deleted' })
+        ]);
+
+        return {
+            data: posts,
+            pagination: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum)
+            }
+        };
     }
 
     async deleteComment(commentId, userId) {

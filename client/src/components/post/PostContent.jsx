@@ -271,7 +271,7 @@ export default function PostContent({
                 : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`
               }
               alt={post.author?.fullName}
-              className="w-6 h-6 rounded-full border border-outline-variant"
+              className="w-6 h-6 rounded-full border border-outline-variant object-cover"
             />
             <span className="font-medium text-primary-container hover:underline">{post.author?.fullName}</span>
           </Link>

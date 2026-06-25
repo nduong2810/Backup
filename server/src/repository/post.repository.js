@@ -239,9 +239,11 @@ class PostRepository {
         return await Post.findByIdAndDelete(postId);
     }
 
-    async findDeletedPostsByAuthor(authorId) {
+    async findDeletedPostsByAuthor(authorId, skip = 0, limit = 10) {
         return await Post.find({ author: authorId, status: 'deleted' })
             .sort({ deletedAt: -1, title: 1 })
+            .skip(skip)
+            .limit(limit)
             .populate('author', '_id fullName avatar email role')
             .lean();
     }

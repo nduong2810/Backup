@@ -2,11 +2,18 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getTrashPosts, restorePost, permanentlyDeletePost } from '../../services/postService';
 import { useToast } from '../../context/ToastContext';
+import AppPagination from '../../components/common/AppPagination';
 
 export default function TrashPage() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalPosts, setTotalPosts] = useState(0);
 
   // Modal states
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -16,11 +23,13 @@ export default function TrashPage() {
 
   const { toast } = useToast();
 
-  const fetchTrash = async () => {
+  const fetchTrash = async (currentPage = page, currentLimit = limit) => {
     setLoading(true);
     try {
-      const response = await getTrashPosts();
+      const response = await getTrashPosts({ page: currentPage, limit: currentLimit });
       setPosts(response.data.data || []);
+      setTotalPages(response.data.pagination?.totalPages || 1);
+      setTotalPosts(response.data.pagination?.total || 0);
       setError(null);
     } catch (err) {
       console.error('[TrashPage] Fetch error:', err);
@@ -31,8 +40,8 @@ export default function TrashPage() {
   };
 
   useEffect(() => {
-    fetchTrash();
-  }, []);
+    fetchTrash(page, limit);
+  }, [page, limit]);
 
   const openConfirmModal = (postId, type) => {
     setSelectedPostId(postId);
@@ -58,7 +67,12 @@ export default function TrashPage() {
         toast.success('Đã xóa vĩnh viễn bài viết thành công!');
       }
       closeConfirmModal();
-      fetchTrash();
+      
+      if (posts.length === 1 && page > 1) {
+        setPage((prev) => prev - 1);
+      } else {
+        fetchTrash(page, limit);
+      }
     } catch (err) {
       console.error(`[TrashPage] Error performing ${actionType}:`, err);
       toast.error(err.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại sau.');
@@ -191,6 +205,26 @@ export default function TrashPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!error && posts.length > 0 && (
+        <div className="mt-4 flex flex-col gap-2 w-full">
+          <AppPagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            limit={limit}
+            limitOptions={[10, 20, 50]}
+            onLimitChange={(newLimit) => {
+              setLimit(newLimit);
+              setPage(1);
+            }}
+          />
+          <div className="text-center sm:text-left text-xs font-semibold text-slate-500 sm:pl-2">
+            Tổng <span className="text-slate-900">{totalPosts}</span> bài viết đã xóa
           </div>
         </div>
       )}

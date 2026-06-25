@@ -27,7 +27,7 @@ export const getPostFlagSummaryApi = (postId) => apiClient.get(`/reports/posts/$
 export const getAdminFlagsApi = (params = {}) => apiClient.get('/reports/admin/flags', { params });
 export const adminUpdateFlagStatusApi = (ticketId, payload) => apiClient.patch(`/reports/${ticketId}/status`, payload);
 
-export const getTrashPosts = () => apiClient.get('/posts/trash');
+export const getTrashPosts = (params = {}) => apiClient.get('/posts/trash', { params });
 export const softDeletePost = (postId) => apiClient.delete(`/posts/${postId}`);
 export const restorePost = (postId) => apiClient.patch(`/posts/${postId}/restore`);
 export const permanentlyDeletePost = (postId) => apiClient.delete(`/posts/${postId}/permanent`);

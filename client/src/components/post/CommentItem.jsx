@@ -269,7 +269,7 @@ export default function CommentItem({
           : `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.author?.fullName || 'U')}&background=556067&color=fff&size=32`
         }
         alt={comment.author?.fullName}
-        className="w-8 h-8 rounded-full border border-outline-variant shrink-0"
+        className="w-8 h-8 rounded-full border border-outline-variant shrink-0 object-cover"
       />
 
       <div className="flex-1 min-w-0">
@@ -289,6 +289,12 @@ export default function CommentItem({
             <Link to={comment.author?._id ? `/users/${comment.author._id}` : '#'} className="font-semibold text-primary-container hover:underline">
               {comment.author?.fullName}
             </Link>
+            {comment.author?.role === 'admin' && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-900 select-none">
+                <span className="material-symbols-outlined text-[10px] leading-none">shield</span>
+                Quản trị viên
+              </span>
+            )}
             {comment.author?.reputation !== undefined && (
               <ReputationBadge reputation={comment.author.reputation} size="sm" />
             )}
@@ -610,7 +616,7 @@ export default function CommentItem({
               </button>
             )}
 
-            {!isPostLocked && depth === 0 && typeof onDonate === 'function' && comment.author?._id && (
+            {!isPostLocked && depth === 0 && typeof onDonate === 'function' && comment.author?._id && comment.author?.role !== 'admin' && (
               <button
                 type="button"
                 onClick={() => onDonate(comment)}

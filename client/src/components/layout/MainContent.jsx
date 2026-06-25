@@ -104,11 +104,16 @@ const QuestionCard = ({
                 <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
                     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
                         <div className="flex flex-wrap items-center gap-1.5">
-                            {question.tags && question.tags.map((tag, index) => (
+                            {question.tags && question.tags.slice(0, 2).map((tag, index) => (
                                 <span key={index} className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 cursor-pointer">
                                     {tag}
                                 </span>
                             ))}
+                            {question.tags && question.tags.length > 2 && (
+                                <span className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 cursor-default" title="Vào chi tiết để xem toàn bộ thẻ">
+                                    ...
+                                </span>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-1.5">
@@ -205,7 +210,9 @@ const getTrendingPageSize = (width) => {
 };
 
 const TrendingCard = ({ post, rank, onTagClick }) => {
-    const tags = Array.isArray(post.tags) ? post.tags.slice(0, 3) : [];
+    const rawTags = Array.isArray(post.tags) ? post.tags : [];
+    const tags = rawTags.slice(0, 2);
+    const hasMoreTags = rawTags.length > 2;
 
     return (
         <article className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm p-4 flex flex-col gap-3 h-full">
@@ -225,6 +232,11 @@ const TrendingCard = ({ post, rank, onTagClick }) => {
                             {tag}
                         </button>
                     ))}
+                    {hasMoreTags && (
+                        <span className="inline-flex items-center font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 transition-colors cursor-default" title="Vào chi tiết để xem toàn bộ thẻ">
+                            ...
+                        </span>
+                    )}
                 </div>
             </div>
             <div className="flex items-center justify-between text-xs text-secondary">
@@ -246,7 +258,9 @@ const TrendingCard = ({ post, rank, onTagClick }) => {
 };
 
 const TopUpvotedCard = ({ post, rank, onTagClick }) => {
-    const tags = Array.isArray(post.tags) ? post.tags.slice(0, 3) : [];
+    const rawTags = Array.isArray(post.tags) ? post.tags : [];
+    const tags = rawTags.slice(0, 2);
+    const hasMoreTags = rawTags.length > 2;
     const upvotes = post.upvoteCount ?? 0;
     const upvotesToday = post.upvotesToday ?? 0;
 
@@ -266,6 +280,11 @@ const TopUpvotedCard = ({ post, rank, onTagClick }) => {
                             {tag}
                         </button>
                     ))}
+                    {hasMoreTags && (
+                        <span className="inline-flex items-center font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 transition-colors cursor-default" title="Vào chi tiết để xem toàn bộ thẻ">
+                            ...
+                        </span>
+                    )}
                 </div>
             </div>
             <div className="flex items-center justify-between text-xs text-secondary">
