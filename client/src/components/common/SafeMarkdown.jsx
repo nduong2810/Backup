@@ -185,7 +185,7 @@ export default function SafeMarkdown({ content, className = '' }) {
               break;
           }
         } else if (trimmed === '') {
-          rendered.push(<div key={lineIdx} className="h-2" />);
+          rendered.push(<div key={lineIdx} className="h-0.5" />);
         } else {
           rendered.push(
             <p key={lineIdx} className="leading-relaxed break-words whitespace-pre-wrap text-slate-800">
@@ -201,7 +201,7 @@ export default function SafeMarkdown({ content, className = '' }) {
   };
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div className={`space-y-2 ${className}`}>
       {parts.map((part, index) => {
         const isCodeBlock = part.startsWith('```') && part.endsWith('```');
 
@@ -214,7 +214,7 @@ export default function SafeMarkdown({ content, className = '' }) {
           return (
             <div
               key={index}
-              className="my-4 rounded-xl border border-slate-800 bg-slate-900 text-slate-100 shadow-md overflow-hidden font-mono text-sm"
+              className="mt-2.5 mb-3.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-100 shadow-md overflow-hidden font-mono text-sm"
             >
               {/* Header bar */}
               <div className="flex items-center justify-between bg-slate-950/40 px-4 py-2 border-b border-slate-800/80 text-xs font-semibold text-slate-400 select-none">
