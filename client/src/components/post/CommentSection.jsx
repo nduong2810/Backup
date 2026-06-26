@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import CommentItem from './CommentItem';
+import SafeMarkdown from '../common/SafeMarkdown';
 
 // ====================================================================
 // CommentSection — Section bình luận với form thêm bình luận và danh sách comments
@@ -38,6 +39,9 @@ export default function CommentSection({
   const [submittingReply, setSubmittingReply] = useState(false);
   const isLocked = postStatus === 'resolved' || postStatus === 'hidden' || postStatus === 'deleted';
 
+  const [editorMode, setEditorMode] = useState('write'); // 'write' | 'preview'
+  const textareaRef = useRef(null);
+
   const resetMainForm = () => {
     setContent('');
     setImagePreviews([]);
@@ -45,6 +49,69 @@ export default function CommentSection({
     setImageFiles([]);
     setVideoFiles([]);
     setMediaError('');
+    setEditorMode('write');
+  };
+
+  const insertMarkdown = (syntaxBefore, syntaxAfter = '', defaultText = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    const placeholder = selectedText || defaultText;
+    const replacement = syntaxBefore + placeholder + syntaxAfter;
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    setContent(newContent);
+
+    // Focus and select the text
+    setTimeout(() => {
+      textarea.focus();
+      const selectionStart = start + syntaxBefore.length;
+      const selectionEnd = selectionStart + placeholder.length;
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    }, 0);
+  };
+
+  const insertList = (isNumbered) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    let replacement = '';
+
+    if (selectedText.trim()) {
+      const lines = selectedText.split('\n');
+      const formattedLines = lines.map((line, index) => {
+        if (!line.trim()) return line;
+        const prefix = isNumbered ? `${index + 1}. ` : '- ';
+        if (isNumbered) {
+          if (/^\d+\.\s/.test(line)) return line;
+          return prefix + line;
+        } else {
+          if (line.startsWith('- ')) return line;
+          return prefix + line;
+        }
+      });
+      replacement = formattedLines.join('\n');
+    } else {
+      replacement = isNumbered ? '1. mục danh sách' : '- mục danh sách';
+    }
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    setContent(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start, start + replacement.length);
+    }, 0);
   };
 
   const handleImageChange = (e) => {
@@ -206,16 +273,138 @@ export default function CommentSection({
             </div>
           </div>
         )}
-        <label className="mb-2 block text-sm font-semibold text-on-surface">{formLabel}</label>
-        <textarea
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-          rows={3}
-          maxLength={2000}
-          placeholder={isLocked ? "Bài viết đã bị khóa, không thể thêm bình luận." : (isAuthenticated ? placeholderAuth : placeholderGuest)}
-          disabled={submittingComment || isLocked}
-          className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100"
-        />
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-semibold text-on-surface">{formLabel}</label>
+          {isAuthenticated && !isLocked && (
+            <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-900 border border-slate-200/60">
+              <button
+                type="button"
+                onClick={() => setEditorMode('write')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                  editorMode === 'write'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Viết
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditorMode('preview')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                  editorMode === 'preview'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Xem trước
+              </button>
+            </div>
+          )}
+        </div>
+
+        {editorMode === 'write' || !isAuthenticated || isLocked ? (
+          <>
+            {/* Formatting Toolbar */}
+            {isAuthenticated && !isLocked && (
+              <div className="flex items-center gap-1 mb-2 p-1 rounded-xl bg-slate-50 border border-slate-200/60 w-fit">
+                <button
+                  type="button"
+                  onClick={() => insertMarkdown('**', '**', 'chữ in đậm')}
+                  className="p-1.5 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded-lg transition-all flex items-center justify-center"
+                  title="In đậm (Bold)"
+                >
+                  <span className="material-symbols-outlined text-[18px]">format_bold</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertMarkdown('*', '*', 'chữ in nghiêng')}
+                  className="p-1.5 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded-lg transition-all flex items-center justify-center"
+                  title="In nghiêng (Italic)"
+                >
+                  <span className="material-symbols-outlined text-[18px]">format_italic</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertMarkdown('`', '`', 'code inline')}
+                  className="p-1.5 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded-lg transition-all flex items-center justify-center"
+                  title="Code dòng (Inline Code)"
+                >
+                  <span className="material-symbols-outlined text-[18px]">code</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertMarkdown('```yaml\n', '\n```', '// viết code tại đây')}
+                  className="p-1.5 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded-lg transition-all flex items-center justify-center"
+                  title="Khối Code (Code Block)"
+                >
+                  <span className="material-symbols-outlined text-[18px]">terminal</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertMarkdown('[', '](url)', 'Tên liên kết')}
+                  className="p-1.5 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded-lg transition-all flex items-center justify-center"
+                  title="Thêm liên kết (Link)"
+                >
+                  <span className="material-symbols-outlined text-[18px]">link</span>
+                </button>
+                <div className="h-4 w-px bg-slate-200 mx-1" />
+                <button
+                  type="button"
+                  onClick={() => insertList(false)}
+                  className="p-1.5 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded-lg transition-all flex items-center justify-center"
+                  title="Danh sách không thứ tự"
+                >
+                  <span className="material-symbols-outlined text-[18px]">format_list_bulleted</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertList(true)}
+                  className="p-1.5 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded-lg transition-all flex items-center justify-center"
+                  title="Danh sách có thứ tự"
+                >
+                  <span className="material-symbols-outlined text-[18px]">format_list_numbered</span>
+                </button>
+              </div>
+            )}
+
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              rows={3}
+              maxLength={2000}
+              placeholder={isLocked ? "Bài viết đã bị khóa, không thể thêm bình luận." : (isAuthenticated ? placeholderAuth : placeholderGuest)}
+              disabled={submittingComment || isLocked}
+              className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100"
+            />
+          </>
+        ) : (
+          <div className="w-full rounded-lg border border-outline-variant bg-slate-50/50 px-3 py-2 text-sm text-slate-800 min-h-[80px] max-h-[250px] overflow-y-auto break-words prose max-w-none animate-fadeIn">
+            {content.trim() ? (
+              <SafeMarkdown content={content} />
+            ) : (
+              <span className="text-slate-400 italic">Nội dung xem trước trống...</span>
+            )}
+          </div>
+        )}
+
+        {/* Formatting Tips */}
+        {isAuthenticated && !isLocked && editorMode === 'write' && (
+          <div className="mt-2 rounded-xl bg-slate-50 border border-slate-200/50 p-3 text-xs text-slate-500 space-y-1">
+            <p className="font-semibold text-slate-700 flex items-center gap-1">
+              <span className="material-symbols-outlined text-[15px] text-primary font-bold">info</span>
+              Hỗ trợ định dạng bình luận:
+            </p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-slate-500 font-medium mt-1">
+              <div>• In đậm: <code className="bg-slate-200/60 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600">**chữ**</code></div>
+              <div>• In nghiêng: <code className="bg-slate-200/60 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600">*chữ*</code></div>
+              <div>• Code inline: <code className="bg-slate-200/60 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600">`code`</code></div>
+              <div>• Link: <code className="bg-slate-200/60 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600">[Tên](URL)</code></div>
+              <div className="col-span-2 mt-1.5 border-t border-slate-200/40 pt-1.5">• <strong>Khối Code:</strong> Xuống dòng rồi dùng 3 dấu nháy ngược <code className="bg-slate-200/60 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600">```yaml</code> (tên ngôn ngữ), viết code, rồi kết thúc bằng <code className="bg-slate-200/60 px-1 py-0.5 rounded font-mono text-[10px] text-rose-600">```</code> ở dòng mới.</div>
+            </div>
+          </div>
+        )}
 
         {imagePreviews.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">

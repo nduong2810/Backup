@@ -61,6 +61,141 @@ export default function CommentItem({
   const [mediaError, setMediaError] = useState('');
   const menuRef = useRef(null);
 
+  const [replyEditorMode, setReplyEditorMode] = useState('write'); // 'write' | 'preview'
+  const [editEditorMode, setEditEditorMode] = useState('write');   // 'write' | 'preview'
+  const replyTextareaRef = useRef(null);
+  const editTextareaRef = useRef(null);
+
+  useEffect(() => {
+    if (String(replyingToId) !== String(comment._id)) {
+      setReplyEditorMode('write');
+    }
+  }, [replyingToId, comment._id]);
+
+  const insertMarkdownToReply = (syntaxBefore, syntaxAfter = '', defaultText = '') => {
+    const textarea = replyTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    const placeholder = selectedText || defaultText;
+    const replacement = syntaxBefore + placeholder + syntaxAfter;
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    onReplyContentChange?.(newContent);
+
+    // Focus and select the text
+    setTimeout(() => {
+      textarea.focus();
+      const selectionStart = start + syntaxBefore.length;
+      const selectionEnd = selectionStart + placeholder.length;
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    }, 0);
+  };
+
+  const insertListToReply = (isNumbered) => {
+    const textarea = replyTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    let replacement = '';
+
+    if (selectedText.trim()) {
+      const lines = selectedText.split('\n');
+      const formattedLines = lines.map((line, index) => {
+        if (!line.trim()) return line;
+        const prefix = isNumbered ? `${index + 1}. ` : '- ';
+        if (isNumbered) {
+          if (/^\d+\.\s/.test(line)) return line;
+          return prefix + line;
+        } else {
+          if (line.startsWith('- ')) return line;
+          return prefix + line;
+        }
+      });
+      replacement = formattedLines.join('\n');
+    } else {
+      replacement = isNumbered ? '1. mục danh sách' : '- mục danh sách';
+    }
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    onReplyContentChange?.(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start, start + replacement.length);
+    }, 0);
+  };
+
+  const insertMarkdownToEdit = (syntaxBefore, syntaxAfter = '', defaultText = '') => {
+    const textarea = editTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    const placeholder = selectedText || defaultText;
+    const replacement = syntaxBefore + placeholder + syntaxAfter;
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    setEditContent(newContent);
+
+    // Focus and select the text
+    setTimeout(() => {
+      textarea.focus();
+      const selectionStart = start + syntaxBefore.length;
+      const selectionEnd = selectionStart + placeholder.length;
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    }, 0);
+  };
+
+  const insertListToEdit = (isNumbered) => {
+    const textarea = editTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    let replacement = '';
+
+    if (selectedText.trim()) {
+      const lines = selectedText.split('\n');
+      const formattedLines = lines.map((line, index) => {
+        if (!line.trim()) return line;
+        const prefix = isNumbered ? `${index + 1}. ` : '- ';
+        if (isNumbered) {
+          if (/^\d+\.\s/.test(line)) return line;
+          return prefix + line;
+        } else {
+          if (line.startsWith('- ')) return line;
+          return prefix + line;
+        }
+      });
+      replacement = formattedLines.join('\n');
+    } else {
+      replacement = isNumbered ? '1. mục danh sách' : '- mục danh sách';
+    }
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    setEditContent(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start, start + replacement.length);
+    }, 0);
+  };
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -357,6 +492,7 @@ export default function CommentItem({
                             setImages((comment.images || []).map((url, idx) => ({ id: `old-img-${idx}`, src: url, type: 'old' })));
                             setVideos((comment.videos || []).map((url, idx) => ({ id: `old-vid-${idx}`, src: url, type: 'old' })));
                             setMediaError('');
+                            setEditEditorMode('write');
                             setIsEditing(true);
                           }}
                           className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 border-b border-slate-100 whitespace-nowrap"
@@ -395,16 +531,124 @@ export default function CommentItem({
 
         {isEditing ? (
           <form onSubmit={handleUpdateComment} className="mt-2 rounded-xl border border-outline-variant bg-surface-container-low p-3 space-y-3">
-            <textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              rows={3}
-              maxLength={2000}
-              placeholder="Nhập nội dung bình luận cần chỉnh sửa..."
-              disabled={updating}
-              className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100 font-body-sm"
-              required
-            />
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-on-surface">Chỉnh sửa bình luận</label>
+              <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-900 border border-slate-200/60">
+                <button
+                  type="button"
+                  onClick={() => setEditEditorMode('write')}
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                    editEditorMode === 'write'
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Viết
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditEditorMode('preview')}
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                    editEditorMode === 'preview'
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Xem trước
+                </button>
+              </div>
+            </div>
+
+            {editEditorMode === 'write' ? (
+              <>
+                {/* Formatting Toolbar */}
+                <div className="flex items-center gap-1 mb-2 p-1 rounded-lg bg-slate-50 border border-slate-200/60 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToEdit('**', '**', 'chữ in đậm')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="In đậm (Bold)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_bold</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToEdit('*', '*', 'chữ in nghiêng')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="In nghiêng (Italic)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_italic</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToEdit('`', '`', 'code inline')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Code dòng (Inline Code)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">code</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToEdit('```yaml\n', '\n```', '// viết code tại đây')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Khối Code (Code Block)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">terminal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToEdit('[', '](url)', 'Tên liên kết')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Thêm liên kết (Link)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">link</span>
+                  </button>
+                  <div className="h-3 w-px bg-slate-200 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => insertListToEdit(false)}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Danh sách không thứ tự"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_list_bulleted</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertListToEdit(true)}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Danh sách có thứ tự"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_list_numbered</span>
+                  </button>
+                </div>
+
+                <textarea
+                  ref={editTextareaRef}
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  rows={3}
+                  maxLength={2000}
+                  placeholder="Nhập nội dung bình luận cần chỉnh sửa..."
+                  disabled={updating}
+                  className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100 font-body-sm"
+                  required
+                />
+              </>
+            ) : (
+              <div className="w-full rounded-lg border border-outline-variant bg-slate-50/50 px-3 py-2 text-sm text-slate-800 min-h-[80px] max-h-[250px] overflow-y-auto break-words prose max-w-none animate-fadeIn">
+                {editContent.trim() ? (
+                  <SafeMarkdown content={editContent} />
+                ) : (
+                  <span className="text-slate-400 italic text-xs">Nội dung xem trước trống...</span>
+                )}
+              </div>
+            )}
+
+            {editEditorMode === 'write' && (
+              <div className="mt-1 rounded-lg bg-slate-50 border border-slate-200/40 p-2 text-[10px] text-slate-500 font-medium">
+                <span className="font-semibold text-slate-700">Định dạng:</span> **in đậm**, *in nghiêng*, `code inline`, [Tên](URL), ```khối code```.
+              </div>
+            )}
 
             {/* Media previews list with delete buttons */}
             {(images.length > 0 || videos.length > 0) && (
@@ -640,23 +884,130 @@ export default function CommentItem({
               <p className="text-xs font-semibold text-secondary">
                 Trả lời {comment.author?.fullName || 'bình luận'}
               </p>
-              <button
-                type="button"
-                onClick={onCancelReply}
-                className="text-xs font-semibold text-outline hover:text-error"
-              >
-                Hủy
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-900 border border-slate-200/60">
+                  <button
+                    type="button"
+                    onClick={() => setReplyEditorMode('write')}
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                      replyEditorMode === 'write'
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Viết
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReplyEditorMode('preview')}
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                      replyEditorMode === 'preview'
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Xem trước
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={onCancelReply}
+                  className="text-xs font-semibold text-outline hover:text-error"
+                >
+                  Hủy
+                </button>
+              </div>
             </div>
-            <textarea
-              value={replyContent}
-              onChange={(event) => onReplyContentChange?.(event.target.value)}
-              rows={2}
-              maxLength={2000}
-              placeholder="Nhập nội dung trả lời..."
-              disabled={submittingReply}
-              className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100"
-            />
+
+            {replyEditorMode === 'write' ? (
+              <>
+                {/* Formatting Toolbar */}
+                <div className="flex items-center gap-1 mb-2 p-1 rounded-lg bg-slate-50 border border-slate-200/60 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToReply('**', '**', 'chữ in đậm')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="In đậm (Bold)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_bold</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToReply('*', '*', 'chữ in nghiêng')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="In nghiêng (Italic)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_italic</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToReply('`', '`', 'code inline')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Code dòng (Inline Code)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">code</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToReply('```yaml\n', '\n```', '// viết code tại đây')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Khối Code (Code Block)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">terminal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToReply('[', '](url)', 'Tên liên kết')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Thêm liên kết (Link)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">link</span>
+                  </button>
+                  <div className="h-3 w-px bg-slate-200 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => insertListToReply(false)}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Danh sách không thứ tự"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_list_bulleted</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertListToReply(true)}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Danh sách có thứ tự"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_list_numbered</span>
+                  </button>
+                </div>
+
+                <textarea
+                  ref={replyTextareaRef}
+                  value={replyContent}
+                  onChange={(event) => onReplyContentChange?.(event.target.value)}
+                  rows={2}
+                  maxLength={2000}
+                  placeholder="Nhập nội dung trả lời..."
+                  disabled={submittingReply}
+                  className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100"
+                />
+              </>
+            ) : (
+              <div className="w-full rounded-lg border border-outline-variant bg-slate-50/50 px-3 py-2 text-sm text-slate-800 min-h-[60px] max-h-[200px] overflow-y-auto break-words prose max-w-none animate-fadeIn">
+                {replyContent.trim() ? (
+                  <SafeMarkdown content={replyContent} />
+                ) : (
+                  <span className="text-slate-400 italic text-xs">Nội dung xem trước trống...</span>
+                )}
+              </div>
+            )}
+
+            {replyEditorMode === 'write' && (
+              <div className="mt-1.5 rounded-lg bg-slate-50 border border-slate-200/40 p-2 text-[10px] text-slate-500 font-medium">
+                <span className="font-semibold text-slate-700">Định dạng:</span> **in đậm**, *in nghiêng*, `code inline`, [Tên](URL), ```khối code```.
+              </div>
+            )}
             <div className="mt-2 flex items-center justify-end gap-2">
               <span className="text-xs text-secondary">{replyContent.length}/2000</span>
               <button
