@@ -119,6 +119,11 @@ export default function CommentSection({
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    if (imageFiles.length + files.length > 10) {
+      setMediaError('Số lượng hình ảnh đính kèm vượt quá giới hạn cho phép (Tối đa: 10 hình ảnh).');
+      return;
+    }
+
     const currentVideosSize = videoFiles.reduce((acc, v) => acc + v.size, 0);
     const currentImagesSize = imageFiles.reduce((acc, img) => acc + img.size, 0);
     const newFilesSize = files.reduce((acc, f) => acc + f.size, 0);
@@ -149,6 +154,11 @@ export default function CommentSection({
     setMediaError('');
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    if (videoFiles.length + files.length > 5) {
+      setMediaError('Số lượng video đính kèm vượt quá giới hạn cho phép (Tối đa: 5 video).');
+      return;
+    }
 
     const currentVideosSize = videoFiles.reduce((acc, v) => acc + v.size, 0);
     const currentImagesSize = imageFiles.reduce((acc, img) => acc + img.size, 0);
@@ -226,24 +236,30 @@ export default function CommentSection({
     setReplyContent('');
   };
 
-  const handleSubmitReply = async (comment) => {
+  const handleSubmitReply = async (formDataOrComment) => {
     if (!isAuthenticated) {
       onLoginRequired?.();
       return;
     }
 
-    const text = replyContent.trim();
-    const parentCommentId = comment?._id || replyingToId;
-    if (!text || !parentCommentId || submittingReply) return;
+    let formData;
+    if (formDataOrComment instanceof FormData) {
+      formData = formDataOrComment;
+    } else {
+      const text = replyContent.trim();
+      const parentCommentId = formDataOrComment?._id || replyingToId;
+      if (!text || !parentCommentId || submittingReply) return;
+
+      formData = new FormData();
+      formData.append('content', text);
+      formData.append('parentComment', parentCommentId);
+    }
 
     setSubmittingReply(true);
-    const formData = new FormData();
-    formData.append('content', text);
-    formData.append('parentComment', parentCommentId);
-
     const ok = await onSubmitComment?.(formData);
     if (ok !== false) handleCancelReply();
     setSubmittingReply(false);
+    return ok;
   };
 
   const isQuestion = postType === 'question';

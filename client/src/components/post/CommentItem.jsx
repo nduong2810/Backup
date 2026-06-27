@@ -66,11 +66,115 @@ export default function CommentItem({
   const replyTextareaRef = useRef(null);
   const editTextareaRef = useRef(null);
 
+  const [replyImages, setReplyImages] = useState([]);
+  const [replyVideos, setReplyVideos] = useState([]);
+  const [replyMediaError, setReplyMediaError] = useState('');
+  const [submittingReplyLocal, setSubmittingReplyLocal] = useState(false);
+
   useEffect(() => {
     if (String(replyingToId) !== String(comment._id)) {
       setReplyEditorMode('write');
+      setReplyImages([]);
+      setReplyVideos([]);
+      setReplyMediaError('');
     }
   }, [replyingToId, comment._id]);
+
+  const handleReplyImageChange = (e) => {
+    setReplyMediaError('');
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (replyImages.length + files.length > 10) {
+      setReplyMediaError('Số lượng hình ảnh đính kèm vượt quá giới hạn cho phép (Tối đa: 10 hình ảnh).');
+      return;
+    }
+
+    const currentVideosSize = replyVideos.reduce((acc, v) => acc + (v.file?.size || 0), 0);
+    const currentImagesSize = replyImages.reduce((acc, img) => acc + (img.file?.size || 0), 0);
+    const incomingSize = files.reduce((acc, f) => acc + f.size, 0);
+
+    if (currentVideosSize + currentImagesSize + incomingSize > 50 * 1024 * 1024) {
+      setReplyMediaError('Tổng dung lượng các hình ảnh và video tải lên mới vượt quá giới hạn 50MB.');
+      return;
+    }
+
+    files.forEach((file) => {
+      if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+        setReplyMediaError('Định dạng hình ảnh không hợp lệ (chỉ chấp nhận JPEG, PNG, GIF, WEBP).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReplyImages((prev) => [
+          ...prev,
+          {
+            id: `reply-img-${Date.now()}-${Math.random()}`,
+            src: reader.result,
+            file: file
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const handleReplyVideoChange = (e) => {
+    setReplyMediaError('');
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (replyVideos.length + files.length > 5) {
+      setReplyMediaError('Số lượng video đính kèm vượt quá giới hạn cho phép (Tối đa: 5 video).');
+      return;
+    }
+
+    const currentVideosSize = replyVideos.reduce((acc, v) => acc + (v.file?.size || 0), 0);
+    const currentImagesSize = replyImages.reduce((acc, img) => acc + (img.file?.size || 0), 0);
+    const incomingSize = files.reduce((acc, f) => acc + f.size, 0);
+
+    if (currentVideosSize + currentImagesSize + incomingSize > 50 * 1024 * 1024) {
+      setReplyMediaError('Tổng dung lượng các hình ảnh và video tải lên mới vượt quá giới hạn 50MB.');
+      return;
+    }
+
+    files.forEach((file) => {
+      const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/x-matroska'];
+      const allowedVideoExts = ['.mp4', '.webm', '.ogg', '.mkv'];
+      const fileExt = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+      const isValidVideo = allowedVideoTypes.includes(file.type) || allowedVideoExts.includes(fileExt);
+      if (!isValidVideo) {
+        setReplyMediaError('Định dạng video không hợp lệ (chỉ nhận MP4, WEBM, OGG, MKV).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReplyVideos((prev) => [
+          ...prev,
+          {
+            id: `reply-vid-${Date.now()}-${Math.random()}`,
+            src: reader.result,
+            file: file
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const handleRemoveReplyImage = (id) => {
+    setReplyImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const handleRemoveReplyVideo = (id) => {
+    setReplyVideos((prev) => prev.filter((vid) => vid.id !== id));
+  };
 
   const insertMarkdownToReply = (syntaxBefore, syntaxAfter = '', defaultText = '') => {
     const textarea = replyTextareaRef.current;
@@ -217,6 +321,11 @@ export default function CommentItem({
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    if (images.length + files.length > 10) {
+      setMediaError('Số lượng hình ảnh đính kèm vượt quá giới hạn cho phép (Tối đa: 10 hình ảnh).');
+      return;
+    }
+
     const currentNewFilesSize = getNewFilesSize(images, videos);
     const incomingFilesSize = files.reduce((acc, f) => acc + f.size, 0);
 
@@ -253,6 +362,11 @@ export default function CommentItem({
     setMediaError('');
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    if (videos.length + files.length > 5) {
+      setMediaError('Số lượng video đính kèm vượt quá giới hạn cho phép (Tối đa: 5 video).');
+      return;
+    }
 
     const currentNewFilesSize = getNewFilesSize(images, videos);
     const incomingFilesSize = files.reduce((acc, f) => acc + f.size, 0);
@@ -334,9 +448,37 @@ export default function CommentItem({
     onStartReply?.(comment);
   };
 
-  const handleSubmitReply = (event) => {
+  const handleSubmitReply = async (event) => {
     event.preventDefault();
-    onSubmitReply?.(comment);
+    if (!isAuthenticated) {
+      onLoginRequired?.();
+      return;
+    }
+
+    const text = replyContent.trim();
+    if (!text && replyImages.length === 0 && replyVideos.length === 0) return;
+
+    setSubmittingReplyLocal(true);
+    const formData = new FormData();
+    formData.append('content', text || 'Đính kèm tệp tin.');
+    formData.append('parentComment', comment._id);
+
+    replyImages.forEach((img) => {
+      formData.append('images', img.file);
+    });
+
+    replyVideos.forEach((vid) => {
+      formData.append('videos', vid.file);
+    });
+
+    const ok = await onSubmitReply?.(formData);
+    if (ok !== false) {
+      setReplyImages([]);
+      setReplyVideos([]);
+      setReplyMediaError('');
+      onCancelReply?.();
+    }
+    setSubmittingReplyLocal(false);
   };
 
   const handleUpdateComment = async (event) => {
@@ -1008,14 +1150,94 @@ export default function CommentItem({
                 <span className="font-semibold text-slate-700">Định dạng:</span> **in đậm**, *in nghiêng*, `code inline`, [Tên](URL), ```khối code```.
               </div>
             )}
-            <div className="mt-2 flex items-center justify-end gap-2">
+
+            {/* Reply Previews */}
+            {(replyImages.length > 0 || replyVideos.length > 0) && (
+              <div className="space-y-2 pt-1 mt-2">
+                {/* Images list */}
+                {replyImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {replyImages.map((img) => (
+                      <div key={img.id} className="relative w-16 h-16 rounded-lg overflow-hidden border border-outline-variant group">
+                        <img src={img.src} alt="Preview" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveReplyImage(img.id)}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-black text-white rounded-full p-0.5"
+                        >
+                          <span className="material-symbols-outlined text-[12px] block">close</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Videos list */}
+                {replyVideos.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {replyVideos.map((vid) => (
+                      <div key={vid.id} className="relative w-32 rounded-lg overflow-hidden border border-outline-variant bg-black flex items-center justify-center group">
+                        <video src={vid.src} className="w-full h-20 object-contain" controls={false} muted />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveReplyVideo(vid.id)}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-black text-white rounded-full p-0.5 z-10"
+                        >
+                          <span className="material-symbols-outlined text-[12px] block">close</span>
+                        </button>
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                          <span className="material-symbols-outlined text-white text-2xl">play_circle</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {replyMediaError && (
+              <p className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg px-2.5 py-1 mt-2">
+                {replyMediaError}
+              </p>
+            )}
+
+            {/* Media triggers */}
+            <div className="flex items-center gap-2 pt-2 border-t border-outline-variant/60 mt-2">
+              <label className="flex h-7 items-center gap-1 rounded-full border border-outline-variant px-3 text-[11px] font-semibold text-secondary hover:bg-surface-container-high transition cursor-pointer">
+                <span className="material-symbols-outlined text-[14px]">image</span>
+                <span>Thêm ảnh</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleReplyImageChange}
+                  className="hidden"
+                  disabled={submittingReplyLocal || submittingReply}
+                />
+              </label>
+
+              <label className="flex h-7 items-center gap-1 rounded-full border border-outline-variant px-3 text-[11px] font-semibold text-secondary hover:bg-surface-container-high transition cursor-pointer">
+                <span className="material-symbols-outlined text-[14px]">videocam</span>
+                <span>Thêm video</span>
+                <input
+                  type="file"
+                  accept="video/*"
+                  multiple
+                  onChange={handleReplyVideoChange}
+                  className="hidden"
+                  disabled={submittingReplyLocal || submittingReply}
+                />
+              </label>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between gap-2">
               <span className="text-xs text-secondary">{replyContent.length}/2000</span>
               <button
                 type="submit"
-                disabled={submittingReply || !replyContent.trim()}
+                disabled={submittingReplyLocal || submittingReply || (!replyContent.trim() && replyImages.length === 0 && replyVideos.length === 0)}
                 className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {submittingReply ? 'Đang gửi...' : 'Gửi trả lời'}
+                {submittingReplyLocal || submittingReply ? 'Đang gửi...' : 'Gửi trả lời'}
               </button>
             </div>
           </form>
