@@ -5,6 +5,8 @@ import AppButton from '../../components/ui/AppButton';
 import FormAlert from '../../components/ui/FormAlert';
 import { createDonationCheckoutApi, getPublicAuthorProfileApi } from '../../services/donationService';
 
+import { useSelector } from 'react-redux';
+
 const AMOUNTS = [
   { value: 20000, label: '20K', caption: 'Một ly cafe nhỏ' },
   { value: 50000, label: '50K', caption: 'Một lời cảm ơn rõ ràng' },
@@ -70,6 +72,7 @@ const getRequestErrorMessage = (error) => {
 export default function DonateCheckoutPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.login);
   const sessionContext = (() => {
     try {
       return JSON.parse(sessionStorage.getItem('donationCheckoutContext') || 'null') || {};
@@ -114,7 +117,12 @@ export default function DonateCheckoutPage() {
   const answerId = answerIdValue;
   const answerContent = getTextValue(location.state?.answerContent, sessionContext.answerContent, queryParams.get('answerContent'));
   const postTitle = getTextValue(location.state?.postTitle, sessionContext.postTitle, queryParams.get('postTitle')) || 'Bài viết';
-  const checkoutError = !postId ? 'Thiếu dữ liệu bài viết. Hãy quay lại trang chi tiết để bắt đầu ủng hộ.' : '';
+  const isSelfDonation = authorId && user?._id && String(authorId) === String(user._id);
+  const checkoutError = !postId
+    ? 'Thiếu dữ liệu bài viết. Hãy quay lại trang chi tiết để bắt đầu ủng hộ.'
+    : isSelfDonation
+      ? 'Bạn không thể tự ủng hộ chính bản thân mình.'
+      : '';
   const selectedAmount = useMemo(() => AMOUNTS.find((item) => item.value === amount) || AMOUNTS[0], [amount]);
   const hasTransferInfo = Boolean(recipient?.bankName && recipient?.bankAccountNumber);
   const isManualTransfer = paymentMethod === 'cod';

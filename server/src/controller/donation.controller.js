@@ -15,6 +15,20 @@ const toSafeDonation = (donation) => {
     answerSnapshot: donation.answerSnapshot || null,
     donorSnapshot: donation.donorSnapshot || null,
     authorSnapshot: donation.authorSnapshot || null,
+    author: donation.author ? {
+      _id: String(donation.author._id || donation.author),
+      fullName: donation.author.fullName || '',
+      avatar: donation.author.avatar || '',
+      major: donation.author.major || '',
+      email: donation.author.email || '',
+    } : null,
+    donor: donation.donor ? {
+      _id: String(donation.donor._id || donation.donor),
+      fullName: donation.donor.fullName || '',
+      avatar: donation.donor.avatar || '',
+      major: donation.donor.major || '',
+      email: donation.donor.email || '',
+    } : null,
     createdAt: donation.createdAt,
     updatedAt: donation.updatedAt,
   };

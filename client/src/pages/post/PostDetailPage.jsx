@@ -236,6 +236,11 @@ export default function PostDetailPage() {
     const postAuthorId = normalizeId(postAuthorCandidate);
     const targetAuthorId = normalizeId(targetAuthorCandidate);
 
+    if (targetAuthorId && user?._id && String(targetAuthorId) === String(user._id)) {
+      toast.warning('Bạn không thể tự ủng hộ chính bản thân mình.');
+      return;
+    }
+
     if (!realPostId) {
       toast.error('Thiếu dữ liệu bài viết. Vui lòng tải lại trang rồi thử lại.');
       return;
@@ -251,7 +256,7 @@ export default function PostDetailPage() {
       authorId: targetAuthorId || postAuthorId || '',
       authorName: targetAuthorCandidate?.fullName || targetAuthorCandidate?.email || 'tác giả',
       authorAvatar: targetAuthorCandidate?.avatar || '',
-      answerId: '',
+      answerId: !isPostDonation ? normalizeId(comment?._id || comment?.id) : '',
       answerContent,
     };
 

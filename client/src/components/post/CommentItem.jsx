@@ -1005,7 +1005,7 @@ export default function CommentItem({
               </button>
             )}
 
-            {!isPostLocked && depth === 0 && typeof onDonate === 'function' && comment.author?._id && comment.author?.role !== 'admin' && (
+            {!isPostLocked && depth === 0 && typeof onDonate === 'function' && comment.author?._id && comment.author?.role !== 'admin' && !isCommentOwner && (
               <button
                 type="button"
                 onClick={() => onDonate(comment)}

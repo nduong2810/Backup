@@ -415,6 +415,10 @@ class DonationService {
     const author = await this.resolveAuthor(authorId, authorCandidate, currentPost.author, answer?.author);
     if (!author) throw { status: 400, message: 'Không xác định được tác giả để ủng hộ.' };
 
+    if (normalizeId(author._id) === normalizeId(donorId)) {
+      throw { status: 400, message: 'Bạn không thể tự ủng hộ chính bản thân mình.' };
+    }
+
     if (paymentMethod === 'cod') {
       const rawTransferInfo = hasBankTransferInfo(author)
         ? author
