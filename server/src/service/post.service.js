@@ -234,12 +234,28 @@ class PostService {
             if (String(parent.post?._id || parent.post) !== String(postId)) throw { status: 400, message: 'Bình luận cha không thuộc bài viết này' };
         }
 
+        // Chuẩn hóa danh sách tệp đính kèm từ payload
+        const reqImages = payload.images ? (Array.isArray(payload.images) ? payload.images : [payload.images]) : [];
+        const reqVideos = payload.videos ? (Array.isArray(payload.videos) ? payload.videos : [payload.videos]) : [];
+
+        // Kiểm tra số lượng hình ảnh đính kèm
+        const totalImagesCount = (files.images?.length || 0) + reqImages.length;
+        if (totalImagesCount > 10) {
+            throw { status: 400, message: 'Số lượng hình ảnh đính kèm vượt quá giới hạn cho phép (Tối đa: 10 hình ảnh).' };
+        }
+
+        // Kiểm tra số lượng video đính kèm
+        const totalVideosCount = (files.videos?.length || 0) + reqVideos.length + (payload.video ? 1 : 0);
+        if (totalVideosCount > 5) {
+            throw { status: 400, message: 'Số lượng video đính kèm vượt quá giới hạn cho phép (Tối đa: 5 video).' };
+        }
+
         let totalMediaSize = 0;
 
         if (files.images && files.images.length > 0) {
             for (const file of files.images) totalMediaSize += file.size / (1024 * 1024);
-        } else if (payload.images && Array.isArray(payload.images)) {
-            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+        } else if (reqImages.length > 0) {
+            const base64Images = reqImages.filter(img => typeof img === 'string' && img.startsWith('data:'));
             for (const img of base64Images) {
                 const body = img.split(',')[1] || img;
                 totalMediaSize += (body.length * 0.75) / (1024 * 1024);
@@ -248,8 +264,8 @@ class PostService {
 
         if (files.videos && files.videos.length > 0) {
             for (const file of files.videos) totalMediaSize += file.size / (1024 * 1024);
-        } else if (payload.videos && Array.isArray(payload.videos)) {
-            const base64Videos = payload.videos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
+        } else if (reqVideos.length > 0) {
+            const base64Videos = reqVideos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
             for (const vid of base64Videos) {
                 const body = vid.split(',')[1] || vid;
                 totalMediaSize += (body.length * 0.75) / (1024 * 1024);
@@ -268,8 +284,8 @@ class PostService {
 
         if (files.images && files.images.length > 0) {
             imageUrls = await Promise.all(files.images.map(img => uploadToCloudinary(img.buffer, img.mimetype)));
-        } else if (payload.images && Array.isArray(payload.images)) {
-            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+        } else if (reqImages.length > 0) {
+            const base64Images = reqImages.filter(img => typeof img === 'string' && img.startsWith('data:'));
             imageUrls = await Promise.all(base64Images.map(img => uploadToCloudinary(img)));
         }
 
@@ -322,12 +338,28 @@ class PostService {
         moderation.validatePost(title, content);
         if (!['question', 'advice'].includes(postType)) throw { status: 400, message: 'Loại bài viết không hợp lệ' };
 
+        // Chuẩn hóa danh sách tệp đính kèm từ payload
+        const reqImages = payload.images ? (Array.isArray(payload.images) ? payload.images : [payload.images]) : [];
+        const reqVideos = payload.videos ? (Array.isArray(payload.videos) ? payload.videos : [payload.videos]) : [];
+
+        // Kiểm tra số lượng hình ảnh đính kèm
+        const totalImagesCount = (files.images?.length || 0) + reqImages.length;
+        if (totalImagesCount > 10) {
+            throw { status: 400, message: 'Số lượng hình ảnh đính kèm vượt quá giới hạn cho phép (Tối đa: 10 hình ảnh).' };
+        }
+
+        // Kiểm tra số lượng video đính kèm
+        const totalVideosCount = (files.videos?.length || 0) + reqVideos.length + (payload.video ? 1 : 0);
+        if (totalVideosCount > 5) {
+            throw { status: 400, message: 'Số lượng video đính kèm vượt quá giới hạn cho phép (Tối đa: 5 video).' };
+        }
+
         let totalMediaSize = 0;
 
         if (files.images && files.images.length > 0) {
             for (const file of files.images) totalMediaSize += file.size / (1024 * 1024);
-        } else if (payload.images && Array.isArray(payload.images)) {
-            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+        } else if (reqImages.length > 0) {
+            const base64Images = reqImages.filter(img => typeof img === 'string' && img.startsWith('data:'));
             for (const img of base64Images) {
                 const body = img.split(',')[1] || img;
                 totalMediaSize += (body.length * 0.75) / (1024 * 1024);
@@ -336,8 +368,8 @@ class PostService {
 
         if (files.videos && files.videos.length > 0) {
             for (const file of files.videos) totalMediaSize += file.size / (1024 * 1024);
-        } else if (payload.videos && Array.isArray(payload.videos)) {
-            const base64Videos = payload.videos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
+        } else if (reqVideos.length > 0) {
+            const base64Videos = reqVideos.filter(vid => typeof vid === 'string' && vid.startsWith('data:'));
             for (const vid of base64Videos) {
                 const body = vid.split(',')[1] || vid;
                 totalMediaSize += (body.length * 0.75) / (1024 * 1024);
@@ -356,8 +388,8 @@ class PostService {
 
         if (files.images && files.images.length > 0) {
             imageUrls = await Promise.all(files.images.map(img => uploadToCloudinary(img.buffer, img.mimetype)));
-        } else if (payload.images && Array.isArray(payload.images)) {
-            const base64Images = payload.images.filter(img => typeof img === 'string' && img.startsWith('data:'));
+        } else if (reqImages.length > 0) {
+            const base64Images = reqImages.filter(img => typeof img === 'string' && img.startsWith('data:'));
             imageUrls = await Promise.all(base64Images.map(img => uploadToCloudinary(img)));
         }
 
@@ -809,6 +841,16 @@ class PostService {
 
         const finalImages = [...oldImages, ...uploadedImages];
         const finalVideos = [...oldVideos, ...uploadedVideos];
+
+        // Kiểm tra số lượng hình ảnh đính kèm
+        if (finalImages.length > 10) {
+            throw { status: 400, message: 'Số lượng hình ảnh đính kèm vượt quá giới hạn cho phép (Tối đa: 10 hình ảnh).' };
+        }
+
+        // Kiểm tra số lượng video đính kèm
+        if (finalVideos.length > 5) {
+            throw { status: 400, message: 'Số lượng video đính kèm vượt quá giới hạn cho phép (Tối đa: 5 video).' };
+        }
 
         // Tạo bản ghi lịch sử cũ trước khi cập nhật
         const editHistoryItem = {
