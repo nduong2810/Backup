@@ -19,7 +19,7 @@ const savedPostSchema = new mongoose.Schema({
         required: true,
         index: true,
     },
-}, { timestamps: true });
+}, { timestamps: true, suppressReservedKeysWarning: true });
 
 savedPostSchema.index({ user: 1, post: 1 }, { unique: true });
 

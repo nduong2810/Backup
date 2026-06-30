@@ -45,7 +45,19 @@ const syncAuthorActiveStatus = async () => {
 const connectDB = async () => {
   try {
     // --- Kết nối MongoDB (Local hoặc Cloud tùy .env) ---
-    const conn = await mongoose.connect(env.MONGODB_URI)
+    let conn
+    try {
+      conn = await mongoose.connect(env.MONGODB_URI)
+    } catch (error) {
+      if (error.message && (error.message.includes('querySrv ECONNREFUSED') || error.message.includes('ENOTFOUND'))) {
+        console.warn('⚠️ Lỗi phân giải DNS cho MongoDB Atlas. Đang thử lại với DNS của Google/Cloudflare...')
+        const dns = await import('dns')
+        dns.setServers(['8.8.8.8', '1.1.1.1'])
+        conn = await mongoose.connect(env.MONGODB_URI)
+      } else {
+        throw error
+      }
+    }
 
     console.log(`✅ MongoDB connected: ${conn.connection.host}`)
     console.log(`📁 Database: ${conn.connection.name}`)
