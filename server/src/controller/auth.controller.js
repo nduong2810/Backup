@@ -85,7 +85,7 @@ class AuthController {
                 maxAge: 7 * 24 * 60 * 60 * 1000,
             });
 
-            const redirectUrl = user.role === 'admin' ? '/' : '/';
+            const redirectUrl = user.role === 'admin' ? '/admin/dashboard' : '/';
 
             res.status(200).json({
                 message: 'Đăng nhập thành công',
