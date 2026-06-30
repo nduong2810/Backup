@@ -1,5 +1,6 @@
 import authService from '../service/auth.service.js';
 import { validationResult } from 'express-validator';
+import { cookieOptions } from '../config/cookie.js';
 
 class AuthController {
     checkValidationErrors(req, res) {
@@ -72,16 +73,12 @@ class AuthController {
 
             // Thiết lập cookie cho Access Token (15 phút) và Refresh Token (7 ngày)
             res.cookie('accessToken', accessToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                ...cookieOptions,
                 maxAge: 15 * 60 * 1000,
             });
 
             res.cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                ...cookieOptions,
                 maxAge: 7 * 24 * 60 * 60 * 1000,
             });
 
@@ -104,12 +101,6 @@ class AuthController {
 
     async logout(req, res) {
         try {
-            const cookieOptions = {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-            };
-
             // Xóa toàn bộ các cookie liên quan đến phiên đăng nhập
             res.clearCookie('token', cookieOptions);
             res.clearCookie('accessToken', cookieOptions);

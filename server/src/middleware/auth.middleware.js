@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import env from '../config/environment.js';
 import User from '../model/user.model.js';
+import { cookieOptions } from '../config/cookie.js';
 
 // ====================================================================
 // LỚP 3 - AUTHENTICATION (XÁC THỰC)
@@ -22,11 +23,6 @@ export const authenticateToken = async (req, res, next) => {
             // Kiểm tra trạng thái hoạt động của tài khoản trong cơ sở dữ liệu
             const user = await User.findById(req.user.userId).select('isActive');
             if (!user || !user.isActive) {
-                const cookieOptions = {
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'strict',
-                };
                 res.clearCookie('accessToken', cookieOptions);
                 res.clearCookie('refreshToken', cookieOptions);
                 return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ admin để mở khóa tài khoản!' });
@@ -49,11 +45,6 @@ export const authenticateToken = async (req, res, next) => {
         // Kiểm tra trạng thái hoạt động của tài khoản trước khi làm mới token
         const user = await User.findById(decodedRefresh.id || decodedRefresh.userId).select('isActive');
         if (!user || !user.isActive) {
-            const cookieOptions = {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-            };
             res.clearCookie('accessToken', cookieOptions);
             res.clearCookie('refreshToken', cookieOptions);
             return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ admin để mở khóa tài khoản!' });
@@ -68,9 +59,7 @@ export const authenticateToken = async (req, res, next) => {
 
         // Thiết lập lại cookie Access Token mới
         res.cookie('accessToken', newAccessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            ...cookieOptions,
             maxAge: 15 * 60 * 1000,
         });
 
@@ -82,11 +71,6 @@ export const authenticateToken = async (req, res, next) => {
         return next();
     } catch (err) {
         // Clear expired cookies
-        const cookieOptions = {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-        };
         res.clearCookie('accessToken', cookieOptions);
         res.clearCookie('refreshToken', cookieOptions);
         return res.status(401).json({ message: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại' });
@@ -126,11 +110,6 @@ export const optionalAuthenticateToken = async (req, res, next) => {
             // Kiểm tra trạng thái hoạt động của tài khoản
             const user = await User.findById(req.user.userId).select('isActive');
             if (!user || !user.isActive) {
-                const cookieOptions = {
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'strict',
-                };
                 res.clearCookie('accessToken', cookieOptions);
                 res.clearCookie('refreshToken', cookieOptions);
                 delete req.user;
@@ -151,11 +130,6 @@ export const optionalAuthenticateToken = async (req, res, next) => {
             // Kiểm tra trạng thái hoạt động của tài khoản trước khi làm mới token
             const user = await User.findById(decodedRefresh.id || decodedRefresh.userId).select('isActive');
             if (!user || !user.isActive) {
-                const cookieOptions = {
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'strict',
-                };
                 res.clearCookie('accessToken', cookieOptions);
                 res.clearCookie('refreshToken', cookieOptions);
                 return res.status(403).json({ code: 'USER_LOCKED', message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ admin để mở khóa tài khoản!' });
@@ -168,9 +142,7 @@ export const optionalAuthenticateToken = async (req, res, next) => {
             );
 
             res.cookie('accessToken', newAccessToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                ...cookieOptions,
                 maxAge: 15 * 60 * 1000,
             });
 

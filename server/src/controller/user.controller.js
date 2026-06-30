@@ -1,5 +1,6 @@
 import userService from '../service/user.service.js';
 import { validationResult } from 'express-validator';
+import { cookieOptions } from '../config/cookie.js';
 
 class UserController {
     async getMyProfile(req, res) {
@@ -66,11 +67,6 @@ class UserController {
             await userService.deactivateAccount(req.user.userId);
             
             // Xóa cookie
-            const cookieOptions = {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-            };
             res.clearCookie('accessToken', cookieOptions);
             res.clearCookie('refreshToken', cookieOptions);
 
@@ -85,11 +81,6 @@ class UserController {
             await userService.deleteAccount(req.user.userId);
 
             // Xóa cookie
-            const cookieOptions = {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-            };
             res.clearCookie('accessToken', cookieOptions);
             res.clearCookie('refreshToken', cookieOptions);
 
