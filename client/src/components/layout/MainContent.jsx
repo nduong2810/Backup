@@ -14,7 +14,46 @@ const PER_PAGE_OPTIONS = [15, 30, 50];
 
 const getPlainText = (value) => {
     if (!value) return '';
-    return String(value).replace(/<[^>]+>/g, '').trim();
+    let text = String(value);
+    // Strip HTML tags
+    text = text.replace(/<[^>]+>/g, '');
+    // Remove fenced code blocks with ``` (backticks) — flexible matching
+    text = text.replace(/```[\s\S]*?```/g, '');
+    // Remove fenced code blocks with ''' (single quotes - common user mistake)
+    text = text.replace(/'''[\s\S]*?'''/g, '');
+    // Remove inline code backticks and their content
+    text = text.replace(/`[^`\n]+`/g, '');
+    // Strip images ![alt](url)
+    text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+    // Strip links [text](url) → keep text
+    text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    // Strip bold: **text** and __text__ (explicit, no backreference)
+    text = text.replace(/\*\*(.+?)\*\*/g, '$1');
+    text = text.replace(/__(.+?)__/g, '$1');
+    // Strip italic: *text* and _text_
+    text = text.replace(/(?<!\w)\*(.+?)\*(?!\w)/g, '$1');
+    text = text.replace(/(?<!\w)_(.+?)_(?!\w)/g, '$1');
+    // Strip headings at start of line (# ... ######)
+    text = text.replace(/^#{1,6}\s+/gm, '');
+    // Also strip heading markers that appear mid-text (after code removal collapsed lines)
+    text = text.replace(/\s#{1,6}\s+/g, ' ');
+    // Strip blockquotes
+    text = text.replace(/^>\s?/gm, '');
+    // Strip unordered list markers (-, *, +)
+    text = text.replace(/^[\s]*[-*+]\s+/gm, '');
+    // Strip ordered list markers (1. 2. ...)
+    text = text.replace(/^[\s]*\d+\.\s+/gm, '');
+    // Strip horizontal rules (---, ***, ___)
+    text = text.replace(/^[-*_]{3,}\s*$/gm, '');
+    // Final aggressive cleanup: remove any remaining markdown artifacts
+    text = text.replace(/`+/g, '');           // leftover backticks
+    text = text.replace(/'{2,}/g, '');         // leftover consecutive single quotes
+    text = text.replace(/\*{2,}/g, '');        // leftover ** markers
+    text = text.replace(/_{2,}/g, '');         // leftover __ markers
+    text = text.replace(/^#{1,6}\s*/gm, '');   // any remaining # heading markers
+    // Collapse multiple newlines/spaces into single space
+    text = text.replace(/\n+/g, ' ').replace(/\s{2,}/g, ' ');
+    return text.trim();
 };
 
 const SmallPostActionButton = ({ active, disabled, onClick, icon, label, count, activeClass, hoverClass, title }) => (
@@ -97,9 +136,15 @@ const QuestionCard = ({
                     />
                 </div>
 
-                <p className="font-body-sm text-body-sm text-on-surface-variant mb-2 line-clamp-2">
-                    {getPlainText(question.content) || 'Chua co noi dung.'}
-                </p>
+                {getPlainText(question.content) ? (
+                    <p className="font-body-sm text-body-sm text-on-surface-variant mb-2 line-clamp-2">
+                        {getPlainText(question.content)}
+                    </p>
+                ) : (
+                    <p className="font-body-sm text-body-sm text-secondary/60 mb-2 italic">
+                        Nhấn vào tiêu đề để xem chi tiết bài viết →
+                    </p>
+                )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
                     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">

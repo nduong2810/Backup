@@ -1,3 +1,6 @@
+import dns from 'dns'
+dns.setDefaultResultOrder('ipv4first')
+
 import http from 'http'
 import app from './src/app'
 import connectDB from './src/config/database'

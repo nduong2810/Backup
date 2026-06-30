@@ -13,17 +13,23 @@ const sendEmail = async (to, subject, text) => {
             }
         });
 
-        await transporter.sendMail({
+        // Gửi mail chạy ngầm (không dùng await) để tránh treo HTTP request của client
+        transporter.sendMail({
             from: `"IT Forum Support" <${env.EMAIL_USER}>`,
             to,
             subject,
             text
+        }).then(() => {
+            console.log("Email sent successfully to:", to);
+        }).catch((error) => {
+            console.error("Email sending background failed:", error.message || error);
         });
-        console.log("Email sent successfully to:", to);
     } catch (error) {
-        console.error("Email sending failed:", error);
-        throw new Error("Không thể gửi email lúc này");
+        console.error("Failed to initialize transporter:", error.message || error);
     }
+
+    // Trả về true ngay lập tức để không chặn tiến trình đăng ký/giao dịch
+    return true;
 };
 
 export default sendEmail;
