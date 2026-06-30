@@ -8,7 +8,7 @@ import savedRoutes from './saved.routes.js'
 import reportRoutes from './report.routes.js'
 import donationRoutes from './donation.routes.js'
 import reputationRoutes from './reputation.routes.js'
-
+import notificationRoutes from './notification.routes.js'
 
 const router = express.Router()
 // --- Mount routes ở đây ---
@@ -21,6 +21,7 @@ router.use('/saves', savedRoutes)
 router.use('/reports', reportRoutes)
 router.use('/donations', donationRoutes)
 router.use('/reputation', reputationRoutes)
+router.use('/notifications', notificationRoutes)
 
 // Health check
 router.get('/health', (req, res) => {

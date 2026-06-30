@@ -1,42 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate, useOutletContext } from 'react-router-dom';
+import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { getTopUpvotedPosts, getTrendingTodayPosts, votePost, reactPost } from '../../services/postService';
 import SaveIconButton from '../ui/SaveIconButton';
 import { fetchCollectionsThunk, savePostToCollectionThunk, toggleSaveThunk } from '../../store/slices/savedSlice';
 import { updatePostVoteInList, updatePostReactionInList } from '../../store/slices/postSlice';
+import { useToast } from '../../context/ToastContext';
+import { updateUser } from '../../store/slices/loginSlice';
+import FreeVotesIntroModal from '../post/FreeVotesIntroModal';
+import AppPagination from '../common/AppPagination';
 
 const PER_PAGE_OPTIONS = [15, 30, 50];
-
-const buildPaginationItems = (current, total) => {
-    if (total <= 1) return [];
-    if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
-
-    const items = [1];
-    const start = Math.max(2, current - 1);
-    const end = Math.min(total - 1, current + 1);
-
-    if (start > 2) items.push('ellipsis-start');
-    for (let page = start; page <= end; page += 1) items.push(page);
-    if (end < total - 1) items.push('ellipsis-end');
-
-    items.push(total);
-    return items;
-};
 
 const getPlainText = (value) => {
     if (!value) return '';
     return String(value).replace(/<[^>]+>/g, '').trim();
 };
 
-const SmallPostActionButton = ({ active, disabled, onClick, icon, label, count, activeClass, hoverClass }) => (
+const SmallPostActionButton = ({ active, disabled, onClick, icon, label, count, activeClass, hoverClass, title }) => (
     <button
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className={`inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-semibold leading-none transition disabled:cursor-not-allowed disabled:opacity-60 ${
-            active ? activeClass : `border-outline-variant bg-surface-container-lowest text-secondary ${hoverClass}`
-        }`}
+        title={title}
+        className={`inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-semibold leading-none transition disabled:cursor-not-allowed disabled:opacity-60 ${active ? activeClass : `border-outline-variant bg-surface-container-lowest text-secondary ${hoverClass}`
+            }`}
     >
         <span className="material-symbols-outlined text-[14px] leading-none">{icon}</span>
         <span>{label}</span>
@@ -52,6 +40,7 @@ const QuestionCard = ({
     onReactPost,
     votingPostId,
     reactingPostId,
+    currentUser,
 }) => {
     const answerCount = question.answerCount ?? 0;
     const upvoteCount = question.upvoteCount ?? question.upvotes ?? 0;
@@ -63,16 +52,28 @@ const QuestionCard = ({
     const isVoting = votingPostId === question._id;
     const isReacting = reactingPostId === question._id;
     const isAdvice = question.postType === 'advice';
+    const isAdmin = currentUser?.role === 'admin';
 
     return (
         <article className="flex flex-col sm:flex-row gap-stack-md sm:gap-6 py-stack-md border-b border-outline-variant hover:bg-surface-container-low transition-colors px-3">
             <div className="flex sm:flex-col items-center justify-center gap-2 sm:w-28 flex-shrink-0 text-center">
                 {isAdvice ? (
-                    <div className={`w-full text-center py-1 px-2 rounded-lg font-body-sm text-body-sm transition-colors duration-200 ${answerCount > 0 ? 'text-[#2e7d32] border border-[#2e7d32] bg-[#e8f5e9]' : 'text-secondary border border-outline-variant bg-surface-container-lowest'}`}>
+                    <span className="inline-flex items-center justify-center gap-1 text-[11px] uppercase font-bold tracking-wider w-[108px] sm:w-full py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                        <span className="material-symbols-outlined text-[13px] leading-none">tips_and_updates</span>
+                        Lời khuyên
+                    </span>
+                ) : (
+                    <span className="inline-flex items-center justify-center gap-1 text-[11px] uppercase font-bold tracking-wider w-[108px] sm:w-full py-1 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0">
+                        <span className="material-symbols-outlined text-[13px] leading-none">help_center</span>
+                        Câu hỏi
+                    </span>
+                )}
+                {isAdvice ? (
+                    <div className={`w-[108px] sm:w-full text-center py-1 px-2 rounded-lg font-body-sm text-body-sm transition-colors duration-200 ${answerCount > 0 ? 'text-[#2e7d32] border border-[#2e7d32] bg-[#e8f5e9]' : 'text-secondary border border-outline-variant bg-surface-container-lowest'}`}>
                         <span className="font-semibold">{answerCount}</span> bình luận
                     </div>
                 ) : (
-                    <div className={`w-full text-center py-1 px-2 rounded-lg font-body-sm text-body-sm transition-colors duration-200 ${answerCount > 0 ? 'text-[#0066cc] border border-[#0066cc] bg-[#e3f2fd]' : 'text-secondary border border-outline-variant bg-surface-container-lowest'}`}>
+                    <div className={`w-[108px] sm:w-full text-center py-1 px-2 rounded-lg font-body-sm text-body-sm transition-colors duration-200 ${answerCount > 0 ? 'text-[#0066cc] border border-[#0066cc] bg-[#e3f2fd]' : 'text-secondary border border-outline-variant bg-surface-container-lowest'}`}>
                         <span className="font-semibold">{answerCount}</span> câu trả lời
                     </div>
                 )}
@@ -83,19 +84,8 @@ const QuestionCard = ({
 
             <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-5 pr-1">
-                    <h3 className="font-headline-md text-headline-md mb-1 flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                        {isAdvice ? (
-                            <span className="inline-flex items-center gap-0.5 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                <span className="material-symbols-outlined text-[11px] leading-none">tips_and_updates</span>
-                                Lời khuyên
-                            </span>
-                        ) : (
-                            <span className="inline-flex items-center gap-0.5 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                                <span className="material-symbols-outlined text-[11px] leading-none">help_center</span>
-                                Câu hỏi
-                            </span>
-                        )}
-                        <Link className="text-primary-container hover:text-primary-container/80 transition-colors break-words" to={`/posts/${question._id}`}>
+                    <h3 className="font-headline-md text-headline-md mb-1 flex-1 min-w-0">
+                        <Link className="block w-full max-w-full text-primary-container hover:text-primary-container/80 transition-colors break-words align-middle" to={`/posts/${question._id}`}>
                             {question.title}
                         </Link>
                     </h3>
@@ -114,11 +104,16 @@ const QuestionCard = ({
                 <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
                     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
                         <div className="flex flex-wrap items-center gap-1.5">
-                            {question.tags && question.tags.map((tag, index) => (
+                            {question.tags && question.tags.slice(0, 2).map((tag, index) => (
                                 <span key={index} className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 cursor-pointer">
                                     {tag}
                                 </span>
                             ))}
+                            {question.tags && question.tags.length > 2 && (
+                                <span className="font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 cursor-default" title="Vào chi tiết để xem toàn bộ thẻ">
+                                    ...
+                                </span>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-1.5">
@@ -136,14 +131,20 @@ const QuestionCard = ({
                                     />
                                     <SmallPostActionButton
                                         active={userVote === 'downvote'}
-                                        disabled={isVoting}
+                                        disabled={isVoting || (currentUser && (currentUser.reputationInfo?.reputation ?? currentUser.reputation ?? 1) < 100)}
                                         onClick={() => onVotePost?.(question._id, 'downvote')}
                                         icon="arrow_downward"
                                         label="Downvote"
                                         count={downvoteCount}
                                         activeClass="border-error/30 bg-error-container text-error"
                                         hoverClass="hover:bg-error-container/30 hover:text-error"
+                                        title={currentUser && (currentUser.reputationInfo?.reputation ?? currentUser.reputation ?? 1) < 100 ? "Bạn cần tối thiểu 100 điểm uy tín để Downvote" : "Bình chọn xuống"}
                                     />
+                                    {currentUser && currentUser.reputationInfo && currentUser.reputationInfo.reputation < 15 && (
+                                        <span className="text-[10px] text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-full font-bold select-none tabular-nums" title="Lượt bình chọn miễn phí hàng tuần còn lại">
+                                            Free: {Math.max(0, (currentUser.reputationInfo.weeklyFreeVotesLimit || 5) - (currentUser.reputationInfo.weeklyFreeVotesUsed || 0))}/5
+                                        </span>
+                                    )}
                                 </>
                             ) : (
                                 <>
@@ -173,18 +174,26 @@ const QuestionCard = ({
                     </div>
 
                     <div className="ml-auto flex items-center gap-2">
-                        <img
-                            alt="Author Avatar"
-                            className="w-6 h-6 rounded-DEFAULT object-cover"
-                            src={question.author?.avatar && question.author.avatar !== 'default-avatar.png'
-                                ? question.author.avatar
-                                : `https://ui-avatars.com/api/?name=${encodeURIComponent(question.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
-                        />
-                        <a className="font-body-sm text-body-sm text-primary-container hover:text-primary-container/80" href="#">
-                            {question.author?.fullName || question.author?.username || 'Ẩn danh'}
-                        </a>
+                        <Link to={question.author?._id ? `/users/${question.author._id}` : '#'} className="flex items-center gap-2 text-primary-container hover:text-primary-container/80">
+                            <img
+                                alt="Author Avatar"
+                                className="w-6 h-6 rounded-DEFAULT object-cover"
+                                src={question.author?.avatar && question.author.avatar !== 'default-avatar.png'
+                                    ? question.author.avatar
+                                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(question.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
+                            />
+                            <span className="font-body-sm text-body-sm">
+                                {question.author?.fullName || question.author?.username || 'Ẩn danh'}
+                            </span>
+                        </Link>
+                        {question.author?.role === 'admin' && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-900 select-none">
+                                <span className="material-symbols-outlined text-[10px] leading-none">shield</span>
+                                Quản trị viên
+                            </span>
+                        )}
                         <span className="font-body-sm text-body-sm text-secondary">
-                            asked {new Date(question.createdAt).toLocaleDateString('vi-VN')}
+                            đăng {new Date(question.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
                         </span>
                     </div>
                 </div>
@@ -201,17 +210,19 @@ const getTrendingPageSize = (width) => {
 };
 
 const TrendingCard = ({ post, rank, onTagClick }) => {
-    const tags = Array.isArray(post.tags) ? post.tags.slice(0, 3) : [];
+    const rawTags = Array.isArray(post.tags) ? post.tags : [];
+    const tags = rawTags.slice(0, 2);
+    const hasMoreTags = rawTags.length > 2;
 
     return (
         <article className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm p-4 flex flex-col gap-3 h-full">
             <div className="flex items-center justify-between text-xs text-secondary">
                 <span className="inline-flex items-center justify-center h-6 px-2 rounded-DEFAULT bg-primary-container/15 text-primary-container font-semibold">#{rank}</span>
-                <span>{new Date(post.createdAt).toLocaleDateString('vi-VN')}</span>
+                <span>{new Date(post.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</span>
             </div>
             <div className="flex flex-col gap-2 flex-1">
                 <h3 className="font-headline-md text-headline-md leading-snug line-clamp-2 min-h-[3.25rem]">
-                    <Link className="text-primary-container hover:text-primary-container/80 transition-colors" to={`/posts/${post._id}`}>
+                    <Link className="block w-full max-w-full break-words text-primary-container hover:text-primary-container/80 transition-colors" to={`/posts/${post._id}`}>
                         {post.title}
                     </Link>
                 </h3>
@@ -221,13 +232,18 @@ const TrendingCard = ({ post, rank, onTagClick }) => {
                             {tag}
                         </button>
                     ))}
+                    {hasMoreTags && (
+                        <span className="inline-flex items-center font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 transition-colors cursor-default" title="Vào chi tiết để xem toàn bộ thẻ">
+                            ...
+                        </span>
+                    )}
                 </div>
             </div>
             <div className="flex items-center justify-between text-xs text-secondary">
                 <span>Hôm nay <span className="font-semibold text-on-surface">{post.viewsToday ?? 0}</span> lượt xem</span>
                 <span>Tổng <span className="font-semibold text-on-surface">{post.views ?? 0}</span></span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-secondary">
+            <Link to={post.author?._id ? `/users/${post.author._id}` : '#'} className="flex items-center gap-2 text-xs text-secondary hover:text-primary-container">
                 <img
                     alt="Author Avatar"
                     className="w-6 h-6 rounded-DEFAULT object-cover"
@@ -236,13 +252,15 @@ const TrendingCard = ({ post, rank, onTagClick }) => {
                         : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
                 />
                 <span className="text-on-surface">{post.author?.fullName || post.author?.username || 'Ẩn danh'}</span>
-            </div>
+            </Link>
         </article>
     );
 };
 
 const TopUpvotedCard = ({ post, rank, onTagClick }) => {
-    const tags = Array.isArray(post.tags) ? post.tags.slice(0, 3) : [];
+    const rawTags = Array.isArray(post.tags) ? post.tags : [];
+    const tags = rawTags.slice(0, 2);
+    const hasMoreTags = rawTags.length > 2;
     const upvotes = post.upvoteCount ?? 0;
     const upvotesToday = post.upvotesToday ?? 0;
 
@@ -250,11 +268,11 @@ const TopUpvotedCard = ({ post, rank, onTagClick }) => {
         <article className="bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-sm p-4 flex flex-col gap-3 h-full">
             <div className="flex items-center justify-between text-xs text-secondary">
                 <span className="inline-flex items-center justify-center h-6 px-2 rounded-DEFAULT bg-primary-container/15 text-primary-container font-semibold">#{rank}</span>
-                <span>{new Date(post.createdAt).toLocaleDateString('vi-VN')}</span>
+                <span>{new Date(post.createdAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</span>
             </div>
             <div className="flex flex-col gap-2 flex-1">
                 <h3 className="font-headline-md text-headline-md leading-snug line-clamp-2 min-h-[3.25rem]">
-                    <Link className="text-primary-container hover:text-primary-container/80 transition-colors" to={`/posts/${post._id}`}>{post.title}</Link>
+                    <Link className="block w-full max-w-full break-words text-primary-container hover:text-primary-container/80 transition-colors" to={`/posts/${post._id}`}>{post.title}</Link>
                 </h3>
                 <div className="flex flex-wrap gap-1 min-h-[1.75rem]">
                     {tags.map((tag) => (
@@ -262,13 +280,18 @@ const TopUpvotedCard = ({ post, rank, onTagClick }) => {
                             {tag}
                         </button>
                     ))}
+                    {hasMoreTags && (
+                        <span className="inline-flex items-center font-label-mono text-label-mono bg-secondary-fixed text-[#39739d] px-2 py-1 rounded-DEFAULT hover:bg-secondary-fixed/80 transition-colors cursor-default" title="Vào chi tiết để xem toàn bộ thẻ">
+                            ...
+                        </span>
+                    )}
                 </div>
             </div>
             <div className="flex items-center justify-between text-xs text-secondary">
                 <span>Hôm nay <span className="font-semibold text-on-surface">{upvotesToday}</span> lượt upvote</span>
                 <span>Tổng <span className="font-semibold text-on-surface">{upvotes}</span></span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-secondary">
+            <Link to={post.author?._id ? `/users/${post.author._id}` : '#'} className="flex items-center gap-2 text-xs text-secondary hover:text-primary-container">
                 <img
                     alt="Author Avatar"
                     className="w-6 h-6 rounded-DEFAULT object-cover"
@@ -277,7 +300,7 @@ const TopUpvotedCard = ({ post, rank, onTagClick }) => {
                         : `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author?.fullName || 'U')}&background=0066cc&color=fff&size=32`}
                 />
                 <span className="text-on-surface">{post.author?.fullName || post.author?.username || 'Ẩn danh'}</span>
-            </div>
+            </Link>
         </article>
     );
 };
@@ -298,7 +321,11 @@ const MainContent = () => {
     const { list: questionsList, loading, error, pagination } = useSelector((state) => state.posts);
     const { ids: savedIds, collections, loadingCollections } = useSelector((state) => state.saved);
     const isAuthenticated = useSelector((state) => state.login.isAuthenticated);
+    const currentUser = useSelector((state) => state.login.user);
+    const isAdmin = currentUser?.role === 'admin';
+    const { toast } = useToast();
     const { filters, handleFilterChange, handleApplyFilters } = useOutletContext();
+    const [searchParams] = useSearchParams();
     const [trending, setTrending] = useState([]);
     const [trendingLoading, setTrendingLoading] = useState(true);
     const [trendingError, setTrendingError] = useState('');
@@ -318,12 +345,17 @@ const MainContent = () => {
     const [saveModalOpen, setSaveModalOpen] = useState(false);
     const [savePostId, setSavePostId] = useState(null);
     const [selectedCollectionId, setSelectedCollectionId] = useState('');
+    const [freeVotesModalOpen, setFreeVotesModalOpen] = useState(false);
 
     const totalTrendingPages = useMemo(() => trending.length ? Math.ceil(trending.length / pageSize) : 0, [trending.length, pageSize]);
     const savedIdSet = useMemo(() => new Set(savedIds), [savedIds]);
 
     const handleToggleSave = (postId, isSaved) => {
         if (!isAuthenticated) return navigate('/auth/login');
+        if (isAdmin) {
+            toast.warning('Quản trị viên không được phép thực hiện tương tác này.');
+            return;
+        }
         if (isSaved) return dispatch(toggleSaveThunk(postId));
         setSavePostId(postId);
         setSaveModalOpen(true);
@@ -332,21 +364,45 @@ const MainContent = () => {
 
     const handleVotePost = async (postId, voteType) => {
         if (!isAuthenticated) return navigate('/auth/login');
+        if (isAdmin) { toast.warning('Quản trị viên không được phép thực hiện tương tác này.'); return; }
         if (!postId || votingPostId) return;
         setVotingPostId(postId);
         try {
             const response = await votePost(postId, voteType);
             const data = response?.data?.data || {};
-            dispatch(updatePostVoteInList({ postId, upvoteCount: data.upvoteCount ?? 0, downvoteCount: data.downvoteCount ?? 0, userVote: data.userVote ?? null }));
+            dispatch(updatePostVoteInList({ 
+                postId, 
+                upvoteCount: data.upvoteCount ?? 0, 
+                downvoteCount: data.downvoteCount ?? 0, 
+                userVote: data.userVote ?? null 
+            }));
+
+            // Đồng bộ dữ liệu Free Votes vào Redux Store (nếu được trả về từ API)
+            if (data.weeklyFreeVotesUsed !== undefined) {
+                dispatch(updateUser({
+                    reputationInfo: {
+                        ...(currentUser?.reputationInfo || {}),
+                        weeklyFreeVotesUsed: data.weeklyFreeVotesUsed,
+                        weeklyFreeVotesLimit: data.weeklyFreeVotesLimit || 5,
+                        reputation: data.userReputation
+                    },
+                    reputation: data.userReputation
+                }));
+            }
+
+            // Hiển thị modal giới thiệu Free Votes nếu là lần đầu
+            if (data.showFreeVotesModal) {
+                setFreeVotesModalOpen(true);
+            }
         } catch (voteError) {
-            alert(voteError?.response?.data?.message || 'Không thể upvote/downvote bài viết.');
+            toast.error(voteError?.response?.data?.message || 'Không thể upvote/downvote bài viết.');
         } finally {
             setVotingPostId('');
         }
     };
-
     const handleReactPost = async (postId, reactionType) => {
         if (!isAuthenticated) return navigate('/auth/login');
+        if (isAdmin) { toast.warning('Quản trị viên không được phép thực hiện tương tác này.'); return; }
         if (!postId || reactingPostId) return;
         setReactingPostId(postId);
         try {
@@ -354,7 +410,7 @@ const MainContent = () => {
             const data = response?.data?.data || {};
             dispatch(updatePostReactionInList({ postId, likeCount: data.likeCount ?? 0, dislikeCount: data.dislikeCount ?? 0, userReaction: data.userReaction ?? null }));
         } catch (reactionError) {
-            alert(reactionError?.response?.data?.message || 'Không thể like/dislike bài viết.');
+            toast.error(reactionError?.response?.data?.message || 'Không thể like/dislike bài viết.');
         } finally {
             setReactingPostId('');
         }
@@ -466,7 +522,39 @@ const MainContent = () => {
 
     const currentPage = pagination.page || 1;
     const totalPages = pagination.totalPages || 1;
-    const paginationItems = buildPaginationItems(currentPage, totalPages);
+    const hasAppliedSearchOrFilters = useMemo(() => {
+        const keyword = searchParams.get('keyword') || searchParams.get('q');
+        if (keyword && keyword.trim().length > 0) return true;
+
+        const tags = searchParams.get('tags');
+        if (tags && tags.trim().length > 0) return true;
+
+        const status = searchParams.get('status');
+        if (status && status !== 'All') return true;
+
+        const minViews = searchParams.get('minViews');
+        if (minViews && minViews !== '0' && minViews !== '') return true;
+
+        const minUpvotes = searchParams.get('minUpvotes');
+        if (minUpvotes && minUpvotes !== '0' && minUpvotes !== '') return true;
+
+        const author = searchParams.get('author');
+        if (author && author.trim().length > 0) return true;
+
+        const authorId = searchParams.get('authorId');
+        if (authorId && authorId.trim().length > 0) return true;
+
+        const postType = searchParams.get('postType');
+        if (postType && postType !== 'All') return true;
+
+        const startDate = searchParams.get('startDate');
+        if (startDate && startDate.trim().length > 0) return true;
+
+        const endDate = searchParams.get('endDate');
+        if (endDate && endDate.trim().length > 0) return true;
+
+        return false;
+    }, [searchParams]);
 
     const renderPagerButton = (enabled, onClick, icon, label) => (
         <button
@@ -481,7 +569,8 @@ const MainContent = () => {
     );
 
     return (
-        <main className="flex-1 flex flex-col min-w-0 pb-12">
+        <main className="flex-1 flex flex-col min-w-0 pt-3 pb-12">
+            {!hasAppliedSearchOrFilters && (
             <section className="mb-stack-lg">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <div>
@@ -504,7 +593,9 @@ const MainContent = () => {
                     </div>
                 )}
             </section>
+            )}
 
+            {!hasAppliedSearchOrFilters && (
             <section className="mb-stack-lg">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <div>
@@ -527,34 +618,43 @@ const MainContent = () => {
                     </div>
                 )}
             </section>
+            )}
 
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-stack-lg gap-4 border-b border-outline-variant pb-4">
                 <div>
-                    <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">Câu hỏi mới nhất</h1>
-                    <p className="font-body-md text-body-md text-secondary">{pagination.total?.toLocaleString('vi-VN') || 0} câu hỏi</p>
+                    <h1 className="font-headline-xl text-headline-xl text-on-surface mb-2">
+                        {hasAppliedSearchOrFilters ? 'Kết quả tìm kiếm' : 'Bài viết mới nhất'}
+                    </h1>
+                    <p className="font-body-md text-body-md text-secondary">
+                        {hasAppliedSearchOrFilters
+                          ? `${pagination.total?.toLocaleString('vi-VN') || 0} kết quả`
+                          : `${pagination.total?.toLocaleString('vi-VN') || 0} bài viết`}
+                    </p>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex border border-outline-variant rounded-DEFAULT overflow-hidden bg-surface-container-lowest">
-                        {sortOptions.map((option, index) => (
-                            <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => {
-                                    handleFilterChange?.('sortBy', option.value);
-                                    handleApplyFilters?.({ sortBy: option.value });
-                                }}
-                                className={`px-3 py-1.5 font-body-sm text-body-sm border-outline-variant transition-colors ${index < sortOptions.length - 1 ? 'border-r' : ''} ${filters?.sortBy === option.value ? 'bg-surface-container-low text-on-surface font-semibold' : 'text-secondary hover:bg-surface-container hover:text-on-surface'}`}
-                            >
-                                {option.label}
-                            </button>
-                        ))}
+                {!hasAppliedSearchOrFilters && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex border border-outline-variant rounded-DEFAULT overflow-hidden bg-surface-container-lowest">
+                            {sortOptions.map((option, index) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => {
+                                        handleFilterChange?.('sortBy', option.value);
+                                        handleApplyFilters?.({ sortBy: option.value });
+                                    }}
+                                    className={`px-3 py-1.5 font-body-sm text-body-sm border-outline-variant transition-colors ${index < sortOptions.length - 1 ? 'border-r' : ''} ${filters?.sortBy === option.value ? 'bg-surface-container-low text-on-surface font-semibold' : 'text-secondary hover:bg-surface-container hover:text-on-surface'}`}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             <div className="flex flex-col gap-0 border-t border-outline-variant">
-                {loading && <p className="p-4 text-center text-secondary">Đang tải danh sách câu hỏi...</p>}
+                {loading && <p className="p-4 text-center text-secondary">Đang tải danh sách bài viết...</p>}
                 {error && <p className="p-4 text-center text-red-500">{error}</p>}
                 {!loading && !error && questionsList && questionsList.length > 0 && questionsList.map((q) => (
                     <QuestionCard
@@ -566,47 +666,34 @@ const MainContent = () => {
                         onReactPost={handleReactPost}
                         votingPostId={votingPostId}
                         reactingPostId={reactingPostId}
+                        currentUser={currentUser}
                     />
                 ))}
-                {!loading && !error && (!questionsList || questionsList.length === 0) && <p className="p-4 text-center text-secondary">Chưa có câu hỏi nào trên diễn đàn.</p>}
+                {!loading && !error && (!questionsList || questionsList.length === 0) && (
+                    <div className="p-6 text-center text-secondary">
+                        <p className="font-medium">
+                            {hasAppliedSearchOrFilters
+                                ? 'Không tìm thấy bài viết phù hợp với từ khóa hoặc bộ lọc.'
+                                : 'Chưa có bài viết nào trên diễn đàn.'}
+                        </p>
+                        {hasAppliedSearchOrFilters && (
+                            <p className="mt-1 text-sm text-slate-400">
+                                Thử đổi từ khóa tìm kiếm hoặc bớt điều kiện lọc để xem thêm kết quả.
+                            </p>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {!loading && !error && totalPages > 1 && (
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-t border-outline-variant pt-4">
-                    <div className="flex items-center gap-1 flex-wrap">
-                        {paginationItems.map((item) => {
-                            if (typeof item !== 'number') return <span key={item} className="px-2 text-secondary">...</span>;
-                            const isActive = item === currentPage;
-                            return (
-                                <button
-                                    key={item}
-                                    type="button"
-                                    onClick={() => handleApplyFilters?.({ page: item })}
-                                    className={`min-w-[36px] px-3 py-1.5 rounded-DEFAULT font-body-sm text-body-sm border transition-colors ${isActive ? 'bg-primary-container text-on-primary border-primary-container' : 'border-outline-variant text-secondary hover:bg-surface-container-low'}`}
-                                    aria-current={isActive ? 'page' : undefined}
-                                >
-                                    {item}
-                                </button>
-                            );
-                        })}
-                        <button type="button" onClick={() => handleApplyFilters?.({ page: Math.min(currentPage + 1, totalPages) })} className="px-3 py-1.5 rounded-DEFAULT font-body-sm text-body-sm border border-outline-variant text-secondary hover:bg-surface-container-low" disabled={currentPage >= totalPages}>
-                            Next
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-secondary font-body-sm text-body-sm">
-                        <span>per page</span>
-                        <div className="flex items-center gap-1">
-                            {PER_PAGE_OPTIONS.map((size) => {
-                                const isActive = Number(filters?.limit) === size;
-                                return (
-                                    <button key={size} type="button" onClick={() => handleApplyFilters?.({ limit: size, page: 1 })} className={`min-w-[36px] px-3 py-1.5 rounded-DEFAULT border transition-colors ${isActive ? 'bg-primary-container text-on-primary border-primary-container' : 'border-outline-variant text-secondary hover:bg-surface-container-low'}`}>
-                                        {size}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
+            {!loading && !error && questionsList && questionsList.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-outline-variant">
+                    <AppPagination
+                        page={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={(newPage) => handleApplyFilters?.({ page: newPage })}
+                        limit={Number(filters?.limit || 15)}
+                        onLimitChange={(newLimit) => handleApplyFilters?.({ limit: newLimit, page: 1 })}
+                    />
                 </div>
             )}
 
@@ -638,6 +725,12 @@ const MainContent = () => {
                     </div>
                 </div>
             )}
+
+            {/* Modal giới thiệu Free Votes cho tài khoản mới */}
+            <FreeVotesIntroModal 
+                isOpen={freeVotesModalOpen} 
+                onClose={() => setFreeVotesModalOpen(false)} 
+            />
         </main>
     );
 };

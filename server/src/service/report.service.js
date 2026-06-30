@@ -1,38 +1,46 @@
 import reportRepository from '../repository/report.repository.js';
 import postRepository from '../repository/post.repository.js';
 import userRepository from '../repository/user.repository.js';
+import commentRepository from '../repository/comment.repository.js';
+import Comment from '../model/comment.model.js';
+import ReportTicket from '../model/reportTicket.model.js';
 import reputationService from './reputation.service.js';
+import SystemSetting from '../model/systemSetting.model.js';
+import notificationService from './notification.service.js';
+import User from '../model/user.model.js';
 
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 const MIN_REPUTATION_TO_REPORT = 15;
 
 const FLAG_LABELS = {
-  spam: 'Xóa vì spam quảng cáo hàng loạt',
-  rude_abusive: 'Xóa vì công kích/xúc phạm',
-  off_topic: 'Không đúng chủ đề cộng đồng',
+  spam: 'Spam quảng cáo hoặc nội dung rác',
+  rude_abusive: 'Ngôn từ công kích, quấy rối hoặc thô tục',
+  off_topic: 'Lạc đề, không mang tính chất thảo luận học tập',
   needs_detail: 'Cần thêm chi tiết hoặc làm rõ',
   needs_focus: 'Cần tập trung vào một vấn đề cụ thể',
   opinion_based: 'Dựa trên quan điểm cá nhân',
   duplicate: 'Trùng câu hỏi/bài viết đã có',
   very_low_quality: 'Chất lượng rất thấp, khó cứu vãn',
   moderator_attention: 'Cần moderator xem thủ công',
+  copyright_infringement: 'Chia sẻ tài liệu lậu, leak khóa học hoặc vi phạm bản quyền',
+  false_info_scam: 'Thông tin sai sự thật, lừa đảo hoặc gian lận',
+  adult_content: 'Hình ảnh hoặc nội dung nhạy cảm, 18+',
+  dont_want_to_see: 'Tôi không muốn nhìn thấy nội dung này',
 };
 
 const STATUS_LABELS = {
   submitted: 'Mới gửi',
   received: 'Đã tiếp nhận',
-  in_review: 'Đang xem xét',
   action_taken: 'Đã xử lý vi phạm',
   closed: 'Đã đóng (không xử lý)',
   retracted: 'Đã rút cờ',
 };
 
 const AUTO_DELETE_TYPES = ['spam', 'rude_abusive'];
-const AUTO_DELETE_THRESHOLD = 4;
-const OPEN_STATUSES = ['submitted', 'received', 'in_review'];
+const OPEN_STATUSES = ['submitted', 'received'];
 const ADMIN_TRANSITION_MAP = {
-  received: ['in_review'],
-  in_review: ['action_taken', 'closed'],
+  submitted: ['action_taken', 'closed'],
+  received: ['action_taken', 'closed'],
 };
 
 const normalizeFlag = (ticket) => {
@@ -49,13 +57,13 @@ const normalizeFlag = (ticket) => {
 
   obj.flagTypeLabel = FLAG_LABELS[obj.flagType] || obj.flagType;
   obj.statusLabel = STATUS_LABELS[obj.status] || obj.status;
-  obj.retractable = OPEN_STATUSES.includes(obj.status);
+  obj.retractable = obj.status === 'submitted';
 
   return obj;
 };
 
 class ReportService {
-  async createReportTicket(postId, reporterId, flagType, details = '') {
+  async createReportTicket(payload, reporterId) {
     const reporter = await userRepository.findById(reporterId);
     if (!reporter) {
       throw { status: 404, message: 'Không tìm thấy người dùng.' };
@@ -71,48 +79,202 @@ class ReportService {
       }
     }
 
-    const post = await postRepository.findById(postId);
-    if (!post || post.status === 'deleted') {
-      throw { status: 404, message: 'Bài viết không tồn tại hoặc đã bị xóa.' };
+    // Support legacy (postId, reporterId, flagType, details) signature if payload is just postId
+    let postId = payload.postId;
+    let commentId = payload.commentId;
+    let flagType = payload.flagType;
+    let details = payload.details || '';
+
+    if (typeof payload === 'string') {
+      postId = arguments[0];
+      reporterId = arguments[1];
+      flagType = arguments[2];
+      details = arguments[3] || '';
     }
 
-    const existing = await reportRepository.findExistingFlag(postId, reporterId, flagType);
-    if (existing) {
-      throw { status: 409, message: 'Bạn đã từng gửi loại cờ này cho bài viết này, không thể gửi lại.' };
-    }
-
-    const ticket = await reportRepository.create({
-      post: postId,
-      reporter: reporterId,
-      flagType,
-      details,
-      status: 'submitted',
-      outcome: 'pending',
-      history: [{
-        status: 'submitted',
-        note: `Người dùng gửi cờ: ${FLAG_LABELS[flagType] || flagType}.`,
-        actorRole: 'user',
-        actor: reporterId,
-      }],
-    });
-
-    if (AUTO_DELETE_TYPES.includes(flagType)) {
-      const count = await reportRepository.countActiveByFlagType(postId, flagType);
-      if (count >= AUTO_DELETE_THRESHOLD) {
-        await postRepository.setDeletedStatus(postId);
-        await reportRepository.bulkMarkActionTakenByPost(
-          postId,
-          `Tự động xử lý: bài viết bị xóa khi đủ ${AUTO_DELETE_THRESHOLD} cờ ${FLAG_LABELS[flagType]}.`,
-        );
-        // Trừ reputation tác giả khi bài bị xóa do report
-        const deletedPost = await postRepository.findById(postId);
-        const authorId = deletedPost?.author?._id?.toString() || deletedPost?.author?.toString();
-        if (authorId) await reputationService.award(authorId, 'post_deleted_by_report');
+    if (commentId) {
+      const comment = await commentRepository.findById(commentId);
+      if (!comment) {
+        throw { status: 404, message: 'Bình luận không tồn tại hoặc đã bị xóa.' };
       }
-    }
 
-    const updated = await reportRepository.findById(ticket._id);
-    return normalizeFlag(updated);
+      if (String(comment.author?._id || comment.author) === String(reporterId)) {
+        throw { status: 400, message: 'Bạn không thể tự báo cáo bình luận của chính mình.' };
+      }
+
+      const resolvedPostId = comment.post?._id || comment.post;
+      const post = await postRepository.findById(resolvedPostId);
+      if (!post || post.status === 'deleted') {
+        throw { status: 404, message: 'Bài viết chứa bình luận không tồn tại hoặc đã bị xóa.' };
+      }
+
+      const existing = await reportRepository.findExistingCommentFlag(commentId, reporterId, flagType);
+      if (existing) {
+        throw { status: 409, message: 'Bạn đã từng gửi loại cờ này cho bình luận này, không thể gửi lại.' };
+      }
+
+      const ticket = await reportRepository.create({
+        post: resolvedPostId,
+        comment: commentId,
+        commentContentSnapshot: comment.content,
+        reporter: reporterId,
+        flagType,
+        details,
+        status: 'submitted',
+        outcome: 'pending',
+        history: [{
+          status: 'submitted',
+          note: `Người dùng gửi cờ báo cáo bình luận: ${FLAG_LABELS[flagType] || flagType}.`,
+          actorRole: 'user',
+          actor: reporterId,
+        }],
+      });
+
+      await reputationService.award(reporterId, 'report_submitted', resolvedPostId);
+
+      if (AUTO_DELETE_TYPES.includes(flagType)) {
+        let autoDeleteThreshold = 4;
+        try {
+          const setting = await SystemSetting.findOne({ key: 'flag_auto_hide_threshold' });
+          if (setting && typeof setting.value === 'number') {
+            autoDeleteThreshold = setting.value;
+          }
+        } catch (err) {
+          console.error('[ReportService] Error fetching flag_auto_hide_threshold:', err);
+        }
+
+        const count = await reportRepository.countActiveCommentByFlagType(commentId, flagType);
+        if (count >= autoDeleteThreshold) {
+          await Comment.findByIdAndUpdate(commentId, {
+            $set: {
+              content: '[Bình luận bị xóa vì không phù hợp]',
+              images: [],
+              videos: [],
+              likes: [],
+              dislikes: []
+            }
+          });
+
+          const activeReports = await ReportTicket.find({
+            comment: commentId,
+            status: { $in: ['submitted', 'received'] },
+          });
+          for (const rep of activeReports) {
+            const repId = rep.reporter?._id || rep.reporter;
+            if (repId) {
+              await reputationService.award(repId.toString(), 'report_helpful', resolvedPostId);
+            }
+          }
+
+          await reportRepository.bulkMarkActionTakenByComment(
+            commentId,
+            `Tự động xử lý: bình luận bị ẩn khi đủ ${autoDeleteThreshold} cờ ${FLAG_LABELS[flagType]}.`,
+          );
+
+          const commentAuthorId = comment.author?._id || comment.author;
+          if (commentAuthorId) {
+            await reputationService.award(
+              commentAuthorId.toString(),
+              'comment_deleted_by_report',
+              resolvedPostId
+            );
+          }
+        }
+      }
+
+      const updated = await reportRepository.findById(ticket._id);
+      return normalizeFlag(updated);
+    } else {
+      const post = await postRepository.findById(postId);
+      if (!post || post.status === 'deleted') {
+        throw { status: 404, message: 'Bài viết không tồn tại hoặc đã bị xóa.' };
+      }
+
+      if (String(post.author?._id || post.author) === String(reporterId)) {
+        throw { status: 400, message: 'Bạn không thể tự báo cáo bài viết của chính mình.' };
+      }
+
+      const existing = await reportRepository.findExistingFlag(postId, reporterId, flagType);
+      if (existing) {
+        throw { status: 409, message: 'Bạn đã từng gửi loại cờ này cho bài viết này, không thể gửi lại.' };
+      }
+
+      const ticket = await reportRepository.create({
+        post: postId,
+        reporter: reporterId,
+        flagType,
+        details,
+        status: 'submitted',
+        outcome: 'pending',
+        history: [{
+          status: 'submitted',
+          note: `Người dùng gửi cờ: ${FLAG_LABELS[flagType] || flagType}.`,
+          actorRole: 'user',
+          actor: reporterId,
+        }],
+      });
+
+      await reputationService.award(reporterId, 'report_submitted', postId);
+
+      if (AUTO_DELETE_TYPES.includes(flagType)) {
+        let autoDeleteThreshold = 4;
+        try {
+          const setting = await SystemSetting.findOne({ key: 'flag_auto_hide_threshold' });
+          if (setting && typeof setting.value === 'number') {
+            autoDeleteThreshold = setting.value;
+          }
+        } catch (err) {
+          console.error('[ReportService] Error fetching flag_auto_hide_threshold:', err);
+        }
+
+        const count = await reportRepository.countActiveByFlagType(postId, flagType);
+        if (count >= autoDeleteThreshold) {
+          await postRepository.setDeletedStatus(postId);
+
+          const activeReports = await ReportTicket.find({
+            post: postId,
+            status: { $in: ['submitted', 'received'] },
+            comment: { $exists: false }
+          });
+          for (const rep of activeReports) {
+            const repId = rep.reporter?._id || rep.reporter;
+            if (repId) {
+              await reputationService.award(repId.toString(), 'report_helpful', postId);
+            }
+          }
+
+          await reportRepository.bulkMarkActionTakenByPost(
+            postId,
+            `Tự động xử lý: bài viết bị xóa khi đủ ${autoDeleteThreshold} cờ ${FLAG_LABELS[flagType]}.`,
+          );
+          // Trừ reputation tác giả khi bài bị xóa do report
+          const deletedPost = await postRepository.findById(postId);
+          const authorId = deletedPost?.author?._id?.toString() || deletedPost?.author?.toString();
+          if (authorId) {
+            await reputationService.award(authorId, 'post_deleted_by_report', postId);
+            
+            // Gửi thông báo tự động cho chủ bài viết
+            try {
+              const systemAdmin = await User.findOne({ role: 'admin' });
+              if (systemAdmin && String(systemAdmin._id) !== String(authorId)) {
+                await notificationService.createAdminPostActionNotification({
+                  recipientId: authorId,
+                  adminId: systemAdmin._id,
+                  post: deletedPost,
+                  status: 'deleted',
+                  reason: `Bài viết tự động bị xóa do nhận đủ ${autoDeleteThreshold} báo cáo vi phạm liên quan đến "${FLAG_LABELS[flagType] || flagType}".`,
+                });
+              }
+            } catch (notifyErr) {
+              console.error('[ReportService] Auto-delete notification failed:', notifyErr.message || notifyErr);
+            }
+          }
+        }
+      }
+
+      const updated = await reportRepository.findById(ticket._id);
+      return normalizeFlag(updated);
+    }
   }
 
   async getMyReportTickets(userId) {
@@ -161,8 +323,8 @@ class ReportService {
     }
 
     const normalized = normalizeFlag(ticket);
-    if (!OPEN_STATUSES.includes(normalized.status)) {
-      throw { status: 400, message: 'Cờ đã được xử lý, không thể rút.' };
+    if (normalized.status !== 'submitted') {
+      throw { status: 400, message: 'Cờ đã được tiếp nhận hoặc đã xử lý, không thể rút.' };
     }
 
     const updated = await reportRepository.updateById(ticketId, {
@@ -177,6 +339,8 @@ class ReportService {
       },
     });
 
+    await reputationService.award(userId, 'report_retracted', ticket.post?._id || ticket.post);
+
     return normalizeFlag(updated);
   }
 
@@ -184,7 +348,7 @@ class ReportService {
     const ticket = await reportRepository.findById(ticketId);
     if (!ticket) throw { status: 404, message: 'Không tìm thấy cờ báo cáo.' };
 
-    const allowedStatuses = ['received', 'in_review', 'action_taken', 'closed'];
+    const allowedStatuses = ['action_taken', 'closed'];
     if (!allowedStatuses.includes(nextStatus)) {
       throw { status: 400, message: 'Trạng thái admin cập nhật không hợp lệ.' };
     }
@@ -208,12 +372,117 @@ class ReportService {
         ? 'declined'
         : ticket.outcome;
 
+    if (nextStatus === 'action_taken') {
+      if (ticket.comment) {
+        const commentId = ticket.comment._id || ticket.comment;
+        await Comment.findByIdAndUpdate(commentId, {
+          $set: {
+            content: '[Bình luận bị xóa vì không phù hợp]',
+            images: [],
+            videos: [],
+            likes: [],
+            dislikes: []
+          }
+        });
+
+        // Trừ reputation của tác giả bình luận
+        const commentAuthorId = ticket.comment?.author?._id || ticket.comment?.author;
+        if (commentAuthorId) {
+          await reputationService.award(
+            commentAuthorId.toString(),
+            'comment_deleted_by_report',
+            ticket.post?._id || ticket.post
+          );
+        }
+
+        // Tự động giải quyết các cờ active khác của bình luận này
+        const activeReports = await ReportTicket.find({
+          comment: commentId,
+          status: { $in: ['submitted', 'received'] },
+        });
+        for (const rep of activeReports) {
+          const repId = rep.reporter?._id || rep.reporter;
+          if (repId && repId.toString() !== ticket.reporter?._id?.toString() && repId.toString() !== ticket.reporter?.toString()) {
+            await reputationService.award(repId.toString(), 'report_helpful', ticket.post?._id || ticket.post);
+          }
+        }
+
+        await reportRepository.bulkMarkActionTakenByComment(
+          commentId,
+          note || `Đã xử lý vi phạm (Đồng bộ theo admin).`,
+          ticketId
+        );
+      } else {
+        const postId = ticket.post?._id || ticket.post;
+        if (postId) {
+          // 1. Đánh dấu bài viết là deleted
+          await postRepository.setDeletedStatus(postId);
+
+          // 2. Trừ reputation của tác giả bài viết
+          const postObj = await postRepository.findById(postId);
+          const authorId = postObj?.author?._id?.toString() || postObj?.author?.toString();
+          if (authorId) {
+            await reputationService.award(
+              authorId,
+              'post_deleted_by_report',
+              postId
+            );
+
+            // Gửi thông báo cho chủ bài viết khi admin duyệt báo cáo xóa bài viết
+            try {
+              if (String(adminUserId) !== String(authorId)) {
+                await notificationService.createAdminPostActionNotification({
+                  recipientId: authorId,
+                  adminId: adminUserId,
+                  post: postObj,
+                  status: 'deleted',
+                  reason: note || 'Nội dung vi phạm quy định cộng đồng.',
+                });
+              }
+            } catch (notifyErr) {
+              console.error('[ReportService] Admin report delete notify failed:', notifyErr.message || notifyErr);
+            }
+          }
+
+          // Tự động giải quyết các cờ active khác của bài viết này
+          const activeReports = await ReportTicket.find({
+            post: postId,
+            status: { $in: ['submitted', 'received'] },
+            comment: { $exists: false }
+          });
+          for (const rep of activeReports) {
+            const repId = rep.reporter?._id || rep.reporter;
+            if (repId && repId.toString() !== ticket.reporter?._id?.toString() && repId.toString() !== ticket.reporter?.toString()) {
+              await reputationService.award(repId.toString(), 'report_helpful', postId);
+            }
+          }
+
+          await reportRepository.bulkMarkActionTakenByPost(
+            postId,
+            note || `Đã xử lý vi phạm (Đồng bộ theo admin).`,
+            ticketId
+          );
+        }
+      }
+    }
+
+    if (nextStatus === 'action_taken') {
+      const reporterId = ticket.reporter?._id || ticket.reporter;
+      if (reporterId) {
+        await reputationService.award(
+          reporterId.toString(),
+          'report_helpful',
+          ticket.post?._id || ticket.post
+        );
+      }
+    }
+
     const updated = await reportRepository.updateById(ticketId, {
       $set: { status: nextStatus, outcome },
       $push: {
         history: {
           status: nextStatus,
-          note: note || `Admin cập nhật trạng thái: ${STATUS_LABELS[nextStatus]}.`,
+          note: note || STATUS_LABELS[nextStatus] || nextStatus,
           actorRole: 'admin',
           actor: adminUserId,
         },

@@ -7,7 +7,7 @@ export default function AppButton({
   onClick,
 }) {
   const variants = {
-    primary: 'bg-sky-600 text-white hover:bg-sky-700',
+    primary: 'bg-primary text-white shadow-sm hover:bg-primary/90',
     secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200',
   };
 
@@ -16,7 +16,7 @@ export default function AppButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className={`rounded-xl px-5 py-3 text-base font-semibold transition focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60 ${variants[variant]} ${fullWidth ? 'w-full' : ''}`}
+      className={`inline-flex h-12 items-center justify-center rounded-xl px-5 text-sm font-extrabold transition focus:outline-none focus:ring-4 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60 ${variants[variant]} ${fullWidth ? 'w-full' : ''}`}
     >
       {children}
     </button>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import usePostDetail from '../../hook/usePostDetail';
@@ -7,6 +7,10 @@ import VoteSidebar from '../../components/post/VoteSidebar';
 import PostContent from '../../components/post/PostContent';
 import CommentSection from '../../components/post/CommentSection';
 import RelatedPosts from '../../components/post/RelatedPosts';
+import ReportCommentModal from '../../components/post/ReportCommentModal';
+import ReportPostModal from '../../components/post/ReportPostModal';
+import FreeVotesIntroModal from '../../components/post/FreeVotesIntroModal';
+import PostFlagSummaryModal from '../../components/post/PostFlagSummaryModal';
 import {
   clearReportCreateMessages,
   createReportTicketThunk,
@@ -17,36 +21,10 @@ import {
   savePostToCollectionThunk,
   toggleSaveThunk,
 } from '../../store/slices/savedSlice';
+import { fetchProfileThunk } from '../../store/slices/profileSlice';
+import { useToast } from '../../context/ToastContext';
 
-const flagOptions = [
-  { value: 'spam', label: 'Xóa vì spam quảng cáo hàng loạt' },
-  { value: 'rude_abusive', label: 'Xóa vì công kích/xúc phạm' },
-  { value: 'off_topic', label: 'Không đúng chủ đề cộng đồng' },
-  { value: 'needs_detail', label: 'Cần thêm chi tiết hoặc làm rõ' },
-  { value: 'needs_focus', label: 'Cần tập trung vào một vấn đề cụ thể' },
-  { value: 'opinion_based', label: 'Dựa trên quan điểm cá nhân' },
-  { value: 'duplicate', label: 'Trùng bài viết/câu hỏi đã có' },
-  { value: 'very_low_quality', label: 'Chất lượng rất thấp, khó cứu vãn' },
-  { value: 'moderator_attention', label: 'Cần moderator xem thủ công' },
-];
 
-const flagTypeLabelMap = {
-  spam: 'Spam quảng cáo hàng loạt',
-  rude_abusive: 'Công kích/Xúc phạm',
-  off_topic: 'Lạc chủ đề cộng đồng',
-  needs_detail: 'Cần thêm chi tiết/làm rõ',
-  needs_focus: 'Cần tập trung vào một vấn đề cụ thể',
-  opinion_based: 'Dựa trên quan điểm cá nhân',
-  duplicate: 'Trùng bài viết/câu hỏi đã có',
-  very_low_quality: 'Chất lượng rất thấp, khó cứu vãn',
-  moderator_attention: 'Cần moderator xem thủ công',
-};
-
-const postStatusLabelMap = {
-  active: 'Đang hiển thị',
-  closed: 'Đã khóa',
-  deleted: 'Đã xóa',
-};
 
 const normalizeId = (value) => {
   if (!value) return '';
@@ -66,6 +44,7 @@ const normalizeId = (value) => {
 
 export default function PostDetailPage() {
   const { id } = useParams();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -79,11 +58,18 @@ export default function PostDetailPage() {
     loadingOwnerSummary,
     ownerSummaryErrorMessage,
   } = useSelector((state) => state.reports);
-  const [flagType, setFlagType] = useState('');
-  const [details, setDetails] = useState('');
-  const [showOwnerSummary, setShowOwnerSummary] = useState(false);
+  const [flagSummaryModalOpen, setFlagSummaryModalOpen] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState('');
+  const [reportCommentModalOpen, setReportCommentModalOpen] = useState(false);
+  const [reportingComment, setReportingComment] = useState(null);
+  const [reportPostModalOpen, setReportPostModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchProfileThunk());
+    }
+  }, [isAuthenticated, dispatch]);
 
   const {
     post,
@@ -107,6 +93,11 @@ export default function PostDetailPage() {
     reactComment,
     reactingCommentId,
     relatedPosts,
+    deleteComment,
+    refreshPost,
+    handleAcceptComment,
+    showFreeVotesModal,
+    setShowFreeVotesModal,
   } = usePostDetail(id);
 
   const minReportReputation = 15;
@@ -142,30 +133,61 @@ export default function PostDetailPage() {
 
   if (!post) return null;
   const isPostOwner = user?._id && post?.author?._id && user._id === post.author._id;
+  const isPostLocked = post.status === 'resolved' || post.status === 'hidden' || post.status === 'deleted';
 
-  const handleSubmitReport = async (event) => {
-    event.preventDefault();
+  const handleSubmitPostReport = async (selectedFlagType) => {
     if (!user?._id) {
-      alert('Bạn cần đăng nhập để gửi cờ báo cáo.');
+      toast.warning('Bạn cần đăng nhập để gửi cờ báo cáo.');
       return;
     }
     if (isReportLockedByRep) {
-      alert(`Bạn cần tối thiểu ${minReportReputation} điểm reputation để gửi cờ báo cáo.`);
+      toast.warning(`Bạn cần tối thiểu ${minReportReputation} điểm uy tín để gửi cờ báo cáo.`);
       return;
     }
-    if (!flagType) return;
-
-    const action = await dispatch(createReportTicketThunk({ postId: id, flagType, details: details.trim() }));
+    const action = await dispatch(createReportTicketThunk({ postId: id, flagType: selectedFlagType, details: '' }));
     if (createReportTicketThunk.fulfilled.match(action)) {
-      setFlagType('');
-      setDetails('');
+      toast.success('Báo cáo bài viết thành công!');
+    } else {
+      toast.error(action.payload || 'Báo cáo bài viết thất bại.');
     }
+    setReportPostModalOpen(false);
+  };
+
+  const handleReportComment = (comment) => {
+    if (!isAuthenticated) {
+      toast.warning('Bạn cần đăng nhập để gửi báo cáo bình luận.');
+      navigate('/auth/login');
+      return;
+    }
+    setReportingComment(comment);
+    setReportCommentModalOpen(true);
+  };
+
+  const handleSubmitCommentReport = async (selectedFlagType) => {
+    if (!reportingComment) return;
+    const action = await dispatch(createReportTicketThunk({
+      commentId: reportingComment._id,
+      flagType: selectedFlagType,
+      details: ''
+    }));
+    if (createReportTicketThunk.fulfilled.match(action)) {
+      toast.success('Báo cáo bình luận thành công!');
+    } else {
+      toast.error(action.payload || 'Báo cáo bình luận thất bại.');
+    }
+    setReportCommentModalOpen(false);
+    setReportingComment(null);
   };
 
   const isSaved = savedIds.includes(post._id);
   const handleToggleSave = () => {
     if (!isAuthenticated) {
       navigate('/auth/login');
+      return;
+    }
+
+    if (user?.role === 'admin') {
+      toast.warning('Quản trị viên không được phép thực hiện tương tác này.');
       return;
     }
 
@@ -201,6 +223,11 @@ export default function PostDetailPage() {
       return;
     }
 
+    if (isPostLocked) {
+      toast.warning('Bài viết đã bị khóa hoặc không hợp lệ, không thể thực hiện quyên góp.');
+      return;
+    }
+
     const isPostDonation = comment?.isPostDonation === true;
     const realPostId = normalizeId(post?._id || post?.id || id);
     const postAuthorCandidate = post?.author || post?.authorId || post?.user || post?.userId || post?.createdBy || '';
@@ -209,8 +236,13 @@ export default function PostDetailPage() {
     const postAuthorId = normalizeId(postAuthorCandidate);
     const targetAuthorId = normalizeId(targetAuthorCandidate);
 
+    if (targetAuthorId && user?._id && String(targetAuthorId) === String(user._id)) {
+      toast.warning('Bạn không thể tự ủng hộ chính bản thân mình.');
+      return;
+    }
+
     if (!realPostId) {
-      alert('Thiếu dữ liệu bài viết. Vui lòng tải lại trang rồi thử lại.');
+      toast.error('Thiếu dữ liệu bài viết. Vui lòng tải lại trang rồi thử lại.');
       return;
     }
 
@@ -224,7 +256,7 @@ export default function PostDetailPage() {
       authorId: targetAuthorId || postAuthorId || '',
       authorName: targetAuthorCandidate?.fullName || targetAuthorCandidate?.email || 'tác giả',
       authorAvatar: targetAuthorCandidate?.avatar || '',
-      answerId: '',
+      answerId: !isPostDonation ? normalizeId(comment?._id || comment?.id) : '',
       answerContent,
     };
 
@@ -250,10 +282,20 @@ export default function PostDetailPage() {
         Quay lại
       </button>
 
-      <div className="flex gap-4 sm:gap-6">
+      <div className="flex gap-4 sm:gap-6 w-full min-w-0">
         {post.postType === 'question' && (
           <div className="hidden sm:block">
-            <VoteSidebar upvoteCount={upvoteCount} downvoteCount={downvoteCount} userVote={userVote} onVote={handleVote} loading={voteLoading} />
+            <VoteSidebar 
+              upvoteCount={upvoteCount} 
+              downvoteCount={downvoteCount} 
+              userVote={userVote} 
+              onVote={handleVote} 
+              loading={voteLoading} 
+              disabled={isPostLocked}
+              userReputation={isAuthenticated ? userReputation : undefined}
+              weeklyFreeVotesUsed={user?.reputationInfo?.weeklyFreeVotesUsed || 0}
+              weeklyFreeVotesLimit={user?.reputationInfo?.weeklyFreeVotesLimit || 5}
+            />
           </div>
         )}
 
@@ -267,6 +309,17 @@ export default function PostDetailPage() {
           userReaction={userReaction}
           reactionLoading={reactionLoading}
           onPostReaction={requireLoginOrReact}
+          currentUserId={user?._id || user?.id || ''}
+          currentUserRole={user?.role || ''}
+          onPostUpdated={refreshPost}
+          isAuthenticated={isAuthenticated}
+          userReputation={userReputation}
+          onReportPost={() => setReportPostModalOpen(true)}
+          onShowFlagSummary={() => {
+            setFlagSummaryModalOpen(true);
+            dispatch(fetchPostFlagSummaryThunk(id));
+          }}
+          isAdmin={user?.role === 'admin'}
         />
       </div>
 
@@ -274,8 +327,8 @@ export default function PostDetailPage() {
         <div className="mt-4 flex items-center justify-center gap-4 rounded-xl border border-outline-variant bg-surface-container-lowest py-3 sm:hidden">
           <button
             onClick={() => handleVote('upvote')}
-            disabled={voteLoading}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'upvote' ? 'border border-primary/30 bg-primary-fixed text-primary' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30'}`}
+            disabled={voteLoading || isPostLocked}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'upvote' ? 'border border-primary/30 bg-primary-fixed text-primary' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30'} ${isPostLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
             {upvoteCount}
@@ -283,12 +336,18 @@ export default function PostDetailPage() {
           <span className="text-lg font-bold text-on-surface">{upvoteCount - downvoteCount}</span>
           <button
             onClick={() => handleVote('downvote')}
-            disabled={voteLoading}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'downvote' ? 'border border-error/30 bg-error-container text-error' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'}`}
+            disabled={voteLoading || isPostLocked || (isAuthenticated && userReputation < 100)}
+            title={isPostLocked ? 'Bài viết đã bị khóa, không thể vote' : (isAuthenticated && userReputation < 100) ? 'Bạn cần tối thiểu 100 điểm uy tín để Downvote' : 'Bình chọn xuống'}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-body-sm font-body-sm font-medium transition-all ${userVote === 'downvote' ? 'border border-error/30 bg-error-container text-error' : 'border border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30'} ${(isPostLocked || (isAuthenticated && userReputation < 100)) ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4"><path d="M12 20l8-8h-5V4H9v8H4z" /></svg>
             {downvoteCount}
           </button>
+          {userReputation !== undefined && userReputation < 15 && (
+            <span className="text-[10px] text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-full font-bold select-none tabular-nums" title="Lượt bình chọn miễn phí hàng tuần còn lại">
+              Free: {Math.max(0, (user?.reputationInfo?.weeklyFreeVotesLimit || 5) - (user?.reputationInfo?.weeklyFreeVotesUsed || 0))}/5
+            </span>
+          )}
         </div>
       )}
 
@@ -309,21 +368,23 @@ export default function PostDetailPage() {
         )}
       </div>
 
-      <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-amber-950">Ủng hộ tác giả khi thấy câu trả lời hữu ích</h3>
-            <p className="mt-1 text-sm text-amber-900/80">Chọn mức 20K, 50K hoặc 100K để gửi một tách cafe cho người trả lời.</p>
+      {/* {post.author?.role !== 'admin' && (
+        <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-amber-950">Ủng hộ tác giả khi thấy câu trả lời hữu ích</h3>
+              <p className="mt-1 text-sm text-amber-900/80">Chọn mức 20K, 50K hoặc 100K để gửi một tách cafe cho người trả lời.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleStartDonate({ author: post.author, _id: post.author?._id, isPostDonation: true })}
+              className="rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+            >
+              Ủng hộ tác giả của bài viết
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => handleStartDonate({ author: post.author, _id: post.author?._id, isPostDonation: true })}
-            className="rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
-          >
-            Ủng hộ tác giả của bài viết
-          </button>
-        </div>
-      </section>
+        </section>
+      )} */}
 
       <CommentSection
         comments={comments}
@@ -339,95 +400,27 @@ export default function PostDetailPage() {
         currentUserId={user?._id || user?.id || ''}
         onReactComment={reactComment}
         reactingCommentId={reactingCommentId}
+        onDeleteComment={deleteComment}
+        postStatus={post.status}
+        onCommentUpdated={refreshPost}
+        onReportComment={handleReportComment}
+        bestAnswerId={post.bestAnswer}
+        onAcceptComment={handleAcceptComment}
+        userReputation={isAuthenticated ? userReputation : undefined}
       />
 
       <RelatedPosts posts={relatedPosts} />
 
-      <section className="mt-8 rounded-2xl border border-rose-200 bg-rose-50/60 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-semibold text-rose-900">Gắn cờ bài viết</h3>
-            <p className="mt-1 text-sm text-rose-800">Chọn lý do gắn cờ để cộng đồng và admin xử lý.</p>
-          </div>
-          <button type="button" onClick={() => navigate('/reports/history')} className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-medium text-rose-800 hover:bg-rose-100">
-            Lịch sử cờ báo cáo
-          </button>
-        </div>
 
-        <form className="mt-4 space-y-3" onSubmit={handleSubmitReport}>
-          <select
-            value={flagType}
-            onChange={(e) => { dispatch(clearReportCreateMessages()); setFlagType(e.target.value); }}
-            disabled={isReportLockedByRep}
-            className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
-          >
-            <option value="">Chọn loại cờ...</option>
-            {flagOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
 
-          <textarea
-            value={details}
-            onChange={(e) => setDetails(e.target.value)}
-            rows={3}
-            placeholder="Mô tả thêm (đặc biệt hữu ích khi chọn 'Cần moderator xem thủ công')"
-            disabled={isReportLockedByRep}
-            className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-slate-700"
-          />
-
-          <button type="submit" disabled={creating || !flagType || isReportLockedByRep} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60">
-            {creating ? 'Đang gửi...' : 'Gửi cờ báo cáo'}
-          </button>
-
-          {isReportLockedByRep && (
-            <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              <span className="mt-0.5 text-rose-700">!</span>
-              <p className="leading-5">Bạn cần tối thiểu {minReportReputation} điểm reputation để gửi cờ báo cáo.</p>
-            </div>
-          )}
-
-          {createSuccessMessage && <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><span className="mt-0.5 text-emerald-700">✓</span><p className="leading-5">{createSuccessMessage}</p></div>}
-          {createErrorMessage && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"><span className="mt-0.5 text-rose-700">!</span><p className="leading-5">{createErrorMessage}</p></div>}
-        </form>
-      </section>
-
-      {isPostOwner && (
-        <section className="mt-6 rounded-2xl border border-blue-200 bg-blue-50/70 p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-semibold text-blue-900">Tình trạng cờ trên bài viết của bạn</h3>
-              <p className="mt-1 text-sm text-blue-800">Dành cho chủ bài: xem tổng hợp số lượng cờ và loại cờ đang tác động lên bài viết.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (showOwnerSummary) {
-                  setShowOwnerSummary(false);
-                  return;
-                }
-                setShowOwnerSummary(true);
-                if (!ownerSummary) dispatch(fetchPostFlagSummaryThunk(id));
-              }}
-              className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-medium text-blue-800 hover:bg-blue-100"
-            >
-              {loadingOwnerSummary ? 'Đang tải...' : showOwnerSummary ? 'Đóng tổng hợp cờ' : 'Xem tổng hợp cờ'}
-            </button>
-          </div>
-
-          {showOwnerSummary && ownerSummaryErrorMessage && <p className="mt-3 text-sm text-red-700">{ownerSummaryErrorMessage}</p>}
-          {showOwnerSummary && ownerSummary && (
-            <div className="mt-3 space-y-2 text-sm text-slate-700">
-              <p><strong>Tổng số cờ:</strong> {ownerSummary.totalFlags}</p>
-              <p><strong>Trạng thái bài:</strong> {postStatusLabelMap[ownerSummary.postStatus] || ownerSummary.postStatus}</p>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(ownerSummary.summaryByType || {}).map(([key, value]) => (
-                  <span key={key} className="rounded-full border border-blue-200 bg-white px-2.5 py-1 text-xs text-blue-800">
-                    {flagTypeLabelMap[key] || key}: {value} cờ
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
+      {flagSummaryModalOpen && (
+        <PostFlagSummaryModal
+          isOpen={flagSummaryModalOpen}
+          onClose={() => setFlagSummaryModalOpen(false)}
+          ownerSummary={ownerSummary}
+          loading={loadingOwnerSummary}
+          error={ownerSummaryErrorMessage}
+        />
       )}
 
       {saveModalOpen && (
@@ -452,6 +445,24 @@ export default function PostDetailPage() {
           </div>
         </div>
       )}
+
+      <ReportCommentModal
+        isOpen={reportCommentModalOpen}
+        onClose={() => { setReportCommentModalOpen(false); setReportingComment(null); }}
+        comment={reportingComment}
+        onSubmitReport={handleSubmitCommentReport}
+      />
+
+      <ReportPostModal
+        isOpen={reportPostModalOpen}
+        onClose={() => setReportPostModalOpen(false)}
+        onSubmitReport={handleSubmitPostReport}
+      />
+
+      <FreeVotesIntroModal
+        isOpen={showFreeVotesModal}
+        onClose={() => setShowFreeVotesModal(false)}
+      />
     </div>
   );
 }

@@ -68,36 +68,52 @@ class AuthController {
 
         try {
             const { email, password } = req.body;
-            const { user, token } = await authService.login(email, password);
+            const { user, accessToken, refreshToken } = await authService.login(email, password);
 
-            res.cookie('token', token, {
+            // Thiết lập cookie cho Access Token (15 phút) và Refresh Token (7 ngày)
+            res.cookie('accessToken', accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 15 * 60 * 1000,
+            });
+
+            res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
                 maxAge: 7 * 24 * 60 * 60 * 1000,
             });
 
-            const redirectUrl = user.role === 'admin' ? '/admin/profile' : '/';
+            const redirectUrl = user.role === 'admin' ? '/admin/dashboard' : '/';
 
             res.status(200).json({
                 message: 'Đăng nhập thành công',
                 user,
-                accessToken: token,
                 redirectUrl,
             });
         } catch (error) {
             const status = error.status || 400;
-            res.status(status).json({ message: error.message });
+            res.status(status).json({
+                message: error.message,
+                code: error.code,
+                email: error.email
+            });
         }
     }
 
     async logout(req, res) {
         try {
-            res.clearCookie('token', {
+            const cookieOptions = {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
-            });
+            };
+
+            // Xóa toàn bộ các cookie liên quan đến phiên đăng nhập
+            res.clearCookie('token', cookieOptions);
+            res.clearCookie('accessToken', cookieOptions);
+            res.clearCookie('refreshToken', cookieOptions);
 
             res.status(200).json({
                 success: true,
@@ -197,6 +213,58 @@ class AuthController {
             });
         } catch (error) {
             res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    async requestReactivateOtp(req, res) {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                return res.status(400).json({ success: false, message: "Email không được để trống" });
+            }
+            await authService.requestReactivateOtp(email.trim());
+            res.status(200).json({ success: true, message: "Mã OTP đã được gửi đến email của bạn" });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async verifyReactivateOtp(req, res) {
+        try {
+            const { email, otp } = req.body;
+            if (!email || !otp) {
+                return res.status(400).json({ success: false, message: "Email và mã OTP không được để trống" });
+            }
+            await authService.verifyReactivateOTP(email.trim(), otp.trim());
+            res.status(200).json({ success: true, message: "Kích hoạt lại tài khoản thành công! Bạn có thể đăng nhập ngay." });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async requestCancelDeletionOtp(req, res) {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                return res.status(400).json({ success: false, message: "Email không được để trống" });
+            }
+            await authService.requestCancelDeletionOtp(email.trim());
+            res.status(200).json({ success: true, message: "Mã OTP đã được gửi đến email của bạn" });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async verifyCancelDeletionOtp(req, res) {
+        try {
+            const { email, otp } = req.body;
+            if (!email || !otp) {
+                return res.status(400).json({ success: false, message: "Email và mã OTP không được để trống" });
+            }
+            await authService.verifyCancelDeletionOtp(email.trim(), otp.trim());
+            res.status(200).json({ success: true, message: "Hủy yêu cầu xóa tài khoản thành công! Bạn có thể đăng nhập ngay." });
+        } catch (error) {
+            res.status(400).json({ success: false, message: error.message });
         }
     }
 }

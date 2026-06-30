@@ -11,8 +11,8 @@ function TagBadge({ tag }) {
   );
 }
 
-function StatusBadge({ status, answerCount }) {
-  if (status === 'resolved') {
+function StatusBadge({ hasBestAnswer, answerCount }) {
+  if (hasBestAnswer) {
     return (
       <span className="flex items-center gap-1 text-xs font-semibold text-green-700 border border-green-400 bg-green-50 px-2 py-0.5 rounded-md">
         <span>✓</span>
@@ -35,7 +35,7 @@ function PostCard({ post }) {
         <div className="text-xs text-slate-600">
           <span className="font-bold text-sm">{post.upvotes ?? 0}</span> votes
         </div>
-        <StatusBadge status={post.status} answerCount={post.answerCount} />
+        <StatusBadge hasBestAnswer={!!post.bestAnswer} answerCount={post.answerCount} />
         <div className="text-xs text-slate-400">
           <span className="font-semibold">{post.views ?? 0}</span> views
         </div>
@@ -43,10 +43,10 @@ function PostCard({ post }) {
 
       {/* Nội dung */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-base text-sky-700 hover:text-sky-900 cursor-pointer mb-1 leading-snug">
+        <h3 className="font-semibold text-base text-sky-700 hover:text-sky-900 cursor-pointer mb-1 leading-snug break-words">
           {post.title}
         </h3>
-        <p className="text-sm text-slate-500 line-clamp-2 mb-2">
+        <p className="text-sm text-slate-500 line-clamp-2 mb-2 break-words">
           {post.content}
         </p>
 
@@ -142,8 +142,8 @@ function HomePage() {
           {/* Tiêu đề + bộ đếm */}
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-800">Câu hỏi mới nhất</h2>
-              <p className="text-sm text-slate-500">{pagination.total.toLocaleString('vi-VN')} câu hỏi</p>
+              <h2 className="text-lg font-bold text-slate-800">Bài viết mới nhất</h2>
+              <p className="text-sm text-slate-500">{pagination.total.toLocaleString('vi-VN')} bài viết</p>
             </div>
             {/* Hiển thị active filters nếu có */}
             {Object.keys(activeFilters).length > 0 && (

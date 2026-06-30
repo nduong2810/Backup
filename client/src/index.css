@@ -5,6 +5,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Reset margin/padding để tránh khoảng trắng/lằn trắng ở trên cùng hoặc các góc */
+html, body, #root {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+}
+
 /* Ẩn icon con mắt mặc định của trình duyệt ở ô mật khẩu */
 input::-ms-reveal,
 input::-ms-clear,
@@ -14,6 +21,15 @@ input::-webkit-credentials-auto-fill-button {
 
 body {
     @apply bg-background text-on-background font-body-md text-body-md antialiased min-h-screen flex flex-col;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes slide-in {
@@ -65,4 +81,21 @@ body {
   to {
     width: 0%;
   }
+}
+
+/* Custom scrollbar for tables and overflow containers */
+.scrollbar-custom::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.scrollbar-custom::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+.scrollbar-custom::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.scrollbar-custom::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

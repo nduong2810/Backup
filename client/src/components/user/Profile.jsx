@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AppCard from '../ui/AppCard';
 import AppButton from '../ui/AppButton';
 import InputField from '../ui/InputField';
@@ -12,18 +12,112 @@ import {
   clearProfileMessages,
 } from '../../store/slices/profileSlice';
 import { useToast } from '../../context/ToastContext';
+import UserStatistics from './statistics/UserStatistics';
+import UserActivity from './statistics/UserActivity';
+import { fetchStatisticsThunk } from '../../store/slices/statisticsSlice';
+import { fetchPostsApi } from '../../services/postService';
+import { changeMyPassword } from '../../services/userService';
 
 export default function Profile() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { form, reputationInfo, loading, saving, successMessage, errorMessage, errorStatus } = useSelector((state) => state.profile);
   const { toast } = useToast();
 
+  const {
+    form,
+    reputationInfo,
+    createdAt,
+    loading,
+    saving,
+    successMessage,
+    errorMessage,
+    errorStatus,
+  } = useSelector((state) => state.profile);
+
+  const { user } = useSelector((state) => state.login);
+  const statsData = useSelector((state) => state.statistics.data);
+  const [activeTab, setActiveTab] = useState('profile');
+  const [userPosts, setUserPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  const handleProfileSubmit = async (event) => {
+    event.preventDefault();
+
+    const hasPasswordInput = Boolean(oldPassword || newPassword || confirmPassword);
+    if (hasPasswordInput) {
+      if (!oldPassword || !newPassword || !confirmPassword) {
+        toast.error('Vui lòng điền đầy đủ cả 3 trường để đổi mật khẩu.');
+        return;
+      }
+      if (newPassword.length < 6) {
+        toast.error('Mật khẩu mới tối thiểu 6 ký tự.');
+        return;
+      }
+      if (!/[A-Z]/.test(newPassword)) {
+        toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ hoa.');
+        return;
+      }
+      if (!/[a-z]/.test(newPassword)) {
+        toast.error('Mật khẩu mới phải chứa ít nhất 1 chữ thường.');
+        return;
+      }
+      if (!/[0-9]/.test(newPassword)) {
+        toast.error('Mật khẩu mới phải chứa ít nhất 1 số.');
+        return;
+      }
+      if (newPassword === oldPassword) {
+        toast.error('Mật khẩu mới không được trùng với mật khẩu cũ.');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        toast.error('Mật khẩu xác nhận không khớp.');
+        return;
+      }
+    }
+
+    try {
+      setChangingPassword(true);
+      if (hasPasswordInput) {
+        await changeMyPassword(oldPassword, newPassword);
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+
+      const resultAction = await dispatch(updateProfileThunk());
+      if (updateProfileThunk.fulfilled.match(resultAction)) {
+        toast.success(hasPasswordInput ? 'Cập nhật và đổi mật khẩu thành công!' : 'Cập nhật thành công!');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật.');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const bioCount = useMemo(() => `${form.bio.length}/500`, [form.bio]);
+  const hasBankInfo = Boolean(form.bankName?.trim() && form.bankAccountNumber?.trim());
 
   useEffect(() => {
     dispatch(fetchProfileThunk());
+    dispatch(fetchStatisticsThunk(12));
   }, [dispatch]);
+
+  useEffect(() => {
+    if (user?._id || user?.id) {
+      const authorId = user._id || user.id;
+      setLoadingPosts(true);
+      fetchPostsApi({ authorId, limit: 10 })
+        .then((response) => setUserPosts(response.data?.data || []))
+        .catch((err) => console.error('[Profile] Error loading user posts:', err))
+        .finally(() => setLoadingPosts(false));
+    }
+  }, [user?._id, user?.id]);
 
   useEffect(() => {
     if (errorStatus === 401) {
@@ -33,10 +127,10 @@ export default function Profile() {
 
   useEffect(() => {
     if (successMessage) {
-      toast.success(successMessage);
       dispatch(clearProfileMessages());
+      setActiveTab('profile');
     }
-  }, [successMessage, toast, dispatch]);
+  }, [successMessage, dispatch]);
 
   useEffect(() => {
     if (errorMessage) {
@@ -45,31 +139,30 @@ export default function Profile() {
     }
   }, [errorMessage, toast, dispatch]);
 
-  if (loading) {
-    return (
-      <AppCard title="Hồ sơ cá nhân" subtitle="Đang tải dữ liệu...">
-        <div className="h-32 animate-pulse rounded-xl bg-slate-100" />
-      </AppCard>
-    );
-  }
+  const memberDays = useMemo(() => {
+    if (!createdAt) return 1;
+    const diffTime = Math.abs(Date.now() - new Date(createdAt));
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }, [createdAt]);
 
-  // Tính progress đến rank tiếp theo
   const reputation = reputationInfo?.reputation || 1;
   const rank = reputationInfo || getRankInfo(reputation);
   const nextRank = rank.next;
   const progressPct = nextRank
     ? Math.min(100, Math.round(((reputation - rank.minRep) / (nextRank.minRep - rank.minRep)) * 100))
     : 100;
+  const dailyCap = reputationInfo?.dailyCap || 200;
+  const dailyEarned = reputationInfo?.dailyEarned || 0;
+  const dailyProgressPct = Math.min(100, Math.round((dailyEarned / dailyCap) * 100));
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        dispatch(setProfileField({ field: 'avatar', value: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      dispatch(setProfileField({ field: 'avatar', value: reader.result }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleDeleteAvatar = () => {
@@ -80,135 +173,290 @@ export default function Profile() {
     ? form.avatar
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(form.fullName || 'U')}&background=0066cc&color=fff&size=120`;
 
+  if (loading && !form.email) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-5">
+        <div className="h-32 animate-pulse rounded-2xl bg-white border border-slate-200" />
+        <div className="h-64 animate-pulse rounded-2xl bg-white border border-slate-200" />
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-4xl mx-auto space-y-5">
-      {/* Reputation Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Điểm uy tín</div>
-            <div className="flex items-center gap-2">
-              <span className="text-3xl font-bold text-slate-900">{reputation}</span>
-              <ReputationBadge reputation={reputation} size="md" showLabel />
-            </div>
+    <div className="max-w-6xl mx-auto px-4 lg:px-6 py-2">
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm flex flex-col md:flex-row items-center md:items-start justify-between gap-8">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left w-full">
+          <div className="relative group w-28 h-28 shrink-0 rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
+            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
           </div>
-          <div className="text-right">
-            <div className="text-xs text-slate-500">
-              {nextRank
-                ? <>{nextRank.minRep - reputation} điểm nữa để lên <strong>{nextRank.name}</strong></>
-                : <span className="text-amber-600 font-semibold">Cấp bậc tối cao 🏆</span>
-              }
+
+          <div className="flex-1 min-w-0 space-y-3">
+            <h1 className="text-3xl font-extrabold text-slate-800 truncate">
+              {form.fullName || 'Người dùng'}
+            </h1>
+
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-5 gap-y-1.5 text-sm text-slate-500 font-semibold">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm">🍰</span>
+                <span>Thành viên được {memberDays} ngày</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-x-2.5 gap-y-1.5 text-sm">
+              <span className="font-bold text-slate-700">Uy tín: {reputation}</span>
+              <ReputationBadge reputation={reputation} size="xs" showLabel />
+
+              {nextRank && (
+                <div className="flex items-center gap-2.5 sm:ml-2">
+                  <span className="text-xs text-slate-400 font-bold uppercase">{rank.name}</span>
+                  <div className="h-2 w-24 sm:w-28 rounded-full bg-slate-100 overflow-hidden inline-block align-middle">
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progressPct}%`, backgroundColor: rank.color }} />
+                  </div>
+                  <span className="text-xs text-slate-400 font-bold uppercase">{nextRank.name}</span>
+                  <span className="text-xs text-slate-400">({nextRank.minRep - reputation} điểm nữa)</span>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-x-2.5 gap-y-1.5 text-xs text-slate-500 font-semibold">
+              <div className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-base text-slate-400">hourglass_top</span>
+                <span>Hạn mức hôm nay: <span className="font-bold text-slate-700">{dailyEarned}/{dailyCap}</span> điểm từ vote</span>
+              </div>
+              <div className="h-1.5 w-24 sm:w-28 rounded-full bg-slate-100 overflow-hidden inline-block align-middle ml-1">
+                <div className="h-full rounded-full transition-all duration-500 bg-sky-500" style={{ width: `${dailyProgressPct}%` }} />
+              </div>
             </div>
           </div>
         </div>
-        {nextRank && (
-          <div className="mt-3">
-            <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-              <div
-                className="h-2 rounded-full transition-all duration-500"
-                style={{ width: `${progressPct}%`, backgroundColor: rank.color }}
-              />
-            </div>
-            <div className="mt-1 flex justify-between text-[10px] text-slate-400">
-              <span>{rank.name}</span>
-              <span>{nextRank.name}</span>
-            </div>
-          </div>
-        )}
+
+        <button
+          onClick={() => setActiveTab(activeTab === 'edit' ? 'profile' : 'edit')}
+          className={`flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-bold shadow-sm transition-all shrink-0 ${activeTab === 'edit' ? 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900'}`}
+        >
+          <span className="material-symbols-outlined text-base">{activeTab === 'edit' ? 'close' : 'edit'}</span>
+          {activeTab === 'edit' ? 'Đóng chỉnh sửa' : 'Chỉnh sửa hồ sơ'}
+        </button>
       </div>
 
-      {/* Edit Form */}
-      <AppCard title="Chỉnh sửa hồ sơ" subtitle="Cập nhật thông tin để cộng đồng dễ kết nối hơn">
+      {activeTab !== 'edit' && (
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-2 mt-4">
+          {[
+            ['profile', 'Hồ sơ'],
+            ['activity', 'Hoạt động'],
+            ['statistics', 'Thống kê'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => {
+                setActiveTab(key);
+                dispatch(fetchProfileThunk());
+                dispatch(fetchStatisticsThunk(12));
+              }}
+              className={`rounded-full px-5 py-2 text-xs font-bold transition-all ${activeTab === key ? 'bg-orange-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
-        <form
-          className="mt-4 space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            dispatch(updateProfileThunk());
-          }}
-        >
-          {/* Avatar Change Area */}
-          <div className="flex flex-col items-center gap-3 pb-4 border-b border-slate-100 dark:border-outline-variant">
-            <div className="relative group cursor-pointer w-24 h-24">
-              <img
-                src={avatarUrl}
-                alt="Avatar"
-                className="w-24 h-24 rounded-full object-cover border-2 border-slate-200 group-hover:opacity-75 transition-opacity"
-              />
-              <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                <span className="material-symbols-outlined text-2xl">photo_camera</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
-                  disabled={saving}
-                />
-              </label>
+      {activeTab === 'profile' && (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 mt-2">
+          <div className="lg:col-span-1 space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm animate-fadeIn">
+              <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2.5 mb-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg text-slate-500">person_search</span>
+                Giới thiệu
+              </h3>
+              {form.bio ? (
+                <p className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed text-justify break-words">{form.bio}</p>
+              ) : (
+                <div className="text-xs text-slate-450 leading-relaxed py-3 text-center italic">
+                  Chưa có giới thiệu. <button onClick={() => setActiveTab('edit')} className="text-primary font-bold hover:underline">Thêm</button>
+                </div>
+              )}
             </div>
-            <div className="text-center">
-              <div className="text-sm font-semibold text-slate-800 dark:text-inverse-on-surface">Ảnh đại diện</div>
-              <div className="text-xs text-slate-400 mt-0.5">Nhấp vào ảnh để thay đổi</div>
-              {form.avatar && form.avatar !== 'default-avatar.png' && (
-                <button
-                  type="button"
-                  onClick={handleDeleteAvatar}
-                  className="mt-2 text-xs font-semibold text-rose-500 hover:text-rose-600 hover:underline transition-colors block mx-auto"
-                >
-                  Xóa ảnh đại diện
-                </button>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2.5 mb-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg text-slate-500">account_balance</span>
+                Thông tin chuyển khoản
+              </h3>
+              {hasBankInfo ? (
+                <div className="space-y-3 text-sm">
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                    <p className="text-xs font-bold uppercase text-slate-400">Ngân hàng</p>
+                    <p className="mt-1 font-bold text-slate-900 break-words">{form.bankName}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                    <p className="text-xs font-bold uppercase text-slate-400">Số tài khoản</p>
+                    <p className="mt-1 font-mono text-lg font-black text-slate-900 break-all">{form.bankAccountNumber}</p>
+                  </div>
+                  <p className="text-xs leading-5 text-slate-500">Thông tin này sẽ hiển thị cho người muốn ủng hộ bạn bằng chuyển khoản thủ công.</p>
+                </div>
+              ) : (
+                <div className="text-xs text-slate-500 leading-6">
+                  Bạn chưa cập nhật tài khoản ngân hàng. Người khác sẽ không thể chuyển khoản thủ công cho bạn.
+                  <button type="button" onClick={() => setActiveTab('edit')} className="ml-1 font-bold text-primary hover:underline">Cập nhật ngay</button>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2.5 mb-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg text-slate-500">query_stats</span>
+                Chỉ số nhanh
+              </h3>
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100"><div className="text-xl font-extrabold text-slate-800">{reputation}</div><div className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Uy tín</div></div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100"><div className="text-xl font-extrabold text-slate-800">{statsData?.summary?.totalViews?.toLocaleString('vi-VN') || 0}</div><div className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Lượt xem</div></div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100"><div className="text-xl font-extrabold text-slate-800">{statsData?.summary?.totalPosts || 0}</div><div className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Bài viết</div></div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100"><div className="text-xl font-extrabold text-slate-800">{statsData?.summary?.totalComments || 0}</div><div className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Bình luận</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 space-y-6">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm animate-fadeIn">
+              <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg text-slate-500">history_edu</span>
+                Bài viết gần đây
+              </h3>
+              {loadingPosts ? (
+                <div className="space-y-3 py-6"><div className="h-4 w-1/3 bg-slate-100 animate-pulse rounded" /><div className="h-10 w-full bg-slate-50 animate-pulse rounded-lg" /></div>
+              ) : !userPosts.length ? (
+                <div className="text-center py-12 text-slate-400"><span className="material-symbols-outlined text-4xl text-slate-350">edit_note</span><p className="mt-2 text-sm">Chưa có bài viết nào được đăng tải.</p></div>
+              ) : (
+                <div className="space-y-3.5">
+                  {userPosts.map((post) => (
+                    <div key={post._id} className="flex items-start gap-2 text-sm">
+                      <span className="material-symbols-outlined text-[16px] text-slate-450 mt-0.5 shrink-0">{post.postType === 'question' ? 'help' : 'rate_review'}</span>
+                      <div className="flex-1 min-w-0 leading-snug">
+                        <span className="text-slate-400 text-xs mr-2 font-mono">[{new Date(post.createdAt).toLocaleDateString('vi-VN')}]</span>
+                        <Link to={`/posts/${post._id}`} className="font-bold text-primary-container hover:text-primary-container/80 transition-colors break-words block w-full max-w-full mt-0.5">{post.title}</Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
+        </div>
+      )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InputField
-              label="Họ và tên"
-              name="fullName"
-              value={form.fullName}
-              onChange={(event) => dispatch(setProfileField({ field: 'fullName', value: event.target.value }))}
-              required
-              disabled={saving}
-            />
-            <InputField label="Email" name="email" value={form.email} onChange={() => { }} disabled />
-            <InputField
-              label="Số điện thoại"
-              name="phone"
-              value={form.phone}
-              onChange={(event) => dispatch(setProfileField({ field: 'phone', value: event.target.value }))}
-              placeholder="VD: 09xxxxxxxx"
-              disabled={saving}
-            />
-            <InputField
-              label="Chuyên ngành / Công việc"
-              name="major"
-              value={form.major}
-              onChange={(event) => dispatch(setProfileField({ field: 'major', value: event.target.value }))}
-              placeholder="Kỹ thuật phần mềm"
-              disabled={saving}
-            />
-          </div>
+      {activeTab === 'activity' && <UserActivity />}
+      {activeTab === 'statistics' && <UserStatistics />}
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-slate-700">Bio</span>
-            <textarea
-              name="bio"
-              value={form.bio}
-              onChange={(event) => dispatch(setProfileField({ field: 'bio', value: event.target.value }))}
-              maxLength={500}
-              rows={4}
-              disabled={saving}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200"
-              placeholder="Giới thiệu ngắn về bạn, kỹ năng, mảng quan tâm..."
-            />
-            <p className="mt-1 text-right text-xs text-slate-500">{bioCount}</p>
-          </label>
+      {activeTab === 'edit' && (
+        <div className="mt-4">
+          <AppCard title="Chỉnh sửa hồ sơ" subtitle="Cập nhật thông tin để cộng đồng dễ kết nối và chuyển khoản ủng hộ">
+            <form
+              className="mt-4 space-y-5"
+              onSubmit={handleProfileSubmit}
+            >
+              <div className="flex flex-col items-center gap-3 pb-5 border-b border-slate-100 dark:border-outline-variant">
+                <div className="relative group cursor-pointer w-24 h-24">
+                  <img src={avatarUrl} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-2 border-slate-200 group-hover:opacity-75 transition-opacity" />
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <span className="material-symbols-outlined text-2xl">photo_camera</span>
+                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" disabled={saving || changingPassword} />
+                  </label>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm font-semibold text-slate-800 dark:text-inverse-on-surface">Ảnh đại diện</div>
+                  <div className="text-xs text-slate-400 mt-0.5">Nhấp vào ảnh để thay đổi</div>
+                  {form.avatar && form.avatar !== 'default-avatar.png' && (
+                    <button type="button" onClick={handleDeleteAvatar} className="mt-2 text-xs font-semibold text-rose-500 hover:text-rose-600 hover:underline transition-colors block mx-auto animate-fadeIn" disabled={saving || changingPassword}>Xóa ảnh đại diện</button>
+                  )}
+                </div>
+              </div>
 
-          <AppButton type="submit" disabled={saving}>
-            {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-          </AppButton>
-        </form>
-      </AppCard>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <InputField label="Họ và tên" name="fullName" value={form.fullName} onChange={(event) => dispatch(setProfileField({ field: 'fullName', value: event.target.value }))} required disabled={saving || changingPassword} />
+                <InputField label="Email" name="email" value={form.email} onChange={() => {}} disabled />
+                <InputField label="Số điện thoại" name="phone" value={form.phone} onChange={(event) => dispatch(setProfileField({ field: 'phone', value: event.target.value }))} placeholder="VD: 09xxxxxxxx" disabled={saving || changingPassword} />
+                <InputField label="Chuyên ngành / Công việc" name="major" value={form.major} onChange={(event) => dispatch(setProfileField({ field: 'major', value: event.target.value }))} placeholder="Kỹ thuật phần mềm" disabled={saving || changingPassword} />
+              </div>
+
+              <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
+                <h3 className="mb-1 text-sm font-black text-slate-900">Thông tin nhận chuyển khoản</h3>
+                <p className="mb-4 text-xs leading-5 text-slate-500">Thông tin này sẽ hiển thị ở hồ sơ công khai và màn hình donate để người khác chuyển khoản thủ công cho bạn.</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <InputField label="Tên ngân hàng" name="bankName" value={form.bankName} onChange={(event) => dispatch(setProfileField({ field: 'bankName', value: event.target.value }))} placeholder="VD: Vietcombank, MB Bank..." disabled={saving || changingPassword} />
+                  <InputField label="Số tài khoản" name="bankAccountNumber" value={form.bankAccountNumber} onChange={(event) => dispatch(setProfileField({ field: 'bankAccountNumber', value: event.target.value }))} placeholder="VD: 0123456789" disabled={saving || changingPassword} />
+                </div>
+                <p className="mt-3 text-xs text-slate-500">Chủ tài khoản sẽ mặc định hiển thị theo họ tên hồ sơ của bạn.</p>
+              </div>
+
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-slate-700">Bio</span>
+                <textarea name="bio" value={form.bio} onChange={(event) => dispatch(setProfileField({ field: 'bio', value: event.target.value }))} maxLength={500} rows={4} disabled={saving || changingPassword} className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200" placeholder="Giới thiệu ngắn về bạn, kỹ năng, mảng quan tâm..." />
+                <p className="mt-1 text-right text-xs text-slate-500">{bioCount}</p>
+              </label>
+
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                <h3 className="mb-1 text-sm font-black text-slate-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base text-slate-500">lock</span>
+                  Thay đổi mật khẩu
+                </h3>
+                <p className="mb-4 text-xs leading-5 text-slate-500">Để trống nếu không muốn thay đổi mật khẩu của bạn.</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <InputField
+                    label="Mật khẩu hiện tại"
+                    name="oldPassword"
+                    type="password"
+                    value={oldPassword}
+                    onChange={(event) => setOldPassword(event.target.value)}
+                    placeholder="Nhập mật khẩu hiện tại"
+                    disabled={saving || changingPassword}
+                    allowPasswordToggle
+                  />
+                  <InputField
+                    label="Mật khẩu mới"
+                    name="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    placeholder="Tối thiểu 6 ký tự (chữ hoa, thường, số)"
+                    disabled={saving || changingPassword}
+                    allowPasswordToggle
+                  />
+                  <InputField
+                    label="Xác nhận mật khẩu mới"
+                    name="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    placeholder="Nhập lại mật khẩu mới"
+                    disabled={saving || changingPassword}
+                    allowPasswordToggle
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <AppButton type="submit" disabled={saving || changingPassword}>
+                  {(saving || changingPassword) ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </AppButton>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOldPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                    setActiveTab('profile');
+                  }}
+                  className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-800"
+                  disabled={saving || changingPassword}
+                >
+                  Hủy bỏ
+                </button>
+              </div>
+            </form>
+          </AppCard>
+        </div>
+      )}
     </div>
   );
 }

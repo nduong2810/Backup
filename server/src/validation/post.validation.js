@@ -36,8 +36,8 @@ export const createCommentValidation = [
         .trim()
         .notEmpty()
         .withMessage('Nội dung bình luận không được để trống')
-        .isLength({ max: 2000 })
-        .withMessage('Nội dung bình luận tối đa 2000 ký tự'),
+        .isLength({ min: 2, max: 2000 })
+        .withMessage('Nội dung bình luận phải từ 2 đến 2000 ký tự'),
     body('parentComment')
         .optional({ nullable: true, checkFalsy: true })
         .isMongoId()
@@ -67,16 +67,50 @@ export const createPostValidation = [
         .trim()
         .notEmpty()
         .withMessage('Tiêu đề không được để trống')
-        .isLength({ max: 200 })
-        .withMessage('Tiêu đề tối đa 200 ký tự'),
+        .isLength({ min: 10, max: 200 })
+        .withMessage('Tiêu đề phải từ 10 đến 200 ký tự'),
     body('content')
         .trim()
         .notEmpty()
-        .withMessage('Nội dung không được để trống'),
+        .withMessage('Nội dung không được để trống')
+        .isLength({ min: 20, max: 10000 })
+        .withMessage('Nội dung chi tiết phải từ 20 đến 10000 ký tự'),
     body('postType')
         .optional()
         .isIn(['question', 'advice'])
         .withMessage('Loại bài viết không hợp lệ'),
     body('tags')
         .optional()
+];
+
+export const updatePostValidation = [
+    param('id')
+        .isMongoId()
+        .withMessage('ID bài viết không hợp lệ'),
+    body('title')
+        .trim()
+        .notEmpty()
+        .withMessage('Tiêu đề không được để trống')
+        .isLength({ min: 10, max: 200 })
+        .withMessage('Tiêu đề phải từ 10 đến 200 ký tự'),
+    body('content')
+        .trim()
+        .notEmpty()
+        .withMessage('Nội dung không được để trống')
+        .isLength({ min: 20, max: 10000 })
+        .withMessage('Nội dung chi tiết phải từ 20 đến 10000 ký tự'),
+    body('tags')
+        .optional()
+];
+
+export const updateCommentValidation = [
+    param('commentId')
+        .isMongoId()
+        .withMessage('ID bình luận không hợp lệ'),
+    body('content')
+        .trim()
+        .notEmpty()
+        .withMessage('Nội dung bình luận không được để trống')
+        .isLength({ min: 2, max: 2000 })
+        .withMessage('Nội dung bình luận phải từ 2 đến 2000 ký tự')
 ];

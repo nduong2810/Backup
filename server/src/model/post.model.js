@@ -5,6 +5,34 @@ import mongoose from 'mongoose';
 // Hỗ trợ: nhiều ảnh (Swiper), tags, upvote/downvote, like/dislike, đếm lượt xem
 // ====================================================================
 
+const postStatusHistorySchema = new mongoose.Schema({
+    status: {
+        type: String,
+        enum: ['unresolved', 'resolved', 'hidden', 'deleted'],
+        required: true
+    },
+    reason: {
+        type: String,
+        trim: true,
+        maxLength: 500,
+        default: ''
+    },
+    changedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    changedByRole: {
+        type: String,
+        enum: ['owner', 'admin', 'system'],
+        default: 'system'
+    },
+    changedAt: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: false });
+
 const postSchema = new mongoose.Schema({
     title: { 
         type: String, 
@@ -101,16 +129,71 @@ const postSchema = new mongoose.Schema({
         index: true
     },
 
+    // Câu trả lời tốt nhất / accepted answer (chỉ áp dụng cho postType = 'question')
+    bestAnswer: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Comment',
+        default: null
+    },
+
     // URL video đính kèm (nếu có)
     videos: [{
         type: String
     }],
 
     // Trạng thái bài viết
+    // unresolved: đang hiển thị, chưa giải quyết
+    // resolved: đã khóa/đóng, vẫn hiển thị nhưng không cho tương tác
+    // hidden: đang bị ẩn khỏi trang public
+    // deleted: đã bị xóa mềm
     status: { 
         type: String, 
-        enum: ['active', 'closed', 'deleted'], 
-        default: 'active' 
+        enum: ['unresolved', 'resolved', 'hidden', 'deleted'], 
+        default: 'unresolved' 
+    },
+    statusReason: {
+        type: String,
+        trim: true,
+        maxLength: 500,
+        default: ''
+    },
+    statusChangedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    statusChangedByRole: {
+        type: String,
+        enum: ['owner', 'admin', 'system'],
+        default: 'system'
+    },
+    statusChangedAt: {
+        type: Date,
+        default: null
+    },
+    statusHistory: [postStatusHistorySchema],
+    deletedAt: {
+        type: Date,
+        default: null,
+        index: { expires: '7d' }
+    },
+    isAuthorActive: {
+        type: Boolean,
+        default: true,
+        index: true
+    },
+    editHistory: [{
+        title: { type: String, required: true },
+        content: { type: String, required: true },
+        tags: [{ type: String }],
+        images: [{ type: String }],
+        videos: [{ type: String }],
+        editedAt: { type: Date, default: Date.now }
+    }],
+    deletedBy: {
+        type: String,
+        enum: ['owner', 'report', 'admin'],
+        default: null
     },
 }, { 
     timestamps: true,

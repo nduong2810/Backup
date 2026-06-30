@@ -30,12 +30,20 @@ export default function ImageSlider({ images }) {
         {images.map((image, index) => (
           <SwiperSlide key={index}>
             <div className="relative w-full h-64 sm:h-80 md:h-96 bg-surface-container-low">
-              <img
-                src={image}
-                alt={`Hình ảnh bài viết ${index + 1}`}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
+              <a
+                href={image}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full h-full cursor-zoom-in"
+                title="Click để mở ảnh kích thước đầy đủ"
+              >
+                <img
+                  src={image}
+                  alt={`Hình ảnh bài viết ${index + 1}`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </a>
             </div>
           </SwiperSlide>
         ))}

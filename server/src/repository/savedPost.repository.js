@@ -66,6 +66,7 @@ class SavedPostRepository {
         return await SavedPost.find(filter)
             .populate({
                 path: 'post',
+                match: { status: { $nin: ['hidden', 'deleted'] }, isAuthorActive: { $ne: false } },
                 select: 'title content tags viewCount createdAt status author images',
                 populate: {
                     path: 'author',

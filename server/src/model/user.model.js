@@ -6,6 +6,12 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, default: 'user' },
     isActive: { type: Boolean, default: false },
+    status: { 
+        type: String, 
+        enum: ['active', 'banned', 'deactivated', 'pending_delete'], 
+        default: 'active' 
+    },
+    deletionScheduledAt: { type: Date, default: null },
     
     // Các trường mới cho Profile
     phone: { type: String, default: "" },
@@ -23,10 +29,16 @@ const userSchema = new mongoose.Schema({
     reputationDailyEarned: { type: Number, default: 0 },
     reputationDailyDate: { type: Date, default: null },
 
+    // Dành cho cơ chế Free Votes tuần của thành viên mới
+    weeklyFreeVotesUsed: { type: Number, default: 0 },
+    weeklyFreeVotesDate: { type: Date, default: null },
+    hasSeenFreeVotesModal: { type: Boolean, default: false },
+
     // Dành cho chức năng Quên mật khẩu
     resetOTP: { type: String, default: null },
     resetOTPExpiry: { type: Date, default: null },
-    resetToken: { type: String, default: null } 
+    resetToken: { type: String, default: null },
+    resetTokenExpiry: { type: Date, default: null }
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);

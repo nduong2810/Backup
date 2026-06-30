@@ -38,6 +38,20 @@ export const createDonationValidation = [
     }
     return true;
   }),
+  body('billImage').custom((value, { req }) => {
+    if (req.body.paymentMethod !== 'cod') return true;
+
+    const billImage = String(value || '').trim();
+    if (!billImage) {
+      throw new Error('Bạn cần tải ảnh bill chuyển khoản trước khi gửi giao dịch thủ công');
+    }
+
+    if (!billImage.startsWith('data:image/') && !/^https?:\/\//i.test(billImage)) {
+      throw new Error('Ảnh bill chuyển khoản không hợp lệ');
+    }
+
+    return true;
+  }),
 ];
 
 export const vnpayConfirmValidation = [

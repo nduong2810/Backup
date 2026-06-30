@@ -1,4 +1,4 @@
-﻿import postRepository from '../repository/post.repository.js';
+import postRepository from '../repository/post.repository.js';
 import savedCollectionRepository from '../repository/savedCollection.repository.js';
 import savedPostRepository from '../repository/savedPost.repository.js';
 import { getRedisClient } from '../config/redis.js';
@@ -66,10 +66,13 @@ class SavedService {
     async savePost(userId, postId, collectionId = null) {
         const post = await postRepository.findById(postId);
         if (!post) {
-            throw new Error('Bai viet khong ton tai');
+            throw new Error('Bài viết không tồn tại');
+        }
+        if (post.status === 'hidden') {
+            throw new Error('Bài viết đang bị ẩn');
         }
         if (post.status === 'deleted') {
-            throw new Error('Bai viet da bi xoa');
+            throw new Error('Bài viết đã bị xóa');
         }
 
         const targetCollection = collectionId
@@ -122,12 +125,14 @@ class SavedService {
         }
 
         const savedPosts = await savedPostRepository.findSavedPostsByUser(userId, collectionId);
-        return savedPosts.map((item) => ({
-            id: item._id,
-            collection: item.collection,
-            post: item.post,
-            savedAt: item.createdAt,
-        }));
+        return savedPosts
+            .filter((item) => item.post !== null && item.post !== undefined)
+            .map((item) => ({
+                id: item._id,
+                collection: item.collection,
+                post: item.post,
+                savedAt: item.createdAt,
+            }));
     }
 
     async getSavedPostIds(userId) {
@@ -179,27 +184,18 @@ class SavedService {
         }
         if (!cached) return;
 
-        let parsed = [];
-        try {
-            parsed = JSON.parse(cached);
-        } catch {
-            return;
-        }
-        const current = new Set(parsed);
-        const postIds = Array.isArray(postIdOrIds) ? postIdOrIds : [postIdOrIds];
+        const ids = new Set(JSON.parse(cached));
+        const targetIds = Array.isArray(postIdOrIds) ? postIdOrIds : [postIdOrIds];
 
-        postIds.forEach((postId) => {
-            if (isAdd) {
-                current.add(postId.toString());
-            } else {
-                current.delete(postId.toString());
-            }
+        targetIds.forEach((id) => {
+            if (isAdd) ids.add(String(id));
+            else ids.delete(String(id));
         });
 
         try {
-            await client.set(cacheKey, JSON.stringify(Array.from(current)), { EX: SAVED_IDS_TTL_SECONDS });
+            await client.set(cacheKey, JSON.stringify([...ids]), { EX: SAVED_IDS_TTL_SECONDS });
         } catch {
-            // Ignore cache write failure
+            // Ignore cache update failure
         }
     }
 }

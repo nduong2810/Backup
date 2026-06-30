@@ -1,27 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { fetchPostsThunk } from '../store/slices/postSlice';
 import {
   DEFAULT_FILTERS,
   parseFiltersFromSearchParams,
   parseSearchQuery,
   buildSearchParams,
+  getSearchStringFromFilters,
 } from '../util/filterUtils';
 
 export const usePostFilters = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [searchInput, setSearchInput] = useState('');
 
-  const appliedFilters = parseFiltersFromSearchParams(searchParams);
+  const appliedFilters = useMemo(() => parseFiltersFromSearchParams(searchParams), [searchParams]);
 
   useEffect(() => {
-    setFilters((prev) => ({ ...prev, ...appliedFilters }));
-    setSearchInput(searchParams.get('q') ?? appliedFilters.keyword ?? '');
+    // Only fetch posts if we are on the main posts page (/ or /home)
+    const isPostListPage = location.pathname === '/' || location.pathname === '/home';
+    if (!isPostListPage) return;
+
+    const timer = setTimeout(() => {
+      setFilters((prev) => ({ ...prev, ...appliedFilters }));
+      setSearchInput(getSearchStringFromFilters(appliedFilters));
+    }, 0);
     dispatch(fetchPostsThunk(appliedFilters));
-  }, [dispatch, searchParams]);
+    return () => clearTimeout(timer);
+  }, [dispatch, searchParams, appliedFilters, location.pathname]);
 
   const handleFilterChange = (name, value) => {
     setFilters((prev) => ({ ...prev, [name]: value }));
@@ -40,27 +49,14 @@ export const usePostFilters = () => {
     }
 
     const parsed = parseSearchQuery(searchInput);
-    const mergedTags = Array.from(
-      new Set(
-        [appliedFilters.tags, parsed.tags]
-          .filter(Boolean)
-          .join(',')
-          .split(',')
-          .map((tag) => tag.trim().toLowerCase())
-          .filter(Boolean)
-      )
-    ).join(', ');
-
     const next = {
       ...appliedFilters,
       keyword: parsed.keyword,
-      tags: mergedTags,
+      tags: parsed.tags,
+      author: parsed.author,
       page: 1,
     };
     const nextParams = buildSearchParams(next);
-    if (searchInput.trim()) {
-      nextParams.q = searchInput.trim();
-    }
     setSearchParams(nextParams);
   };
 

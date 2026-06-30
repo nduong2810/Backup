@@ -46,6 +46,17 @@ const commentSchema = new mongoose.Schema({
         ref: 'User',
         default: []
     }],
+    isAuthorActive: {
+        type: Boolean,
+        default: true,
+        index: true
+    },
+    editHistory: [{
+        content: { type: String, required: true },
+        images: [{ type: String }],
+        videos: [{ type: String }],
+        editedAt: { type: Date, default: Date.now }
+    }],
 }, {
     timestamps: true,
     toJSON: { virtuals: true },

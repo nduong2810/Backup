@@ -1,5 +1,10 @@
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ReputationBadge from '../ui/ReputationBadge';
+import { updateCommentApi } from '../../services/postService';
+import { useToast } from '../../context/ToastContext';
+import EditHistoryModal from '../common/EditHistoryModal';
+import SafeMarkdown from '../common/SafeMarkdown';
 
 function timeAgo(dateString) {
   const now = new Date();
@@ -28,8 +33,388 @@ export default function CommentItem({
   onLoginRequired,
   onReactComment,
   reactingCommentId = '',
+  replyingToId = '',
+  replyContent = '',
+  onStartReply,
+  onCancelReply,
+  onReplyContentChange,
+  onSubmitReply,
+  submittingReply = false,
+  onDeleteComment,
+  postStatus = 'unresolved',
+  onCommentUpdated,
+  onReportComment,
+  bestAnswerId = null,
+  onAcceptComment,
+  userReputation = undefined,
 }) {
+  const { toast } = useToast();
+  const [showMenu, setShowMenu] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [updating, setUpdating] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [images, setImages] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [mediaError, setMediaError] = useState('');
+  const menuRef = useRef(null);
+
+  const [replyEditorMode, setReplyEditorMode] = useState('write'); // 'write' | 'preview'
+  const [editEditorMode, setEditEditorMode] = useState('write');   // 'write' | 'preview'
+  const replyTextareaRef = useRef(null);
+  const editTextareaRef = useRef(null);
+
+  const [replyImages, setReplyImages] = useState([]);
+  const [replyVideos, setReplyVideos] = useState([]);
+  const [replyMediaError, setReplyMediaError] = useState('');
+  const [submittingReplyLocal, setSubmittingReplyLocal] = useState(false);
+
+  useEffect(() => {
+    if (String(replyingToId) !== String(comment._id)) {
+      setReplyEditorMode('write');
+      setReplyImages([]);
+      setReplyVideos([]);
+      setReplyMediaError('');
+    }
+  }, [replyingToId, comment._id]);
+
+  const handleReplyImageChange = (e) => {
+    setReplyMediaError('');
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (replyImages.length + files.length > 10) {
+      setReplyMediaError('Số lượng hình ảnh đính kèm vượt quá giới hạn cho phép (Tối đa: 10 hình ảnh).');
+      return;
+    }
+
+    const currentVideosSize = replyVideos.reduce((acc, v) => acc + (v.file?.size || 0), 0);
+    const currentImagesSize = replyImages.reduce((acc, img) => acc + (img.file?.size || 0), 0);
+    const incomingSize = files.reduce((acc, f) => acc + f.size, 0);
+
+    if (currentVideosSize + currentImagesSize + incomingSize > 50 * 1024 * 1024) {
+      setReplyMediaError('Tổng dung lượng các hình ảnh và video tải lên mới vượt quá giới hạn 50MB.');
+      return;
+    }
+
+    files.forEach((file) => {
+      if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+        setReplyMediaError('Định dạng hình ảnh không hợp lệ (chỉ chấp nhận JPEG, PNG, GIF, WEBP).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReplyImages((prev) => [
+          ...prev,
+          {
+            id: `reply-img-${Date.now()}-${Math.random()}`,
+            src: reader.result,
+            file: file
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const handleReplyVideoChange = (e) => {
+    setReplyMediaError('');
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (replyVideos.length + files.length > 5) {
+      setReplyMediaError('Số lượng video đính kèm vượt quá giới hạn cho phép (Tối đa: 5 video).');
+      return;
+    }
+
+    const currentVideosSize = replyVideos.reduce((acc, v) => acc + (v.file?.size || 0), 0);
+    const currentImagesSize = replyImages.reduce((acc, img) => acc + (img.file?.size || 0), 0);
+    const incomingSize = files.reduce((acc, f) => acc + f.size, 0);
+
+    if (currentVideosSize + currentImagesSize + incomingSize > 50 * 1024 * 1024) {
+      setReplyMediaError('Tổng dung lượng các hình ảnh và video tải lên mới vượt quá giới hạn 50MB.');
+      return;
+    }
+
+    files.forEach((file) => {
+      const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/x-matroska'];
+      const allowedVideoExts = ['.mp4', '.webm', '.ogg', '.mkv'];
+      const fileExt = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+      const isValidVideo = allowedVideoTypes.includes(file.type) || allowedVideoExts.includes(fileExt);
+      if (!isValidVideo) {
+        setReplyMediaError('Định dạng video không hợp lệ (chỉ nhận MP4, WEBM, OGG, MKV).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReplyVideos((prev) => [
+          ...prev,
+          {
+            id: `reply-vid-${Date.now()}-${Math.random()}`,
+            src: reader.result,
+            file: file
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const handleRemoveReplyImage = (id) => {
+    setReplyImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const handleRemoveReplyVideo = (id) => {
+    setReplyVideos((prev) => prev.filter((vid) => vid.id !== id));
+  };
+
+  const insertMarkdownToReply = (syntaxBefore, syntaxAfter = '', defaultText = '') => {
+    const textarea = replyTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    const placeholder = selectedText || defaultText;
+    const replacement = syntaxBefore + placeholder + syntaxAfter;
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    onReplyContentChange?.(newContent);
+
+    // Focus and select the text
+    setTimeout(() => {
+      textarea.focus();
+      const selectionStart = start + syntaxBefore.length;
+      const selectionEnd = selectionStart + placeholder.length;
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    }, 0);
+  };
+
+  const insertListToReply = (isNumbered) => {
+    const textarea = replyTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    let replacement = '';
+
+    if (selectedText.trim()) {
+      const lines = selectedText.split('\n');
+      const formattedLines = lines.map((line, index) => {
+        if (!line.trim()) return line;
+        const prefix = isNumbered ? `${index + 1}. ` : '- ';
+        if (isNumbered) {
+          if (/^\d+\.\s/.test(line)) return line;
+          return prefix + line;
+        } else {
+          if (line.startsWith('- ')) return line;
+          return prefix + line;
+        }
+      });
+      replacement = formattedLines.join('\n');
+    } else {
+      replacement = isNumbered ? '1. mục danh sách' : '- mục danh sách';
+    }
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    onReplyContentChange?.(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start, start + replacement.length);
+    }, 0);
+  };
+
+  const insertMarkdownToEdit = (syntaxBefore, syntaxAfter = '', defaultText = '') => {
+    const textarea = editTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    const placeholder = selectedText || defaultText;
+    const replacement = syntaxBefore + placeholder + syntaxAfter;
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    setEditContent(newContent);
+
+    // Focus and select the text
+    setTimeout(() => {
+      textarea.focus();
+      const selectionStart = start + syntaxBefore.length;
+      const selectionEnd = selectionStart + placeholder.length;
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    }, 0);
+  };
+
+  const insertListToEdit = (isNumbered) => {
+    const textarea = editTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const selectedText = text.substring(start, end);
+    let replacement = '';
+
+    if (selectedText.trim()) {
+      const lines = selectedText.split('\n');
+      const formattedLines = lines.map((line, index) => {
+        if (!line.trim()) return line;
+        const prefix = isNumbered ? `${index + 1}. ` : '- ';
+        if (isNumbered) {
+          if (/^\d+\.\s/.test(line)) return line;
+          return prefix + line;
+        } else {
+          if (line.startsWith('- ')) return line;
+          return prefix + line;
+        }
+      });
+      replacement = formattedLines.join('\n');
+    } else {
+      replacement = isNumbered ? '1. mục danh sách' : '- mục danh sách';
+    }
+
+    const newContent = text.substring(0, start) + replacement + text.substring(end);
+    setEditContent(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start, start + replacement.length);
+    }, 0);
+  };
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getNewFilesSize = (newImages, newVideos) => {
+    const imagesSize = newImages.filter(x => x.type === 'new').reduce((acc, x) => acc + (x.file?.size || 0), 0);
+    const videosSize = newVideos.filter(x => x.type === 'new').reduce((acc, x) => acc + (x.file?.size || 0), 0);
+    return imagesSize + videosSize;
+  };
+
+  const handleImageChange = (e) => {
+    setMediaError('');
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (images.length + files.length > 10) {
+      setMediaError('Số lượng hình ảnh đính kèm vượt quá giới hạn cho phép (Tối đa: 10 hình ảnh).');
+      return;
+    }
+
+    const currentNewFilesSize = getNewFilesSize(images, videos);
+    const incomingFilesSize = files.reduce((acc, f) => acc + f.size, 0);
+
+    if (currentNewFilesSize + incomingFilesSize > 50 * 1024 * 1024) {
+      setMediaError('Tổng dung lượng các hình ảnh và video tải lên mới vượt quá giới hạn 50MB.');
+      return;
+    }
+
+    files.forEach((file) => {
+      if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+        setMediaError('Định dạng hình ảnh không hợp lệ (chỉ chấp nhận JPEG, PNG, GIF, WEBP).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImages((prev) => [
+          ...prev,
+          {
+            id: `new-img-${Date.now()}-${Math.random()}`,
+            src: reader.result,
+            type: 'new',
+            file: file
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const handleVideoChange = (e) => {
+    setMediaError('');
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (videos.length + files.length > 5) {
+      setMediaError('Số lượng video đính kèm vượt quá giới hạn cho phép (Tối đa: 5 video).');
+      return;
+    }
+
+    const currentNewFilesSize = getNewFilesSize(images, videos);
+    const incomingFilesSize = files.reduce((acc, f) => acc + f.size, 0);
+
+    if (currentNewFilesSize + incomingFilesSize > 50 * 1024 * 1024) {
+      setMediaError('Tổng dung lượng các hình ảnh và video tải lên mới vượt quá giới hạn 50MB.');
+      return;
+    }
+
+    files.forEach((file) => {
+      const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/x-matroska'];
+      const allowedVideoExts = ['.mp4', '.webm', '.ogg', '.mkv'];
+      const fileExt = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+      const isValidVideo = allowedVideoTypes.includes(file.type) || allowedVideoExts.includes(fileExt);
+      if (!isValidVideo) {
+        setMediaError('Định dạng video không hợp lệ (chỉ nhận MP4, WEBM, OGG, MKV).');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setVideos((prev) => [
+          ...prev,
+          {
+            id: `new-vid-${Date.now()}-${Math.random()}`,
+            src: reader.result,
+            type: 'new',
+            file: file
+          }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = (id) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const handleRemoveVideo = (id) => {
+    setVideos((prev) => prev.filter((vid) => vid.id !== id));
+  };
+
+  const isDeleted = comment.content === '[Bình luận bị xóa vì không phù hợp]';
   const isAuthor = comment.author?._id === postAuthorId;
+  const isCommentOwner = currentUserId && comment.author?._id && String(currentUserId) === String(comment.author._id);
   const maxDepth = 3;
   const likedUserIds = normalizeIds(comment.likes);
   const dislikedUserIds = normalizeIds(comment.dislikes);
@@ -37,7 +422,13 @@ export default function CommentItem({
   const hasDisliked = currentUserId && dislikedUserIds.includes(String(currentUserId));
   const likeCount = comment.likeCount ?? likedUserIds.length ?? 0;
   const dislikeCount = comment.dislikeCount ?? dislikedUserIds.length ?? 0;
+
+  const isBestAnswer = bestAnswerId && String(comment._id) === String(bestAnswerId);
+  const isPostAuthor = currentUserId && postAuthorId && String(currentUserId) === String(postAuthorId);
+  const isPostLocked = postStatus === 'resolved' || postStatus === 'hidden' || postStatus === 'deleted';
+  const showAcceptOption = isPostAuthor && postType === 'question' && depth === 0 && !isPostLocked;
   const isReacting = reactingCommentId === comment._id;
+  const isReplying = String(replyingToId) === String(comment._id);
 
   const handleReact = (reactionType) => {
     if (!isAuthenticated) {
@@ -48,9 +439,106 @@ export default function CommentItem({
     onReactComment?.(comment._id, reactionType);
   };
 
+  const handleStartReply = () => {
+    if (!isAuthenticated) {
+      onLoginRequired?.();
+      return;
+    }
+
+    onStartReply?.(comment);
+  };
+
+  const handleSubmitReply = async (event) => {
+    event.preventDefault();
+    if (!isAuthenticated) {
+      onLoginRequired?.();
+      return;
+    }
+
+    const text = replyContent.trim();
+    if (!text && replyImages.length === 0 && replyVideos.length === 0) return;
+
+    setSubmittingReplyLocal(true);
+    const formData = new FormData();
+    formData.append('content', text || 'Đính kèm tệp tin.');
+    formData.append('parentComment', comment._id);
+
+    replyImages.forEach((img) => {
+      formData.append('images', img.file);
+    });
+
+    replyVideos.forEach((vid) => {
+      formData.append('videos', vid.file);
+    });
+
+    const ok = await onSubmitReply?.(formData);
+    if (ok !== false) {
+      setReplyImages([]);
+      setReplyVideos([]);
+      setReplyMediaError('');
+      onCancelReply?.();
+    }
+    setSubmittingReplyLocal(false);
+  };
+
+  const handleUpdateComment = async (event) => {
+    event.preventDefault();
+    if (!editContent.trim()) {
+      toast.error('Nội dung bình luận không được để trống.');
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const formData = new FormData();
+      formData.append('content', editContent.trim());
+
+      // Append images
+      images.forEach((img) => {
+        if (img.type === 'old') {
+          formData.append('images', img.src);
+        } else if (img.type === 'new' && img.file) {
+          formData.append('images', img.file);
+        }
+      });
+
+      // Append videos
+      videos.forEach((vid) => {
+        if (vid.type === 'old') {
+          formData.append('videos', vid.src);
+        } else if (vid.type === 'new' && vid.file) {
+          formData.append('videos', vid.file);
+        }
+      });
+
+      await updateCommentApi(comment._id, formData);
+      toast.success('Cập nhật bình luận thành công!');
+      setIsEditing(false);
+      if (onCommentUpdated) {
+        onCommentUpdated();
+      }
+    } catch (err) {
+      let errMsg = 'Có lỗi xảy ra khi cập nhật bình luận.';
+      if (err.response?.data?.message) {
+        errMsg = err.response.data.message;
+      } else if (err.response?.data?.errors && Array.isArray(err.response.data.errors) && err.response.data.errors.length > 0) {
+        errMsg = err.response.data.errors[0].msg;
+      }
+      toast.error(errMsg);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   return (
     <div
-      className={`flex gap-3 pb-4 ${depth > 0 ? 'border-l-2 border-outline-variant pl-4' : 'border-b border-outline-variant'}`}
+      className={`flex gap-3 pb-4 w-full min-w-0 ${
+        isBestAnswer
+          ? 'bg-emerald-50/40 border-2 border-emerald-500/20 rounded-xl p-4 shadow-sm'
+          : depth > 0
+            ? 'border-l-2 border-outline-variant pl-4'
+            : 'border-b border-outline-variant'
+      }`}
       style={{ marginLeft: depth > 0 && depth <= maxDepth ? '0' : '0' }}
     >
       <img
@@ -59,133 +547,701 @@ export default function CommentItem({
           : `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.author?.fullName || 'U')}&background=556067&color=fff&size=32`
         }
         alt={comment.author?.fullName}
-        className="w-8 h-8 rounded-full border border-outline-variant shrink-0"
+        className="w-8 h-8 rounded-full border border-outline-variant shrink-0 object-cover"
       />
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1 font-body-sm text-body-sm flex-wrap">
-          {isAuthor && (
-            <span className="font-label-mono text-label-mono font-semibold uppercase px-1.5 py-0.5 rounded border border-primary text-primary bg-primary-fixed">
-              Tác giả
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 mb-1 font-body-sm text-body-sm flex-wrap">
+            {isBestAnswer && (
+              <span className="font-label-mono text-xs font-semibold uppercase px-2 py-0.5 rounded border border-emerald-500/30 text-emerald-700 bg-emerald-50 flex items-center gap-0.5">
+                <span className="material-symbols-outlined text-[14px] font-bold text-emerald-600">check</span>
+                Tốt nhất
+              </span>
+            )}
+            {isAuthor && (
+              <span className="font-label-mono text-label-mono font-semibold uppercase px-1.5 py-0.5 rounded border border-primary text-primary bg-primary-fixed">
+                Tác giả
+              </span>
+            )}
+            <Link to={comment.author?._id ? `/users/${comment.author._id}` : '#'} className="font-semibold text-primary-container hover:underline">
+              {comment.author?.fullName}
+            </Link>
+            {comment.author?.role === 'admin' && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-900 select-none">
+                <span className="material-symbols-outlined text-[10px] leading-none">shield</span>
+                Quản trị viên
+              </span>
+            )}
+            {comment.author?.reputation !== undefined && (
+              <ReputationBadge reputation={comment.author.reputation} size="sm" />
+            )}
+            <span className="text-outline text-xs flex items-center gap-1">
+              · {timeAgo(comment.createdAt)}
+              {comment.editHistory && comment.editHistory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryModalOpen(true)}
+                  className="text-primary hover:underline font-semibold text-[10px] flex items-center gap-0.5 ml-1 transition"
+                >
+                  <span className="material-symbols-outlined text-[12px]">history</span>
+                  (Đã chỉnh sửa)
+                </button>
+              )}
             </span>
+          </div>
+
+          {isAuthenticated && !isDeleted && (
+            <div className="relative shrink-0" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setShowMenu(!showMenu)}
+                className="flex items-center justify-center h-7 w-7 rounded-full hover:bg-surface-container-low transition-colors"
+                title="Tùy chọn"
+              >
+                <span className="material-symbols-outlined text-lg text-slate-500">more_vert</span>
+              </button>
+
+              {showMenu && (
+                <div className="absolute right-0 mt-0.5 w-44 rounded-xl border border-slate-150 bg-white py-1.5 shadow-lg z-30 animate-fadeIn">
+                  {showAcceptOption && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMenu(false);
+                        onAcceptComment?.(comment._id);
+                      }}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold border-b border-slate-100 whitespace-nowrap ${
+                        isBestAnswer 
+                          ? 'text-amber-750 hover:bg-amber-50' 
+                          : 'text-emerald-700 hover:bg-emerald-50'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-base">
+                        {isBestAnswer ? 'close' : 'check_circle'}
+                      </span>
+                      {isBestAnswer ? 'Hủy chọn tốt nhất' : 'Chọn tốt nhất'}
+                    </button>
+                  )}
+                  {isCommentOwner ? (
+                    <>
+                      {postStatus === 'unresolved' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMenu(false);
+                            setEditContent(comment.content || '');
+                            setImages((comment.images || []).map((url, idx) => ({ id: `old-img-${idx}`, src: url, type: 'old' })));
+                            setVideos((comment.videos || []).map((url, idx) => ({ id: `old-vid-${idx}`, src: url, type: 'old' })));
+                            setMediaError('');
+                            setEditEditorMode('write');
+                            setIsEditing(true);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 border-b border-slate-100 whitespace-nowrap"
+                        >
+                          <span className="material-symbols-outlined text-base text-slate-500">edit</span>
+                          Sửa bình luận
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { setShowMenu(false); setShowConfirm(true); }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 whitespace-nowrap"
+                      >
+                        <span className="material-symbols-outlined text-base">delete</span>
+                        Xóa bình luận
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMenu(false);
+                        onReportComment?.(comment);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50/50 whitespace-nowrap"
+                    >
+                      <span className="material-symbols-outlined text-base text-rose-500 font-semibold">report</span>
+                      Báo cáo bình luận
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
-          <Link to={comment.author?._id ? `/users/${comment.author._id}` : '#'} className="font-semibold text-primary-container hover:underline">
-            {comment.author?.fullName}
-          </Link>
-          {comment.author?.reputation !== undefined && (
-            <ReputationBadge reputation={comment.author.reputation} size="sm" />
-          )}
-          <span className="text-outline text-xs">· {timeAgo(comment.createdAt)}</span>
         </div>
 
-        <p className="text-on-surface font-body-sm text-body-sm leading-relaxed whitespace-pre-wrap">
-          {comment.content}
-        </p>
+        {isEditing ? (
+          <form onSubmit={handleUpdateComment} className="mt-2 rounded-xl border border-outline-variant bg-surface-container-low p-3 space-y-3">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-on-surface">Chỉnh sửa bình luận</label>
+              <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-900 border border-slate-200/60">
+                <button
+                  type="button"
+                  onClick={() => setEditEditorMode('write')}
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                    editEditorMode === 'write'
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Viết
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditEditorMode('preview')}
+                  className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                    editEditorMode === 'preview'
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Xem trước
+                </button>
+              </div>
+            </div>
 
-        {/* Comment Attached Images */}
-        {comment.images && comment.images.length > 0 && (
+            {editEditorMode === 'write' ? (
+              <>
+                {/* Formatting Toolbar */}
+                <div className="flex items-center gap-1 mb-2 p-1 rounded-lg bg-slate-50 border border-slate-200/60 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToEdit('**', '**', 'chữ in đậm')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="In đậm (Bold)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_bold</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToEdit('*', '*', 'chữ in nghiêng')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="In nghiêng (Italic)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_italic</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToEdit('`', '`', 'code inline')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Code dòng (Inline Code)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">code</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToEdit('```yaml\n', '\n```', '// viết code tại đây')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Khối Code (Code Block)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">terminal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToEdit('[', '](url)', 'Tên liên kết')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Thêm liên kết (Link)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">link</span>
+                  </button>
+                  <div className="h-3 w-px bg-slate-200 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => insertListToEdit(false)}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Danh sách không thứ tự"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_list_bulleted</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertListToEdit(true)}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Danh sách có thứ tự"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_list_numbered</span>
+                  </button>
+                </div>
+
+                <textarea
+                  ref={editTextareaRef}
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  rows={3}
+                  maxLength={2000}
+                  placeholder="Nhập nội dung bình luận cần chỉnh sửa..."
+                  disabled={updating}
+                  className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100 font-body-sm"
+                  required
+                />
+              </>
+            ) : (
+              <div className="w-full rounded-lg border border-outline-variant bg-slate-50/50 px-3 py-2 text-sm text-slate-800 min-h-[80px] max-h-[250px] overflow-y-auto break-words prose max-w-none animate-fadeIn">
+                {editContent.trim() ? (
+                  <SafeMarkdown content={editContent} />
+                ) : (
+                  <span className="text-slate-400 italic text-xs">Nội dung xem trước trống...</span>
+                )}
+              </div>
+            )}
+
+            {editEditorMode === 'write' && (
+              <div className="mt-1 rounded-lg bg-slate-50 border border-slate-200/40 p-2 text-[10px] text-slate-500 font-medium">
+                <span className="font-semibold text-slate-700">Định dạng:</span> **in đậm**, *in nghiêng*, `code inline`, [Tên](URL), ```khối code```.
+              </div>
+            )}
+
+            {/* Media previews list with delete buttons */}
+            {(images.length > 0 || videos.length > 0) && (
+              <div className="space-y-2 pt-1">
+                {/* Images list */}
+                {images.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {images.map((img) => (
+                      <div key={img.id} className="relative w-16 h-16 rounded-lg overflow-hidden border border-outline-variant group">
+                        <img src={img.src} alt="Preview" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(img.id)}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-black text-white rounded-full p-0.5"
+                        >
+                          <span className="material-symbols-outlined text-[12px] block">close</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Videos list */}
+                {videos.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {videos.map((vid) => (
+                      <div key={vid.id} className="relative w-32 rounded-lg overflow-hidden border border-outline-variant bg-black flex items-center justify-center group">
+                        <video src={vid.src} className="w-full h-20 object-contain" controls={false} muted />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVideo(vid.id)}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-black text-white rounded-full p-0.5 z-10"
+                        >
+                          <span className="material-symbols-outlined text-[12px] block">close</span>
+                        </button>
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                          <span className="material-symbols-outlined text-white text-2xl">play_circle</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {mediaError && (
+              <p className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg px-2.5 py-1">
+                {mediaError}
+              </p>
+            )}
+
+            {/* Media attachment triggers */}
+            <div className="flex items-center gap-2 pt-1">
+              <label className="flex h-7 items-center gap-1 rounded-full border border-outline-variant px-3 text-[11px] font-semibold text-secondary hover:bg-surface-container-high transition cursor-pointer">
+                <span className="material-symbols-outlined text-[14px]">image</span>
+                <span>Thêm ảnh</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageChange}
+                  className="hidden"
+                  disabled={updating}
+                />
+              </label>
+
+              <label className="flex h-7 items-center gap-1 rounded-full border border-outline-variant px-3 text-[11px] font-semibold text-secondary hover:bg-surface-container-high transition cursor-pointer">
+                <span className="material-symbols-outlined text-[14px]">videocam</span>
+                <span>Thêm video</span>
+                <input
+                  type="file"
+                  accept="video/*"
+                  multiple
+                  onChange={handleVideoChange}
+                  className="hidden"
+                  disabled={updating}
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-outline-variant/60 pt-2">
+              <span className="text-[11px] text-secondary">{editContent.length}/2000 ký tự</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  disabled={updating}
+                  className="rounded-lg border border-outline-variant px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-surface-container-high transition"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={updating || !editContent.trim()}
+                  className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/95 disabled:cursor-not-allowed disabled:opacity-60 flex items-center gap-1"
+                >
+                  {updating && <div className="w-3 h-3 rounded-full border border-white/30 border-t-white animate-spin" />}
+                  Cập nhật
+                </button>
+              </div>
+            </div>
+          </form>
+        ) : isDeleted ? (
+          <p className="text-outline font-body-sm text-body-sm leading-relaxed italic break-words w-full max-w-full">
+            {comment.content}
+          </p>
+        ) : (
+          <SafeMarkdown content={comment.content} className="text-on-surface font-body-sm text-body-sm" />
+        )}
+
+        {!isEditing && comment.images && comment.images.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {comment.images.map((imgUrl, idx) => (
-              <a key={idx} href={imgUrl} target="_blank" rel="noopener noreferrer" className="block max-w-[200px] max-h-[140px] overflow-hidden rounded-lg border border-outline-variant hover:opacity-90 transition-opacity">
+              <a key={idx} href={imgUrl} target="_blank" rel="noopener noreferrer" className="block max-w-[200px] max-h-[140px] overflow-hidden rounded-lg border border-outline-variant hover:opacity-90 transition-opacity cursor-zoom-in">
                 <img src={imgUrl} alt={`Đính kèm ${idx + 1}`} className="w-full h-full object-cover" />
               </a>
             ))}
           </div>
         )}
 
-        {/* Comment Attached Video */}
-        {comment.videos && comment.videos.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {comment.videos.map((vidUrl, index) => (
-              <div key={index} className="rounded-lg overflow-hidden border border-outline-variant bg-black max-w-[320px] max-h-[200px] flex items-center justify-center">
-                <video src={vidUrl} controls className="max-w-full max-h-[200px] object-contain" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          comment.video && (
-            <div className="mt-3 rounded-lg overflow-hidden border border-outline-variant bg-black max-w-[320px] max-h-[200px] flex items-center justify-center">
-              <video src={comment.video} controls className="max-w-full max-h-[200px] object-contain" />
+        {!isEditing && (
+          comment.videos && comment.videos.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {comment.videos.map((vidUrl, index) => (
+                <div key={index} className="rounded-lg overflow-hidden border border-outline-variant bg-black max-w-[320px] max-h-[200px] flex items-center justify-center">
+                  <video src={vidUrl} controls className="max-w-full max-h-[200px] object-contain" />
+                </div>
+              ))}
             </div>
+          ) : (
+            comment.video && (
+              <div className="mt-3 rounded-lg overflow-hidden border border-outline-variant bg-black max-w-[320px] max-h-[200px] flex items-center justify-center">
+                <video src={comment.video} controls className="max-w-full max-h-[200px] object-contain" />
+              </div>
+            )
           )
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {postType === 'question' ? (
-            <>
-              <button
-                type="button"
-                onClick={() => handleReact('like')}
-                disabled={isReacting}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  hasLiked
-                    ? 'border-primary/30 bg-primary-fixed text-primary'
-                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30 hover:text-primary'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
-                Upvote {likeCount}
-              </button>
+        {!isDeleted && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {postType === 'question' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleReact('like')}
+                  disabled={isReacting}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    hasLiked
+                      ? 'border-primary/30 bg-primary-fixed text-primary'
+                      : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-primary-fixed/30 hover:text-primary'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
+                  Upvote {likeCount}
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleReact('dislike')}
-                disabled={isReacting}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  hasDisliked
-                    ? 'border-error/30 bg-error-container text-error'
-                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30 hover:text-error'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
-                Downvote {dislikeCount}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => handleReact('like')}
-                disabled={isReacting}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  hasLiked
-                    ? 'border-blue-300 bg-blue-50 text-blue-700'
-                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-blue-50 hover:text-blue-700'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">thumb_up</span>
-                Thích {likeCount}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleReact('dislike')}
+                  disabled={isReacting || (isAuthenticated && userReputation !== undefined && userReputation < 100)}
+                  title={isAuthenticated && userReputation !== undefined && userReputation < 100 ? "Bạn cần tối thiểu 100 điểm uy tín để Downvote" : "Bình chọn xuống"}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    hasDisliked
+                      ? 'border-error/30 bg-error-container text-error'
+                      : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-error-container/30 hover:text-error'
+                  } ${(isAuthenticated && userReputation !== undefined && userReputation < 100) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                  Downvote {dislikeCount}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleReact('like')}
+                  disabled={isReacting}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    hasLiked
+                      ? 'border-blue-300 bg-blue-50 text-blue-700'
+                      : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-blue-50 hover:text-blue-700'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">thumb_up</span>
+                  Thích {likeCount}
+                </button>
 
+                <button
+                  type="button"
+                  onClick={() => handleReact('dislike')}
+                  disabled={isReacting}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    hasDisliked
+                      ? 'border-rose-300 bg-rose-50 text-rose-700'
+                      : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-rose-50 hover:text-rose-700'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">thumb_down</span>
+                  Không thích {dislikeCount}
+                </button>
+              </>
+            )}
+
+            {!isPostLocked && (
               <button
                 type="button"
-                onClick={() => handleReact('dislike')}
-                disabled={isReacting}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  hasDisliked
-                    ? 'border-rose-300 bg-rose-50 text-rose-700'
-                    : 'border-outline-variant bg-surface-container-low text-secondary hover:bg-rose-50 hover:text-rose-700'
-                }`}
+                onClick={handleStartReply}
+                className="inline-flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container-low px-3 py-1.5 text-xs font-semibold text-secondary transition hover:bg-primary-fixed/30 hover:text-primary"
               >
-                <span className="material-symbols-outlined text-[16px]">thumb_down</span>
-                Không thích {dislikeCount}
+                <span className="material-symbols-outlined text-[16px]">reply</span>
+                {postType === 'advice' ? 'Bình luận' : 'Trả lời'}
               </button>
-            </>
-          )}
+            )}
 
-          {depth === 0 && typeof onDonate === 'function' && comment.author?._id && (
-            <button
-              type="button"
-              onClick={() => onDonate(comment)}
-              className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:border-amber-400 hover:bg-amber-100"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10.5 2.5a1 1 0 00-1 0l-6 3.5a1 1 0 00-.5.866V13.5a1 1 0 00.5.866l6 3.5a1 1 0 001 0l6-3.5a1 1 0 00.5-.866V6.866a1 1 0 00-.5-.866l-6-3.5zM9 6.5h2v2H9v-2zm0 4h2v5H9v-5z" />
-              </svg>
-              Ủng hộ tác giả
-            </button>
-          )}
-        </div>
+            {!isPostLocked && depth === 0 && typeof onDonate === 'function' && comment.author?._id && comment.author?.role !== 'admin' && !isCommentOwner && (
+              <button
+                type="button"
+                onClick={() => onDonate(comment)}
+                className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:border-amber-400 hover:bg-amber-100"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10.5 2.5a1 1 0 00-1 0l-6 3.5a1 1 0 00-.5.866V13.5a1 1 0 00.5.866l6 3.5a1 1 0 001 0l6-3.5a1 1 0 00.5-.866V6.866a1 1 0 00-.5-.866l-6-3.5zM9 6.5h2v2H9v-2zm0 4h2v5H9v-5z" />
+                </svg>
+                Ủng hộ tác giả
+              </button>
+            )}
+          </div>
+        )}
+
+        {isReplying && (
+          <form onSubmit={handleSubmitReply} className="mt-3 rounded-xl border border-outline-variant bg-surface-container-low p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-secondary">
+                Trả lời {comment.author?.fullName || 'bình luận'}
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-900 border border-slate-200/60">
+                  <button
+                    type="button"
+                    onClick={() => setReplyEditorMode('write')}
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                      replyEditorMode === 'write'
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Viết
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReplyEditorMode('preview')}
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                      replyEditorMode === 'preview'
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Xem trước
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={onCancelReply}
+                  className="text-xs font-semibold text-outline hover:text-error"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+
+            {replyEditorMode === 'write' ? (
+              <>
+                {/* Formatting Toolbar */}
+                <div className="flex items-center gap-1 mb-2 p-1 rounded-lg bg-slate-50 border border-slate-200/60 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToReply('**', '**', 'chữ in đậm')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="In đậm (Bold)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_bold</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToReply('*', '*', 'chữ in nghiêng')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="In nghiêng (Italic)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_italic</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToReply('`', '`', 'code inline')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Code dòng (Inline Code)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">code</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToReply('```yaml\n', '\n```', '// viết code tại đây')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Khối Code (Code Block)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">terminal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertMarkdownToReply('[', '](url)', 'Tên liên kết')}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Thêm liên kết (Link)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">link</span>
+                  </button>
+                  <div className="h-3 w-px bg-slate-200 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => insertListToReply(false)}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Danh sách không thứ tự"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_list_bulleted</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertListToReply(true)}
+                    className="p-1 hover:bg-slate-200/70 text-slate-500 hover:text-slate-800 rounded transition-all flex items-center justify-center"
+                    title="Danh sách có thứ tự"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">format_list_numbered</span>
+                  </button>
+                </div>
+
+                <textarea
+                  ref={replyTextareaRef}
+                  value={replyContent}
+                  onChange={(event) => onReplyContentChange?.(event.target.value)}
+                  rows={2}
+                  maxLength={2000}
+                  placeholder="Nhập nội dung trả lời..."
+                  disabled={submittingReply}
+                  className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-100"
+                />
+              </>
+            ) : (
+              <div className="w-full rounded-lg border border-outline-variant bg-slate-50/50 px-3 py-2 text-sm text-slate-800 min-h-[60px] max-h-[200px] overflow-y-auto break-words prose max-w-none animate-fadeIn">
+                {replyContent.trim() ? (
+                  <SafeMarkdown content={replyContent} />
+                ) : (
+                  <span className="text-slate-400 italic text-xs">Nội dung xem trước trống...</span>
+                )}
+              </div>
+            )}
+
+            {replyEditorMode === 'write' && (
+              <div className="mt-1.5 rounded-lg bg-slate-50 border border-slate-200/40 p-2 text-[10px] text-slate-500 font-medium">
+                <span className="font-semibold text-slate-700">Định dạng:</span> **in đậm**, *in nghiêng*, `code inline`, [Tên](URL), ```khối code```.
+              </div>
+            )}
+
+            {/* Reply Previews */}
+            {(replyImages.length > 0 || replyVideos.length > 0) && (
+              <div className="space-y-2 pt-1 mt-2">
+                {/* Images list */}
+                {replyImages.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {replyImages.map((img) => (
+                      <div key={img.id} className="relative w-16 h-16 rounded-lg overflow-hidden border border-outline-variant group">
+                        <img src={img.src} alt="Preview" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveReplyImage(img.id)}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-black text-white rounded-full p-0.5"
+                        >
+                          <span className="material-symbols-outlined text-[12px] block">close</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Videos list */}
+                {replyVideos.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {replyVideos.map((vid) => (
+                      <div key={vid.id} className="relative w-32 rounded-lg overflow-hidden border border-outline-variant bg-black flex items-center justify-center group">
+                        <video src={vid.src} className="w-full h-20 object-contain" controls={false} muted />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveReplyVideo(vid.id)}
+                          className="absolute top-1 right-1 bg-black/70 hover:bg-black text-white rounded-full p-0.5 z-10"
+                        >
+                          <span className="material-symbols-outlined text-[12px] block">close</span>
+                        </button>
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                          <span className="material-symbols-outlined text-white text-2xl">play_circle</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {replyMediaError && (
+              <p className="text-[11px] text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg px-2.5 py-1 mt-2">
+                {replyMediaError}
+              </p>
+            )}
+
+            {/* Media triggers */}
+            <div className="flex items-center gap-2 pt-2 border-t border-outline-variant/60 mt-2">
+              <label className="flex h-7 items-center gap-1 rounded-full border border-outline-variant px-3 text-[11px] font-semibold text-secondary hover:bg-surface-container-high transition cursor-pointer">
+                <span className="material-symbols-outlined text-[14px]">image</span>
+                <span>Thêm ảnh</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleReplyImageChange}
+                  className="hidden"
+                  disabled={submittingReplyLocal || submittingReply}
+                />
+              </label>
+
+              <label className="flex h-7 items-center gap-1 rounded-full border border-outline-variant px-3 text-[11px] font-semibold text-secondary hover:bg-surface-container-high transition cursor-pointer">
+                <span className="material-symbols-outlined text-[14px]">videocam</span>
+                <span>Thêm video</span>
+                <input
+                  type="file"
+                  accept="video/*"
+                  multiple
+                  onChange={handleReplyVideoChange}
+                  className="hidden"
+                  disabled={submittingReplyLocal || submittingReply}
+                />
+              </label>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-xs text-secondary">{replyContent.length}/2000</span>
+              <button
+                type="submit"
+                disabled={submittingReplyLocal || submittingReply || (!replyContent.trim() && replyImages.length === 0 && replyVideos.length === 0)}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submittingReplyLocal || submittingReply ? 'Đang gửi...' : 'Gửi trả lời'}
+              </button>
+            </div>
+          </form>
+        )}
 
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-3 flex flex-col gap-3">
@@ -202,11 +1258,81 @@ export default function CommentItem({
                 onLoginRequired={onLoginRequired}
                 onReactComment={onReactComment}
                 reactingCommentId={reactingCommentId}
+                replyingToId={replyingToId}
+                replyContent={replyContent}
+                onStartReply={onStartReply}
+                onCancelReply={onCancelReply}
+                onReplyContentChange={onReplyContentChange}
+                onSubmitReply={onSubmitReply}
+                submittingReply={submittingReply}
+                onDeleteComment={onDeleteComment}
+                postStatus={postStatus}
+                onCommentUpdated={onCommentUpdated}
+                onReportComment={onReportComment}
+                bestAnswerId={bestAnswerId}
+                onAcceptComment={onAcceptComment}
               />
             ))}
           </div>
         )}
       </div>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <button
+            type="button"
+            onClick={() => setShowConfirm(false)}
+            className="absolute inset-0 bg-black/45 backdrop-blur-sm cursor-default"
+            aria-label="Đóng"
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-scale-in">
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+                <span className="material-symbols-outlined">warning</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-800">Xóa bình luận?</h3>
+                <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                  Bình luận này và tất cả câu trả lời bên dưới sẽ bị xóa vĩnh viễn khỏi diễn đàn. Hành động này không thể hoàn tác.
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                disabled={deleting}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (deleting) return;
+                  setDeleting(true);
+                  const ok = await onDeleteComment?.(comment._id);
+                  if (ok) setShowConfirm(false);
+                  setDeleting(false);
+                }}
+                disabled={deleting}
+                className="rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-50"
+              >
+                {deleting ? 'Đang xóa...' : 'Xác nhận xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <EditHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        history={comment.editHistory || []}
+        type="comment"
+        title="Lịch sử chỉnh sửa bình luận"
+      />
     </div>
   );
 }

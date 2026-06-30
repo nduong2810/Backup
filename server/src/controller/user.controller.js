@@ -36,16 +36,66 @@ class UserController {
         }
     }
 
+    async searchAuthors(req, res) {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+        try {
+            const authors = await userService.searchAuthors(req.query);
+            res.status(200).json({ success: true, data: authors });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
     async getPublicAuthorProfile(req, res) {
         const errors = validationResult(req);
         if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
         try {
-            const profile = await userService.getPublicAuthorProfile(req.params.userId);
+            const profile = await userService.getPublicAuthorProfile(req.params.userId, req.query);
             res.status(200).json({ success: true, data: profile });
         } catch (error) {
             const status = error.status || 500;
             res.status(status).json({ success: false, message: error.message });
+        }
+    }
+
+    async deactivateAccount(req, res) {
+        try {
+            await userService.deactivateAccount(req.user.userId);
+            
+            // Xóa cookie
+            const cookieOptions = {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+            };
+            res.clearCookie('accessToken', cookieOptions);
+            res.clearCookie('refreshToken', cookieOptions);
+
+            res.status(200).json({ success: true, message: "Tài khoản của bạn đã được vô hiệu hóa thành công!" });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    async deleteAccount(req, res) {
+        try {
+            await userService.deleteAccount(req.user.userId);
+
+            // Xóa cookie
+            const cookieOptions = {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+            };
+            res.clearCookie('accessToken', cookieOptions);
+            res.clearCookie('refreshToken', cookieOptions);
+
+            res.status(200).json({ success: true, message: "Tài khoản của bạn đã được đưa vào danh sách chờ xóa. Bạn có 7 ngày để khôi phục trước khi tài khoản bị xóa vĩnh viễn!" });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
         }
     }
 }

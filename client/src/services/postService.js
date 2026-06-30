@@ -7,7 +7,7 @@ export const fetchPostsApi = (filters = {}) => {
   return apiClient.get('/posts', { params: cleanFilters });
 };
 
-export const getPostDetail = (postId) => apiClient.get(`/posts/${postId}`);
+export const getPostDetail = (postId) => apiClient.get(`/posts/${postId}`, { params: { _t: Date.now() } });
 export const votePost = (postId, voteType) => apiClient.post(`/posts/${postId}/vote`, { voteType });
 export const reactPost = (postId, reactionType) => apiClient.post(`/posts/${postId}/react`, { reactionType });
 export const createPostComment = (postId, payload) => apiClient.post(`/posts/${postId}/comments`, payload);
@@ -26,3 +26,13 @@ export const getPostFlagSummaryApi = (postId) => apiClient.get(`/reports/posts/$
 
 export const getAdminFlagsApi = (params = {}) => apiClient.get('/reports/admin/flags', { params });
 export const adminUpdateFlagStatusApi = (ticketId, payload) => apiClient.patch(`/reports/${ticketId}/status`, payload);
+
+export const getTrashPosts = (params = {}) => apiClient.get('/posts/trash', { params });
+export const softDeletePost = (postId) => apiClient.delete(`/posts/${postId}`);
+export const restorePost = (postId) => apiClient.patch(`/posts/${postId}/restore`);
+export const permanentlyDeletePost = (postId) => apiClient.delete(`/posts/${postId}/permanent`);
+export const updatePostApi = (postId, payload) => apiClient.put(`/posts/${postId}`, payload);
+export const updatePostVisibilityApi = (postId, payload) => apiClient.patch(`/posts/${postId}/visibility`, payload);
+export const updateCommentApi = (commentId, payload) => apiClient.put(`/posts/comments/${commentId}`, payload);
+export const deleteCommentApi = (commentId) => apiClient.delete(`/posts/comments/${commentId}`);
+export const acceptCommentApi = (commentId) => apiClient.patch(`/posts/comments/${commentId}/accept`);

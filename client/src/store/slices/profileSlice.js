@@ -1,6 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { getMyProfile, updateMyProfile } from '../../services/userService';
-import { updateUser } from './loginSlice';
 
 const initialState = {
   form: {
@@ -10,8 +9,11 @@ const initialState = {
     major: '',
     bio: '',
     avatar: '',
+    bankName: '',
+    bankAccountNumber: '',
   },
   reputationInfo: null,
+  createdAt: null,
   loading: false,
   saving: false,
   successMessage: '',
@@ -38,7 +40,8 @@ export const fetchProfileThunk = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await getMyProfile();
-      return response.data;
+      const data = response.data;
+      return data;
     } catch (error) {
       return rejectWithValue(extractError(error));
     }
@@ -56,15 +59,13 @@ export const updateProfileThunk = createAsyncThunk(
         major: form.major,
         bio: form.bio,
         avatar: form.avatar,
+        bankName: form.bankName,
+        bankAccountNumber: form.bankAccountNumber,
       };
       const response = await updateMyProfile(payload);
-      const updatedUser = response.data.user || {};
-      dispatch(updateUser({
-        fullName: updatedUser.fullName,
-        avatar: updatedUser.avatar,
-      }));
       return response.data;
     } catch (error) {
+      dispatch(fetchProfileThunk()); // Rollback local state on server update failure
       return rejectWithValue(extractError(error));
     }
   },
@@ -98,7 +99,10 @@ const profileSlice = createSlice({
         state.form.major = action.payload.major || '';
         state.form.bio = action.payload.bio || '';
         state.form.avatar = action.payload.avatar || '';
+        state.form.bankName = action.payload.bankName || '';
+        state.form.bankAccountNumber = action.payload.bankAccountNumber || '';
         state.reputationInfo = action.payload.reputationInfo || null;
+        state.createdAt = action.payload.createdAt || null;
       })
       .addCase(fetchProfileThunk.rejected, (state, action) => {
         state.loading = false;
@@ -117,10 +121,12 @@ const profileSlice = createSlice({
 
         const user = action.payload.user || {};
         state.form.fullName = user.fullName || state.form.fullName;
-        state.form.phone = user.phone || state.form.phone;
-        state.form.major = user.major || state.form.major;
-        state.form.bio = user.bio || state.form.bio;
+        state.form.phone = user.phone ?? state.form.phone;
+        state.form.major = user.major ?? state.form.major;
+        state.form.bio = user.bio ?? state.form.bio;
         state.form.avatar = user.avatar || state.form.avatar;
+        state.form.bankName = user.bankName ?? state.form.bankName;
+        state.form.bankAccountNumber = user.bankAccountNumber ?? state.form.bankAccountNumber;
       })
       .addCase(updateProfileThunk.rejected, (state, action) => {
         state.saving = false;
@@ -132,4 +138,3 @@ const profileSlice = createSlice({
 
 export const { setProfileField, clearProfileMessages } = profileSlice.actions;
 export default profileSlice.reducer;
-

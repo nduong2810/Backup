@@ -6,7 +6,8 @@
   "scripts": {
     "start": "npx babel-node server.js",
     "dev": "npx nodemon --exec npx babel-node server.js",
-    "seed:sidebar": "npx babel-node src/scripts/seedSidebarData.js"
+    "seed:sidebar": "npx babel-node src/scripts/seedSidebarData.js",
+    "seed:demo": "npx babel-node src/scripts/resetAndSeedDemoData.js"
   },
   "keywords": [],
   "author": "",
@@ -25,7 +26,8 @@
     "multer": "^2.1.1",
     "nodemailer": "^8.0.7",
     "qs": "^6.15.2",
-    "redis": "^5.8.0"
+    "redis": "^5.8.0",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",

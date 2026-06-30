@@ -1,8 +1,11 @@
 import Post from '../model/post.model.js';
+import mongoose from 'mongoose';
 
 // ====================================================================
 // POST REPOSITORY - Tầng Data Access cho bài viết
 // ====================================================================
+
+const PUBLIC_POST_MATCH = { status: { $nin: ['hidden', 'deleted'] }, isAuthorActive: { $ne: false } };
 
 class PostRepository {
     async create(postData) {
@@ -11,7 +14,7 @@ class PostRepository {
 
     async findById(postId) {
         return await Post.findById(postId)
-            .populate('author', '_id fullName avatar major email reputation');
+            .populate('author', '_id fullName avatar major email reputation role');
     }
 
     async incrementViewCount(postId, options = {}) {
@@ -59,14 +62,23 @@ class PostRepository {
         return await Post.findByIdAndUpdate(postId, { $pull: { dislikes: userId } }, { new: true });
     }
 
+    async setHiddenStatus(postId) {
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'hidden' }, $unset: { deletedAt: "" } }, { new: true });
+    }
+
+    async setDeletedStatus(postId) {
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted', deletedAt: new Date(), deletedBy: 'report' } }, { new: true });
+    }
+
     async findRelatedByTag(tag, excludePostId, limit = 5) {
         return await Post.find({
             tags: tag,
             _id: { $ne: excludePostId },
-            status: 'active'
+            status: 'unresolved',
+            isAuthorActive: { $ne: false }
         })
-        .populate('author', '_id fullName avatar email')
-        .sort({ createdAt: -1 })
+        .populate('author', '_id fullName avatar email role')
+        .sort({ createdAt: -1, title: 1 })
         .limit(limit)
         .select('title tags images upvotes downvotes likes dislikes viewCount createdAt');
     }
@@ -76,7 +88,7 @@ class PostRepository {
             .sort(sort)
             .skip(skip)
             .limit(limit)
-            .populate('author', '_id fullName avatar email')
+            .populate('author', '_id fullName avatar email role')
             .lean();
     }
 
@@ -88,12 +100,12 @@ class PostRepository {
         const sortStage = (() => {
             switch (sortBy) {
                 case 'MostViewed':
-                    return { viewCount: -1 };
+                    return { viewCount: -1, title: 1 };
                 case 'MostUpvoted':
-                    return { upvoteCount: -1 };
+                    return { upvoteCount: -1, title: 1 };
                 case 'Newest':
                 default:
-                    return { createdAt: -1 };
+                    return { createdAt: -1, title: 1 };
             }
         })();
 
@@ -112,7 +124,7 @@ class PostRepository {
                     from: 'comments',
                     let: { postId: '$_id' },
                     pipeline: [
-                        { $match: { $expr: { $eq: ['$post', '$$postId'] } } },
+                        { $match: { $expr: { $eq: ['$post', '$$postId'] }, parentComment: null, isAuthorActive: { $ne: false } } },
                         { $count: 'count' },
                     ],
                     as: 'answerMeta',
@@ -151,8 +163,9 @@ class PostRepository {
                     likeCount: 1,
                     dislikeCount: 1,
                     answerCount: 1,
+                    bestAnswer: 1,
                     createdAt: 1,
-                    author: { _id: 1, fullName: 1, avatar: 1, email: 1, reputation: 1 },
+                    author: { _id: 1, fullName: 1, avatar: 1, email: 1, reputation: 1, role: 1 },
                 },
             },
         ];
@@ -162,9 +175,9 @@ class PostRepository {
 
     async findHotNetworkQuestions(limit = 10) {
         return await Post.aggregate([
-            { $match: { status: { $ne: 'deleted' } } },
+            { $match: PUBLIC_POST_MATCH },
             { $addFields: { upvoteCount: { $cond: [{ $isArray: '$upvotes' }, { $size: { $ifNull: ['$upvotes', []] } }, { $ifNull: ['$upvotes', 0] }] } } },
-            { $sort: { viewCount: -1, upvoteCount: -1, createdAt: -1 } },
+            { $sort: { viewCount: -1, upvoteCount: -1, createdAt: -1, title: 1 } },
             { $limit: limit },
             { $project: { _id: 1, title: 1 } },
         ]);
@@ -172,29 +185,29 @@ class PostRepository {
 
     async findTrendingToday(todayStart, limit = 10) {
         return await Post.aggregate([
-            { $match: { status: { $ne: 'deleted' }, dailyViewDate: todayStart, dailyViewCount: { $gt: 0 } } },
-            { $sort: { dailyViewCount: -1, viewCount: -1, createdAt: -1 } },
+            { $match: { ...PUBLIC_POST_MATCH, dailyViewDate: todayStart, dailyViewCount: { $gt: 0 } } },
+            { $sort: { dailyViewCount: -1, viewCount: -1, createdAt: -1, title: 1 } },
             { $limit: limit },
             { $lookup: { from: 'users', localField: 'author', foreignField: '_id', as: 'author' } },
             { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
-            { $project: { _id: 1, title: 1, tags: 1, images: 1, videos: 1, postType: 1, createdAt: 1, viewCount: 1, dailyViewCount: 1, author: { fullName: 1, avatar: 1 } } },
+            { $project: { _id: 1, title: 1, tags: 1, images: 1, videos: 1, postType: 1, createdAt: 1, viewCount: 1, dailyViewCount: 1, author: { _id: 1, fullName: 1, avatar: 1, role: 1 } } },
         ]);
     }
 
     async findTopUpvoted(todayStart, limit = 10) {
         return await Post.aggregate([
-            { $match: { status: { $ne: 'deleted' }, dailyUpvoteDate: todayStart, dailyUpvoteCount: { $gt: 0 } } },
+            { $match: { ...PUBLIC_POST_MATCH, dailyUpvoteDate: todayStart, dailyUpvoteCount: { $gt: 0 } } },
             {
                 $addFields: {
                     upvoteCount: { $cond: [{ $isArray: '$upvotes' }, { $size: { $ifNull: ['$upvotes', []] } }, { $ifNull: ['$upvotes', 0] }] },
                     downvoteCount: { $cond: [{ $isArray: '$downvotes' }, { $size: { $ifNull: ['$downvotes', []] } }, { $ifNull: ['$downvotes', 0] }] },
                 },
             },
-            { $sort: { dailyUpvoteCount: -1, upvoteCount: -1, createdAt: -1 } },
+            { $sort: { dailyUpvoteCount: -1, upvoteCount: -1, createdAt: -1, title: 1 } },
             { $limit: limit },
             { $lookup: { from: 'users', localField: 'author', foreignField: '_id', as: 'author' } },
             { $unwind: { path: '$author', preserveNullAndEmptyArrays: true } },
-            { $project: { _id: 1, title: 1, tags: 1, images: 1, videos: 1, postType: 1, createdAt: 1, viewCount: 1, dailyUpvoteCount: 1, upvoteCount: 1, downvoteCount: 1, author: { fullName: 1, avatar: 1 } } },
+            { $project: { _id: 1, title: 1, tags: 1, images: 1, videos: 1, postType: 1, createdAt: 1, viewCount: 1, dailyUpvoteCount: 1, upvoteCount: 1, downvoteCount: 1, author: { _id: 1, fullName: 1, avatar: 1, role: 1 } } },
         ]);
     }
 
@@ -204,7 +217,7 @@ class PostRepository {
 
     async findPopularTags(limit = 8) {
         return await Post.aggregate([
-            { $match: { status: { $ne: 'deleted' }, tags: { $exists: true, $ne: [] } } },
+            { $match: { ...PUBLIC_POST_MATCH, tags: { $exists: true, $ne: [] } } },
             { $unwind: '$tags' },
             { $match: { tags: { $type: 'string', $ne: '' } } },
             { $group: { _id: { $toLower: '$tags' }, count: { $sum: 1 } } },
@@ -212,6 +225,115 @@ class PostRepository {
             { $limit: limit },
             { $project: { _id: 0, name: '$_id', count: 1 } },
         ]);
+    }
+
+    async softDelete(postId, deletedBy = 'owner') {
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'deleted', deletedAt: new Date(), deletedBy } }, { new: true });
+    }
+
+    async restore(postId) {
+        return await Post.findByIdAndUpdate(postId, { $set: { status: 'unresolved' }, $unset: { deletedAt: "", deletedBy: "" } }, { new: true });
+    }
+
+    async permanentlyDelete(postId) {
+        return await Post.findByIdAndDelete(postId);
+    }
+
+    async findDeletedPostsByAuthor(authorId, skip = 0, limit = 10) {
+        return await Post.find({ author: authorId, status: 'deleted' })
+            .sort({ deletedAt: -1, title: 1 })
+            .skip(skip)
+            .limit(limit)
+            .populate('author', '_id fullName avatar email role')
+            .lean();
+    }
+
+    async findPublicPostsByAuthor(authorId, skip, limit) {
+        const authorObjectId = new mongoose.Types.ObjectId(authorId);
+        return await Post.aggregate([
+            { $match: { ...PUBLIC_POST_MATCH, author: authorObjectId } },
+            {
+                $addFields: {
+                    upvoteCount: { $cond: [{ $isArray: '$upvotes' }, { $size: { $ifNull: ['$upvotes', []] } }, 0] },
+                    downvoteCount: { $cond: [{ $isArray: '$downvotes' }, { $size: { $ifNull: ['$downvotes', []] } }, 0] },
+                    likeCount: { $cond: [{ $isArray: '$likes' }, { $size: { $ifNull: ['$likes', []] } }, 0] },
+                    dislikeCount: { $cond: [{ $isArray: '$dislikes' }, { $size: { $ifNull: ['$dislikes', []] } }, 0] },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'comments',
+                    let: { postId: '$_id' },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ['$post', '$$postId'] }, parentComment: null, isAuthorActive: { $ne: false } } },
+                        { $count: 'count' },
+                    ],
+                    as: 'commentMeta',
+                },
+            },
+            { $addFields: { answerCount: { $ifNull: [{ $arrayElemAt: ['$commentMeta.count', 0] }, 0] } } },
+            { $project: { commentMeta: 0, author: 0 } },
+            { $sort: { createdAt: -1, title: 1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+                $project: {
+                    title: 1,
+                    content: 1,
+                    tags: 1,
+                    status: 1,
+                    postType: 1,
+                    viewCount: 1,
+                    upvoteCount: 1,
+                    downvoteCount: 1,
+                    likeCount: 1,
+                    dislikeCount: 1,
+                    answerCount: 1,
+                    createdAt: 1,
+                },
+            },
+        ]);
+    }
+
+    async countPublicPostsByAuthor(authorId) {
+        return await Post.countDocuments({ ...PUBLIC_POST_MATCH, author: authorId });
+    }
+
+    async getPublicAuthorPostSummary(authorId) {
+        const authorObjectId = new mongoose.Types.ObjectId(authorId);
+        const [summary = {}] = await Post.aggregate([
+            { $match: { ...PUBLIC_POST_MATCH, author: authorObjectId } },
+            {
+                $group: {
+                    _id: null,
+                    questionCount: { $sum: { $cond: [{ $eq: ['$postType', 'question'] }, 1, 0] } },
+                    adviceCount: { $sum: { $cond: [{ $eq: ['$postType', 'advice'] }, 1, 0] } },
+                    totalViews: { $sum: { $ifNull: ['$viewCount', 0] } },
+                    totalUpvotes: { $sum: { $cond: [{ $isArray: '$upvotes' }, { $size: { $ifNull: ['$upvotes', []] } }, 0] } },
+                    totalLikes: { $sum: { $cond: [{ $isArray: '$likes' }, { $size: { $ifNull: ['$likes', []] } }, 0] } },
+                },
+            },
+            { $project: { _id: 0 } },
+        ]);
+
+        return {
+            questionCount: summary.questionCount || 0,
+            adviceCount: summary.adviceCount || 0,
+            totalViews: summary.totalViews || 0,
+            totalUpvotes: summary.totalUpvotes || 0,
+            totalLikes: summary.totalLikes || 0,
+        };
+    }
+
+    async updatePost(postId, updateData, editHistoryItem) {
+        const updateQuery = {
+            $set: updateData
+        };
+        if (editHistoryItem) {
+            updateQuery.$push = { editHistory: editHistoryItem };
+        }
+        return await Post.findByIdAndUpdate(postId, updateQuery, { new: true })
+            .populate('author', '_id fullName avatar major email reputation role');
     }
 }
 

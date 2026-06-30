@@ -1,4 +1,4 @@
-﻿import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import AppCard from '../ui/AppCard';
 import AppButton from '../ui/AppButton';
@@ -25,12 +25,19 @@ export default function ForgotPassword() {
   return (
     <AppCard
       title="Quên mật khẩu"
-      subtitle="Bước 1/3: Nhập email để nhận OTP"
-      rightSlot={<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Bước 1/3</span>}
+      subtitle="Nhập email tài khoản để nhận mã OTP đặt lại mật khẩu"
+      icon="lock_reset"
+      className="mx-auto max-w-xl"
+      contentClassName="mx-auto max-w-md"
+      rightSlot={
+        <span className="hidden h-[52px] min-w-16 items-center justify-center rounded-2xl bg-slate-100 px-3 text-center text-xs font-bold leading-5 text-slate-600 sm:flex">
+          Bước<br />1/3
+        </span>
+      }
     >
       <FormAlert type={alertType} message={alertMessage} />
 
-      <form className="mt-4 space-y-4" onSubmit={onSubmit}>
+      <form className="mt-5 space-y-5" onSubmit={onSubmit}>
         <InputField
           label="Email"
           name="email"
@@ -41,9 +48,23 @@ export default function ForgotPassword() {
           required
           disabled={loading}
         />
-        <AppButton type="submit" fullWidth disabled={loading}>
-          {loading ? 'Đang gửi OTP...' : 'Gửi OTP'}
-        </AppButton>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex-1">
+            <AppButton
+              variant="secondary"
+              onClick={() => navigate('/auth/login')}
+              disabled={loading}
+              fullWidth
+            >
+              Quay lại đăng nhập
+            </AppButton>
+          </div>
+          <div className="flex-1">
+            <AppButton type="submit" fullWidth disabled={loading}>
+              {loading ? 'Đang gửi OTP...' : 'Gửi OTP'}
+            </AppButton>
+          </div>
+        </div>
       </form>
     </AppCard>
   );

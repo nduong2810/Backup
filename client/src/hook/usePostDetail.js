@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { updateUser } from '../store/slices/loginSlice';
 import {
   getPostDetail,
   votePost,
@@ -6,7 +8,24 @@ import {
   getRelatedPosts,
   createPostComment,
   reactPostComment,
+  deleteCommentApi,
+  acceptCommentApi,
 } from '../services/postService';
+import { connectSocket, getSocket } from '../lib/socketClient';
+import { useToast } from '../context/ToastContext';
+
+const LOCKED_POST_MESSAGE = 'Bài viết đang bị khóa';
+const ADMIN_INTERACTION_MESSAGE = 'Quản trị viên không được phép thực hiện tương tác này.';
+
+const getErrorMessage = (err, defaultMessage) => {
+  if (err.response?.data?.message) {
+    return err.response.data.message;
+  }
+  if (err.response?.data?.errors && Array.isArray(err.response.data.errors) && err.response.data.errors.length > 0) {
+    return err.response.data.errors[0].msg;
+  }
+  return defaultMessage;
+};
 
 export default function usePostDetail(postId) {
   const [post, setPost] = useState(null);
@@ -31,17 +50,30 @@ export default function usePostDetail(postId) {
 
   const [relatedPosts, setRelatedPosts] = useState([]);
 
+  const { user: currentUser } = useSelector((state) => state.login);
+  const isAdmin = currentUser?.role === 'admin';
+  const { toast } = useToast();
+  const dispatch = useDispatch();
+  const [showFreeVotesModal, setShowFreeVotesModal] = useState(false);
+
+  const isPostLocked = post?.status === 'resolved' || post?.status === 'hidden' || post?.status === 'deleted';
+
   const fetchPostDetail = useCallback(async (showLoading = true) => {
     if (!postId) return;
 
     if (showLoading) {
       setLoading(true);
     }
+
     setError(null);
 
     try {
       const response = await getPostDetail(postId);
-      const { post: postData, comments: commentsData, commentCount: count } = response.data.data;
+      const {
+        post: postData,
+        comments: commentsData,
+        commentCount: count,
+      } = response.data.data;
 
       setPost(postData);
       setComments(commentsData);
@@ -52,8 +84,10 @@ export default function usePostDetail(postId) {
       setLikeCount(postData.likeCount || postData.likes?.length || 0);
       setDislikeCount(postData.dislikeCount || postData.dislikes?.length || 0);
       setUserReaction(postData.userReaction || null);
+      const isLocked = postData.status === 'resolved' || postData.status === 'hidden' || postData.status === 'deleted';
+      setCommentError(isLocked ? LOCKED_POST_MESSAGE : '');
     } catch (err) {
-      const message = err.response?.data?.message || 'Không thể tải bài viết.';
+      const message = getErrorMessage(err, 'Không thể tải bài viết.');
       setError(message);
     } finally {
       if (showLoading) {
@@ -77,30 +111,73 @@ export default function usePostDetail(postId) {
   const handleVote = useCallback(async (voteType) => {
     if (voteLoading) return;
 
+    if (isAdmin) {
+      toast.warning(ADMIN_INTERACTION_MESSAGE);
+      return;
+    }
+
+    if (isPostLocked) {
+      toast.warning(LOCKED_POST_MESSAGE);
+      return;
+    }
+
     setVoteLoading(true);
+
     try {
-      const effectiveVoteType = userVote && userVote !== voteType ? userVote : voteType;
-      const response = await votePost(postId, effectiveVoteType);
-      const { upvoteCount: up, downvoteCount: down, userVote: vote } = response.data.data;
+      const response = await votePost(postId, voteType);
+      const data = response.data.data || {};
+      const {
+        upvoteCount: up,
+        downvoteCount: down,
+        userVote: vote,
+      } = data;
 
       setUpvoteCount(up);
       setDownvoteCount(down);
       setUserVote(vote);
+
+      // Đồng bộ thông tin Free vote
+      if (data.weeklyFreeVotesUsed !== undefined) {
+        dispatch(updateUser({
+          reputationInfo: {
+            ...(currentUser?.reputationInfo || {}),
+            weeklyFreeVotesUsed: data.weeklyFreeVotesUsed,
+            weeklyFreeVotesLimit: data.weeklyFreeVotesLimit || 5,
+            reputation: data.userReputation
+          },
+          reputation: data.userReputation
+        }));
+      }
+
+      if (data.showFreeVotesModal) {
+        setShowFreeVotesModal(true);
+      }
     } catch (err) {
       if (err.response?.status === 401) {
-        alert('Bạn cần đăng nhập để vote bài viết.');
+        toast.warning('Bạn cần đăng nhập để vote bài viết.');
       } else {
-        alert(err.response?.data?.message || 'Không thể vote bài viết.');
+        toast.error(getErrorMessage(err, 'Không thể vote bài viết.'));
       }
     } finally {
       setVoteLoading(false);
     }
-  }, [postId, voteLoading, userVote]);
+  }, [postId, voteLoading, isPostLocked, isAdmin, toast, dispatch, currentUser]);
 
   const handlePostReaction = useCallback(async (reactionType) => {
     if (reactionLoading) return;
 
+    if (isAdmin) {
+      toast.warning(ADMIN_INTERACTION_MESSAGE);
+      return;
+    }
+
+    if (isPostLocked) {
+      toast.warning(LOCKED_POST_MESSAGE);
+      return;
+    }
+
     setReactionLoading(true);
+
     try {
       const response = await reactPost(postId, reactionType);
       const {
@@ -112,6 +189,7 @@ export default function usePostDetail(postId) {
       setLikeCount(likes);
       setDislikeCount(dislikes);
       setUserReaction(reaction);
+
       setPost((currentPost) => currentPost
         ? {
             ...currentPost,
@@ -122,17 +200,22 @@ export default function usePostDetail(postId) {
         : currentPost);
     } catch (err) {
       if (err.response?.status === 401) {
-        alert('Bạn cần đăng nhập để like/dislike bài viết.');
+        toast.warning('Bạn cần đăng nhập để like/dislike bài viết.');
       } else {
-        alert(err.response?.data?.message || 'Không thể like/dislike bài viết.');
+        toast.error(getErrorMessage(err, 'Không thể like/dislike bài viết.'));
       }
     } finally {
       setReactionLoading(false);
     }
-  }, [postId, reactionLoading]);
+  }, [postId, reactionLoading, isPostLocked, isAdmin, toast]);
 
   const submitComment = useCallback(async (payload) => {
     if (submittingComment) return false;
+
+    if (isPostLocked) {
+      setCommentError(LOCKED_POST_MESSAGE);
+      return false;
+    }
 
     setSubmittingComment(true);
     setCommentError('');
@@ -142,41 +225,143 @@ export default function usePostDetail(postId) {
       await fetchPostDetail(false);
       return true;
     } catch (err) {
-      const message = err.response?.data?.message || 'Không thể gửi bình luận.';
+      const message = getErrorMessage(err, 'Không thể gửi bình luận.');
       setCommentError(message);
       return false;
     } finally {
       setSubmittingComment(false);
     }
-  }, [postId, submittingComment, fetchPostDetail]);
+  }, [postId, submittingComment, fetchPostDetail, isPostLocked, isAdmin, toast]);
 
   const reactComment = useCallback(async (commentId, reactionType) => {
     if (reactingCommentId) return false;
 
+    if (isAdmin) {
+      toast.warning(ADMIN_INTERACTION_MESSAGE);
+      return false;
+    }
+
+    if (isPostLocked) {
+      toast.warning(LOCKED_POST_MESSAGE);
+      return false;
+    }
+
     setReactingCommentId(commentId);
+
     try {
-      await reactPostComment(commentId, reactionType);
+      const response = await reactPostComment(commentId, reactionType);
+      const data = response.data?.data || {};
+
+      // Đồng bộ thông tin Free vote cho comment
+      if (data.weeklyFreeVotesUsed !== undefined) {
+        dispatch(updateUser({
+          reputationInfo: {
+            ...(currentUser?.reputationInfo || {}),
+            weeklyFreeVotesUsed: data.weeklyFreeVotesUsed,
+            weeklyFreeVotesLimit: data.weeklyFreeVotesLimit || 5,
+            reputation: data.userReputation
+          },
+          reputation: data.userReputation
+        }));
+      }
+
+      if (data.showFreeVotesModal) {
+        setShowFreeVotesModal(true);
+      }
+
       await fetchPostDetail(false);
       return true;
     } catch (err) {
       if (err.response?.status === 401) {
-        alert('Bạn cần đăng nhập để like/dislike bình luận.');
+        toast.warning('Bạn cần đăng nhập để tương tác bình luận.');
       } else {
-        alert(err.response?.data?.message || 'Không thể cập nhật like/dislike bình luận.');
+        toast.error(getErrorMessage(err, 'Không thể tương tác bình luận.'));
       }
+
       return false;
     } finally {
       setReactingCommentId('');
     }
-  }, [reactingCommentId, fetchPostDetail]);
+  }, [reactingCommentId, fetchPostDetail, isPostLocked, isAdmin, toast, dispatch, currentUser]);
+
+  const deleteComment = useCallback(async (commentId) => {
+    try {
+      await deleteCommentApi(commentId);
+      toast.success('Xóa bình luận thành công!');
+      await fetchPostDetail(false);
+      return true;
+    } catch (err) {
+      console.error('[usePostDetail] Delete comment error:', err);
+      toast.error(getErrorMessage(err, 'Không thể xóa bình luận.'));
+      return false;
+    }
+  }, [fetchPostDetail, toast]);
+
+  const handleAcceptComment = useCallback(async (commentId) => {
+    try {
+      const response = await acceptCommentApi(commentId);
+      toast.success(response.data.message || 'Cập nhật câu trả lời tốt nhất thành công!');
+      await fetchPostDetail(false);
+      return true;
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Không thể chọn câu trả lời tốt nhất.'));
+      return false;
+    }
+  }, [fetchPostDetail, toast]);
 
   useEffect(() => {
-    fetchPostDetail();
+    const timer = setTimeout(() => {
+      fetchPostDetail();
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [fetchPostDetail]);
 
   useEffect(() => {
-    fetchRelatedPosts();
+    const timer = setTimeout(() => {
+      fetchRelatedPosts();
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [fetchRelatedPosts]);
+
+  useEffect(() => {
+    if (!postId) return undefined;
+
+    const socket = currentUser ? connectSocket() : getSocket();
+
+    if (!socket) return undefined;
+
+    const handleNewComment = (payload) => {
+      if (String(payload?.postId) === String(postId)) {
+        fetchPostDetail(false);
+      }
+    };
+
+    const handlePostUpdated = (payload) => {
+      if (String(payload?.postId) === String(postId)) {
+        fetchPostDetail(false);
+      }
+    };
+
+    const handleCommentUpdated = (payload) => {
+      if (String(payload?.postId) === String(postId)) {
+        fetchPostDetail(false);
+      }
+    };
+
+    socket.emit('post:join', postId);
+    socket.on('comment:new', handleNewComment);
+    socket.on('post:updated', handlePostUpdated);
+    socket.on('comment:updated', handleCommentUpdated);
+
+    return () => {
+      socket.off('comment:new', handleNewComment);
+      socket.off('post:updated', handlePostUpdated);
+      socket.off('comment:updated', handleCommentUpdated);
+      socket.emit('post:leave', postId);
+    };
+  }, [postId, fetchPostDetail]);
 
   return {
     post,
@@ -201,5 +386,9 @@ export default function usePostDetail(postId) {
     reactingCommentId,
     relatedPosts,
     refreshPost: fetchPostDetail,
+    deleteComment,
+    handleAcceptComment,
+    showFreeVotesModal,
+    setShowFreeVotesModal,
   };
 }

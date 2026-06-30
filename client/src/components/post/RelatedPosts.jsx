@@ -38,7 +38,7 @@ export default function RelatedPosts({ posts }) {
             )}
 
             {/* Title */}
-            <h4 className="font-semibold text-on-surface font-body-md text-body-md leading-snug group-hover:text-primary transition-colors line-clamp-2">
+            <h4 className="font-semibold text-on-surface font-body-md text-body-md leading-snug group-hover:text-primary transition-colors line-clamp-2 break-words">
               {post.title}
             </h4>
 

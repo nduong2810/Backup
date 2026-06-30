@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { logout } from '../../store/slices/loginSlice';
+import { logoutThunk } from '../../store/slices/loginSlice';
 import SearchBar from '../common/SearchBar';
 import CreatePostModal from '../post/CreatePostModal';
+import NotificationBell from '../notification/NotificationBell';
 
 const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
   const dispatch = useDispatch();
@@ -22,8 +23,8 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
     setCreateModalOpen(true);
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
+  const handleLogout = async () => {
+    await dispatch(logoutThunk());
     navigate('/auth/login');
   };
 
@@ -65,13 +66,15 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
           </button>
         </div>
 
-        <div className="flex items-center gap-4 justify-end">
+        <div className="flex items-center gap-3 justify-end">
           <button
             onClick={handleCreatePostClick}
             className="bg-primary hover:bg-primary/90 text-white font-body-sm text-body-sm font-semibold px-4 py-2 rounded-DEFAULT transition-colors shrink-0 lg:hidden"
           >
             Tạo bài viết
           </button>
+
+          {user && <NotificationBell />}
 
           {user ? (
             <div ref={menuRef} className="relative hidden md:block">
@@ -91,49 +94,34 @@ const Header = ({ searchValue = '', onSearchChange, onSearch }) => {
                 </span>
                 <span className="material-symbols-outlined text-[18px] text-secondary">expand_more</span>
               </button>
- 
+
               {menuOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-surface-container-lowest border border-outline-variant rounded-DEFAULT shadow-md overflow-hidden z-50">
-                  {isAdmin && (
+                  {isAdmin ? (
                     <>
                       <button
                         onClick={() => {
                           setMenuOpen(false);
-                          navigate('/admin/donations');
+                          navigate('/admin/profile');
                         }}
-                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm font-semibold text-primary hover:bg-surface-container-low transition-colors"
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
                       >
-                        Duyệt bill COD
+                        Hồ sơ
                       </button>
+                    </>
+                  ) : (
+                    <>
                       <button
                         onClick={() => {
                           setMenuOpen(false);
-                          navigate('/admin/flags');
+                          navigate('/user/profile');
                         }}
-                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm font-semibold text-primary hover:bg-surface-container-low transition-colors"
+                        className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
                       >
-                        Duyệt cờ báo cáo
+                        Hồ sơ
                       </button>
                     </>
                   )}
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      navigate('/user/profile');
-                    }}
-                    className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
-                  >
-                    Hồ sơ
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      navigate('/user/saves');
-                    }}
-                    className="w-full text-left px-4 py-2.5 font-body-sm text-body-sm text-on-surface hover:bg-surface-container-low transition-colors"
-                  >
-                    Thư mục lưu trữ
-                  </button>
                   <button
                     onClick={() => {
                       setMenuOpen(false);
