@@ -142,12 +142,15 @@ class PostService {
         if (startDate || endDate) {
             filter.createdAt = {};
             if (startDate) {
-                filter.createdAt.$gte = new Date(startDate);
+                const start = new Date(startDate);
+                // Trừ 7 tiếng để chuyển mốc 00:00:00 Việt Nam sang UTC
+                filter.createdAt.$gte = new Date(start.getTime() - 7 * 60 * 60 * 1000);
             }
             if (endDate) {
                 const end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
-                filter.createdAt.$lte = end;
+                // Cộng thêm 23h 59m 59s 999ms và trừ 7 tiếng để chuyển mốc 23:59:59 Việt Nam sang UTC
+                const endVnMs = end.getTime() + (23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 59 * 1000 + 999) - 7 * 60 * 60 * 1000;
+                filter.createdAt.$lte = new Date(endVnMs);
             }
         }
 

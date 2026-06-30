@@ -87,8 +87,12 @@ const buildLegacyEmail = (candidate = {}) => {
 };
 
 const formatVnpayDate = (date) => {
+  // Máy chủ Render chạy ở giờ UTC. Cần chuyển đổi thủ công sang múi giờ Việt Nam (GMT+7)
+  const tzOffset = 7 * 60 * 60 * 1000; // 7 tiếng tính bằng mili-giây
+  const vnTime = new Date(date.getTime() + tzOffset);
   const pad = (value) => String(value).padStart(2, '0');
-  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+  
+  return `${vnTime.getUTCFullYear()}${pad(vnTime.getUTCMonth() + 1)}${pad(vnTime.getUTCDate())}${pad(vnTime.getUTCHours())}${pad(vnTime.getUTCMinutes())}${pad(vnTime.getUTCSeconds())}`;
 };
 
 const sortObjectForVnpay = (object) => {
@@ -207,35 +211,62 @@ const parseDateOnly = (value, endOfDay = false) => {
   const year = Number(yearText);
   const month = Number(monthText);
   const day = Number(dayText);
-  const date = new Date(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
 
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  return date;
+  // Kiểm tra tính hợp lệ của ngày tháng trên lịch thực tế (vd: tránh ngày 30 tháng 2)
+  const testDate = new Date(year, month - 1, day);
+  if (testDate.getFullYear() !== year || testDate.getMonth() !== month - 1 || testDate.getDate() !== day) return null;
+
+  // Tạo mốc thời gian UTC tương ứng với ngày giờ ở GMT+7 (Việt Nam)
+  const utcTime = Date.UTC(
+    year,
+    month - 1,
+    day,
+    endOfDay ? 23 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 999 : 0
+  );
+
+  // Trừ lại 7 tiếng để ra mốc thời gian UTC tương ứng
+  return new Date(utcTime - 7 * 60 * 60 * 1000);
 };
 
 const buildMonthlyTimeline = (rawTimeline = [], fromDate, toDate = new Date()) => {
-  const from = fromDate || new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1);
-  const to = toDate || new Date();
-  const start = new Date(from.getFullYear(), from.getMonth(), 1);
-  const end = new Date(to.getFullYear(), to.getMonth(), 1);
-  const result = [];
+  const tzOffset = 7 * 60 * 60 * 1000;
 
-  let cursor = start;
+  // Chuyển đổi từ ngày sang múi giờ Việt Nam (GMT+7)
+  const defaultFrom = new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1);
+  const fromVn = new Date((fromDate || defaultFrom).getTime() + tzOffset);
+  const toVn = new Date((toDate || new Date()).getTime() + tzOffset);
+
+  const startYear = fromVn.getUTCFullYear();
+  const startMonth = fromVn.getUTCMonth();
+  const endYear = toVn.getUTCFullYear();
+  const endMonth = toVn.getUTCMonth();
+
+  const result = [];
+  let currentYear = startYear;
+  let currentMonth = startMonth;
   let index = 0;
-  while (cursor <= end && index < 36) {
-    const year = cursor.getFullYear();
-    const month = cursor.getMonth() + 1;
-    const found = rawTimeline.find((item) => item._id?.year === year && item._id?.month === month);
+
+  while ((currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) && index < 36) {
+    const displayMonth = currentMonth + 1;
+    const found = rawTimeline.find((item) => item._id?.year === currentYear && item._id?.month === displayMonth);
     result.push({
-      year,
-      month,
-      label: `T${month}/${year}`,
+      year: currentYear,
+      month: displayMonth,
+      label: `T${displayMonth}/${currentYear}`,
       totalAmount: found?.totalAmount || 0,
       completedAmount: found?.completedAmount || 0,
       donationCount: found?.donationCount || 0,
       completedCount: found?.completedCount || 0,
     });
-    cursor = new Date(year, month, 1);
+
+    currentMonth += 1;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear += 1;
+    }
     index += 1;
   }
 
