@@ -511,13 +511,39 @@ class AdminController {
                 return res.status(404).json({ success: false, message: 'Không tìm thấy thẻ tag' });
             }
 
-            const postCount = await Post.countDocuments({ tags: tag.slug });
-            if (postCount > 0) {
+            const totalActiveAndHidden = await Post.countDocuments({
+                tags: tag.slug,
+                status: { $ne: 'deleted' },
+            });
+            if (totalActiveAndHidden > 0) {
+                // Đếm số bài viết đang hiển thị công khai (không bị ẩn/xóa mềm và tác giả hoạt động)
+                const activeCount = await Post.countDocuments({
+                    tags: tag.slug,
+                    status: { $nin: ['hidden', 'deleted'] },
+                    isAuthorActive: { $ne: false },
+                });
+                const hiddenCount = totalActiveAndHidden - activeCount;
+
+                let message = 'Không thể xóa thẻ tag này vì đang có ';
+                if (activeCount > 0 && hiddenCount > 0) {
+                    message += `${activeCount} bài viết hoạt động và ${hiddenCount} bài viết bị ẩn sử dụng.`;
+                } else if (activeCount > 0) {
+                    message += `${activeCount} bài viết sử dụng.`;
+                } else {
+                    message += `${hiddenCount} bài viết bị ẩn sử dụng.`;
+                }
+
                 return res.status(400).json({
                     success: false,
-                    message: `Không thể xóa thẻ tag này vì đang có ${postCount} bài viết sử dụng.`,
+                    message,
                 });
             }
+
+            // Dọn dẹp slug của tag khỏi các bài viết liên quan (bao gồm cả bài viết ẩn, đã xóa hoặc của tác giả bị khóa)
+            await Post.updateMany(
+                { tags: tag.slug },
+                { $pull: { tags: tag.slug } }
+            );
 
             await Tag.findByIdAndDelete(tagObjectId);
 

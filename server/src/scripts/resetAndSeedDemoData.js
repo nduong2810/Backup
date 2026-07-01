@@ -1,5 +1,13 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import dns from 'dns';
+
+dns.setDefaultResultOrder('ipv4first');
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {
+  console.warn('Failed to set DNS servers:', e.message);
+}
 import User from '../model/user.model.js';
 import Tag from '../model/tag.model.js';
 import Post from '../model/post.model.js';
