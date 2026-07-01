@@ -21,8 +21,8 @@ export default function SafeMarkdown({ content, className = '' }) {
   const parseInlineMarkdown = (text) => {
     if (!text) return '';
 
-    // Regex to match inline code (`...`), links ([...](...)), bold (**...** or __...__), and italic (*...* or _..._)
-    const regex = /(`[^`]+`|\[[^\]]+\]\([^)]+\)|\*\*(?:.*?)\*\*|__(?:.*?)__|\*(?:.*?)\*|_(?:.*?)_)/g;
+    // Regex to match inline code (`...`), links ([...](...)), bold-italic (***...*** or ___...___), bold (**...** or __...__), and italic (*...* or _..._)
+    const regex = /(`[^`]+`|\[[^\]]+\]\([^)]+\)|\*\*\*(?:.*?)\*\*\*|___(?:.*?)___|\*\*(?:.*?)\*\*|__(?:.*?)__|\*(?:.*?)\*|_(?:.*?)_)/g;
     const tokens = text.split(regex);
 
     return tokens.map((token, i) => {
@@ -60,7 +60,21 @@ export default function SafeMarkdown({ content, className = '' }) {
         }
       }
 
-      // 3. Bold
+      // 3. Bold & Italic
+      if (
+        (token.startsWith('***') && token.endsWith('***')) ||
+        (token.startsWith('___') && token.endsWith('___'))
+      ) {
+        return (
+          <strong key={i} className="font-extrabold text-slate-900">
+            <em className="italic text-slate-800">
+              {parseInlineMarkdown(token.slice(3, -3))}
+            </em>
+          </strong>
+        );
+      }
+
+      // 4. Bold
       if (
         (token.startsWith('**') && token.endsWith('**')) ||
         (token.startsWith('__') && token.endsWith('__'))
@@ -72,7 +86,7 @@ export default function SafeMarkdown({ content, className = '' }) {
         );
       }
 
-      // 4. Italic
+      // 5. Italic
       if (
         (token.startsWith('*') && token.endsWith('*')) ||
         (token.startsWith('_') && token.endsWith('_'))
