@@ -108,8 +108,8 @@ export default function NotificationBell() {
 
     const handleUserBlocked = (payload) => {
       const reason = payload?.reason || 'Tài khoản của bạn đã bị khóa bởi quản trị viên.';
-      const suffix = ' Vui lòng liên hệ admin để mở khóa tài khoản!';
-      const fullReason = reason.includes('liên hệ admin') ? reason : `${reason}${reason.endsWith('.') ? '' : '.'}${suffix}`;
+      const suffix = ' Vui lòng liên hệ quản trị viên để mở khóa tài khoản!';
+      const fullReason = reason.includes('liên hệ quản trị viên') ? reason : `${reason}${reason.endsWith('.') ? '' : '.'}${suffix}`;
       sessionStorage.setItem('locked_message', fullReason);
       dispatch(logout());
       window.location.href = '/auth/login';
