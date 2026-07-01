@@ -23,7 +23,7 @@ class AuthService {
         const existingUser = await userRepository.findByEmail(email);
         if (existingUser) {
             if (existingUser.status === 'banned') {
-                throw new Error("Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ admin để mở khóa tài khoản!");
+                throw new Error("Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ quản trị viên để mở khóa tài khoản!");
             }
             if (existingUser.status === 'deactivated') {
                 throw new Error("Tài khoản của bạn hiện đang bị vô hiệu hóa. Vui lòng đăng nhập để thực hiện kích hoạt lại tài khoản!");
@@ -193,7 +193,7 @@ class AuthService {
         // Kiểm tra tài khoản đã kích hoạt chưa hoặc đang ở các trạng thái đặc biệt
         if (!user.isActive) {
             if (user.status === 'banned') {
-                throw { status: 403, message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ admin để mở khóa tài khoản!' };
+                throw { status: 403, message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ quản trị viên để mở khóa tài khoản!' };
             } else if (user.status === 'deactivated') {
                 throw {
                     status: 403,
