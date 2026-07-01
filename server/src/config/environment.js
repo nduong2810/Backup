@@ -16,6 +16,8 @@ const env = {
   EMAIL_PORT: process.env.EMAIL_PORT || 587,
   EMAIL_USER: process.env.EMAIL_USER,
   EMAIL_PASS: process.env.EMAIL_PASS,
+  RESEND_API_KEY: process.env.RESEND_API_KEY || '',
+  EMAIL_FROM: process.env.EMAIL_FROM || 'IT Forum <no-reply@yourdomain.com>',
 
   // Client
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
